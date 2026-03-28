@@ -1,0 +1,30 @@
+Whisper basic version:
+docker run -d -p 9000:9000 -e ASR_MODEL=medium -e WHISPER_LANGUAGE=fr onerahmet/openai-whisper-asr-webservice:latest
+
+
+Custom Docker with Whisper for audio to text and playnote for Diarization:
+  Build the docker image:
+docker build --no-cache -t whisperx-lipsync .
+
+login on hugging-face
+https://huggingface.co/
+
+install hugging-face-cli
+curl -LsSf https://hf.co/cli/install.sh | bash
+
+login:
+hf auth login
+
+Run the docker image:
+cd ../episodes/audios &&
+docker run --runtime=nvidia --gpus all -it \
+  -v $(pwd):/app \
+  -v ~/.cache/huggingface:/root/.cache/huggingface \
+  whisperx-gpu \
+  whisperx episode-1.mp3 \
+    --model medium \
+    --device cuda \
+    --diarize \
+    --output_dir /app/output \
+    --output_format json \
+    --language fr

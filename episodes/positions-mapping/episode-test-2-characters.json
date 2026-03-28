@@ -1,0 +1,62 @@
+{
+  "characters": [
+    {
+      "name": "antilope",
+      "position": 2,
+      "speaker": "SPEAKER_01",
+
+      "mouth": {
+        "x": 560,
+        "y": 612,
+        "scale": 0.32,
+        "rotation": 0,
+        "flip_x": true
+      },
+
+      "eyes": {
+        "x": 507,
+        "y": 552,
+        "scale": 0.6,
+        "rotation": 0,
+        "flip_x": true,
+        "min_blink_interval": 3.0,
+        "max_blink_interval": 5.5,
+        "min_blink_duration": 0.18,
+        "max_blink_duration": 0.28
+      },
+
+      "emotion_1": "HAPPY",
+      "emotion_2": "HAPPY",
+      "emotion_transition_time": 1
+    },
+
+    {
+      "name": "lion",
+      "position": 1,
+      "speaker": "SPEAKER_03",
+
+      "mouth": {
+        "x": 1181,
+        "y": 548,
+        "scale": 0.49,
+        "rotation": 0,
+	"flip_x": false
+      },
+
+      "eyes": {
+        "x": 1183,
+        "y": 466,
+        "scale": 0.61,
+	"rotation": 0,
+	"flip_x": false,
+	"min_blink_interval": 4.0,
+        "max_blink_interval": 5,
+        "min_blink_duration": 0.22,
+        "max_blink_duration": 0.3
+      },
+      "emotion_1": "UNHAPPY",
+      "emotion_2": "HAPPY",
+      "emotion_transition_time": 15
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "mouth": {
+    "x": 992,
+    "y": 415,
+    "scale": 1,
+    "rotation": 0
+  },
+  "eyes": {
+    "x": 991,
+    "y": 291,
+    "scale": 1,
+    "rotation": 0,
+    "min_blink_interval": 3.0,
+    "max_blink_interval": 5.5,
+    "min_blink_duration": 0.18,
+    "max_blink_duration": 0.28
+  },
+  "emotion_1": "HAPPY",
+  "emotion_2": "HAPPY",
+  "emotion_transition_time": 1
+}

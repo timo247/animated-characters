@@ -1,0 +1,308 @@
+1
+00:00:00,000 --> 00:00:11,520
+Dans la lointaine Savane, Maepatou l'épervier, le plus grand rhéteur de tous les animaux,
+
+2
+00:00:11,520 --> 00:00:12,520
+était anxieux.
+
+3
+00:00:12,520 --> 00:00:16,000
+Il craignait que sa réputation ait été trop endommagée par sa dernière prestation
+
+4
+00:00:16,000 --> 00:00:20,000
+au théâtre de la Prairie des Tulipes, durant laquelle il avait été décrédibilisé.
+
+5
+00:00:20,000 --> 00:00:25,120
+Ne sachant que faire pour regagner les faveurs du public en attendant son prochain spectacle,
+
+6
+00:00:25,120 --> 00:00:28,800
+il tournoyait dans tous les sens et réfléchissait haute-voix à différents stratagèmes.
+
+7
+00:00:29,680 --> 00:00:32,600
+C'est à ce moment-là que Galaye, l'antilope, passait.
+
+8
+00:00:32,600 --> 00:00:37,560
+Appercevant l'oiseau dans un tel désarroi, elle fut empreinte de curiosité.
+
+9
+00:00:37,560 --> 00:00:42,040
+Et à la lui demander ce qui lui arrivait, elle lui dit donc...
+
+10
+00:00:42,040 --> 00:00:43,640
+Bonjour, Monsieur l'oiseau.
+
+11
+00:00:43,640 --> 00:00:45,040
+Vous avez l'air préoccupé.
+
+12
+00:00:45,040 --> 00:00:46,720
+Oh, vous avez remarqué ?
+
+13
+00:00:46,720 --> 00:00:48,320
+Oui, cela saute aux yeux.
+
+14
+00:00:48,320 --> 00:00:52,200
+Malheur, voilà qui amènera ma réputation à en souffrir encore davantage.
+
+15
+00:00:52,200 --> 00:00:53,200
+Que dites-vous ?
+
+16
+00:00:53,200 --> 00:00:57,640
+Je suis dans une situation très difficile, chère antilope.
+
+17
+00:00:58,000 --> 00:00:59,400
+Qu'est-ce qui vous arrive donc ?
+
+18
+00:00:59,400 --> 00:01:03,960
+Vous n'êtes certainement pas sans savoir que je suis un discoureur, n'est-ce pas ?
+
+19
+00:01:03,960 --> 00:01:06,360
+Ah, je l'ignorais.
+
+20
+00:01:06,360 --> 00:01:09,640
+Alors il me fait plaisir de m'introduire auprès de vous.
+
+21
+00:01:09,640 --> 00:01:15,040
+Je me nomme Malpatou et j'instruis le public à la Prairie des Tulipes
+
+22
+00:01:15,040 --> 00:01:18,120
+quelques soirs par semaine sur diverses thématiques.
+
+23
+00:01:18,120 --> 00:01:19,400
+Oh, intéressant.
+
+24
+00:01:19,400 --> 00:01:26,640
+Oui, seulement, lors de ma dernière représentation, je n'ai pas su me montrer très convaincant.
+
+25
+00:01:26,680 --> 00:01:29,840
+Je crains que ma réputation n'en ait souffert.
+
+26
+00:01:29,840 --> 00:01:31,480
+Ah, je vois.
+
+27
+00:01:31,480 --> 00:01:34,520
+Est-ce donc pour ça que vous vous agitez comme vous le faites ?
+
+28
+00:01:34,520 --> 00:01:38,000
+Eh bien, c'est à dire que...
+
+29
+00:01:38,000 --> 00:01:41,960
+À cet instant-là, Galaye réalisa que l'état d'agitation de Malpatou
+
+30
+00:01:41,960 --> 00:01:44,800
+provenait de son désir d'arranger sa réputation.
+
+31
+00:01:44,800 --> 00:01:48,280
+Voyant que l'épervier adoptaient une attitude qui lui semblait nuisible,
+
+32
+00:01:48,280 --> 00:01:53,800
+elle choisit de partager avec lui ses impressions pour voir si elle pourrait l'apaiser.
+
+33
+00:01:53,800 --> 00:01:54,800
+Elle lui dit donc...
+
+34
+00:01:54,840 --> 00:01:58,960
+Vous pensez que tourner en rond comme vous le faites est favorable à votre image ?
+
+35
+00:01:58,960 --> 00:02:01,080
+Malheur, elle a raison.
+
+36
+00:02:01,080 --> 00:02:04,640
+Je dois faire attention à mon attitude, même si personne ne me voit.
+
+37
+00:02:04,640 --> 00:02:06,840
+Votre image se construit en tout temps, cher oiseau.
+
+38
+00:02:06,840 --> 00:02:09,080
+Pas seulement lorsque vous êtes sous le feu des projecteurs.
+
+39
+00:02:09,080 --> 00:02:11,040
+J'en suis tout à fait conscient.
+
+40
+00:02:11,040 --> 00:02:15,240
+C'est pour ça que je cherche un moyen de regagner quelque peu les faveurs de la foule
+
+41
+00:02:15,240 --> 00:02:17,120
+avant mon prochain spectacle.
+
+42
+00:02:17,120 --> 00:02:19,160
+Seulement, je n'ai pas d'idées.
+
+43
+00:02:19,160 --> 00:02:21,880
+Pourquoi ne vous contentez-vous pas de rester tranquille ?
+
+44
+00:02:21,880 --> 00:02:23,080
+Rester tranquille ?
+
+45
+00:02:23,080 --> 00:02:24,200
+Exactement.
+
+46
+00:02:24,240 --> 00:02:27,520
+Au lieu de vous agiter frénétiquement pour faire disparaître le malheur,
+
+47
+00:02:27,520 --> 00:02:29,880
+pourquoi ne pas simplement vous contenter de l'éviter ?
+
+48
+00:02:29,880 --> 00:02:32,440
+Hmm... Voilà qui est intéressant.
+
+49
+00:02:32,440 --> 00:02:35,880
+Laissez donc le temps faire les choses et choisissez la tranquillité.
+
+50
+00:02:35,880 --> 00:02:39,080
+Ainsi, vous éviterez d'empirer encore davantage la situation.
+
+51
+00:02:39,080 --> 00:02:41,040
+Ce n'est pas bête.
+
+52
+00:02:41,040 --> 00:02:44,320
+Et qu'en est-il du préjudice de ma réputation ?
+
+53
+00:02:44,320 --> 00:02:46,880
+Je pense que vous accordez trop d'importance à ce problème.
+
+54
+00:02:46,880 --> 00:02:50,440
+Prenez un peu de recul et concentrez-vous sur les choses essentielles.
+
+55
+00:02:50,440 --> 00:02:53,320
+Commencez donc par manger quelque chose et dormir un peu.
+
+56
+00:02:53,320 --> 00:02:54,800
+Cela vous donnera meilleure mine.
+
+57
+00:02:54,800 --> 00:02:57,880
+Donc le mal se dissipera tout seul, selon vous ?
+
+58
+00:02:57,880 --> 00:03:01,520
+Ce que vous appelez le mal vient avant tout de votre propre comportement.
+
+59
+00:03:01,520 --> 00:03:04,560
+On peut se sortir de grandes péripéties du destin sans problème.
+
+60
+00:03:04,560 --> 00:03:08,400
+Par contre, ce dont personne ne se sort, c'est des problèmes qu'ils se causent eux-mêmes.
+
+61
+00:03:08,400 --> 00:03:09,800
+Que voulez-vous dire ?
+
+62
+00:03:09,800 --> 00:03:12,720
+S'exciter tout seul en tournant comme vous le faites n'est pas bon.
+
+63
+00:03:12,720 --> 00:03:16,320
+Vous seul pouvez choisir de régler ce nouveau problème que vous avez vous-même créé.
+
+64
+00:03:16,320 --> 00:03:19,200
+Cela n'est pas délirant, en effet.
+
+65
+00:03:19,200 --> 00:03:21,600
+Donc vous êtes d'accord ?
+
+66
+00:03:21,640 --> 00:03:28,000
+Eh bien, je dois dire que votre raisonnement, bien qu'inattendu, me semble tout à fait cohérent.
+
+67
+00:03:28,000 --> 00:03:29,520
+Et puis vous êtes très belle.
+
+68
+00:03:29,520 --> 00:03:34,480
+Vous semblez tout à fait disposée à partager des conseils sur l'entretien d'une bonne image personnelle.
+
+69
+00:03:34,480 --> 00:03:38,360
+Bon, très bien. Alors je vous laisse. À la prochaine.
+
+70
+00:03:38,360 --> 00:03:39,000
+À la prochaine.
+
+71
+00:03:39,000 --> 00:03:44,240
+Et sur ces mots, Galaye s'en alla avant même de laisser le temps à Maipatu de répondre,
+
+72
+00:03:44,240 --> 00:03:46,920
+le laissant stupéfait par ce qu'il venait de vivre.
+
+73
+00:03:46,960 --> 00:03:52,200
+Ce dernier, subjugué par la grande beauté de l'antilope et l'efficacité avec laquelle elle s'exprimait,
+
+74
+00:03:52,200 --> 00:03:57,080
+était convaincu qu'il vaudrait mieux qu'il se tienne tranquille si cela lui permettait de lui ressembler.
+
+75
+00:03:57,080 --> 00:04:01,000
+Après tout, n'est-il pas préférable de se tenir loin de ce qui est mauvais,
+
+76
+00:04:01,000 --> 00:04:04,080
+plutôt que de s'évertuer à le faire disparaître ?
+
+77
+00:04:04,080 --> 00:04:07,680
+Voilà une question qui laissa Maepatu pentois ce jour-là.
+

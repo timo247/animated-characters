@@ -1,0 +1,26 @@
+{
+  "rules": [
+    { "pattern": "\\s+", "viseme": "CLOSED" },
+
+    { "pattern": "ou", "viseme": "O" },
+    { "pattern": "eau|au", "viseme": "O" },
+    { "pattern": "oi", "viseme": "A" },
+    { "pattern": "[oô]", "viseme": "O" },
+
+    { "pattern": "(ai|ei|é|è|ê|ë|eu|œ|er|ez)", "viseme": "E" },
+    { "pattern": "[iyîïÿ]", "viseme": "E" },
+    { "pattern": "[uùûüe]", "viseme": "E" },
+
+    { "pattern": "(an|am|en|em|on|om|in|im|ain|ein|un)", "viseme": "A" },
+    { "pattern": "[aàâ]", "viseme": "A" },
+
+    { "pattern": "[fv]", "viseme": "F" },
+
+    { "pattern": "l", "viseme": "L" },
+
+    { "pattern": "bmp", "viseme": "CLOSED" },
+
+    { "pattern": "[cdfghjknqrstvwxz]", "viseme": "CONS" }
+  ],
+  "default": "CLOSED"
+}

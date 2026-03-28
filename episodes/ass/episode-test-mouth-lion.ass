@@ -1,0 +1,23 @@
+[Script Info]
+Title: Upper Third Subtitle Style
+ScriptType: v4.00+
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,PoetsenOne,24,&H7532CB,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,8,20,20,10,1
+
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:08.00,Default,,0,0,0,,{\k800}D
+Dialogue: 0,0:00:08.00,0:00:13.20,Default,,0,0,0,,{\k40}ans {\k40}la {\k40}lointaine {\k40}savane, {\k40}Gaindé {\k40}le {\k40}lion, {\k40}le {\k40}roi {\k40}des {\k40}animaux, {\k40}s'activait {\k40}furieusement
+Dialogue: 0,0:00:13.20,0:00:16.52,Default,,0,0,0,,{\k47}pour {\k47}retrouver {\k47}son {\k47}ministre, {\k47}Sègue {\k47}le {\k47}Léopard.
+Dialogue: 0,0:00:16.52,0:00:21.64,Default,,0,0,0,,{\k32}Tiraillé {\k32}par {\k32}la {\k32}fin {\k32}depuis {\k32}des {\k32}heures, {\k32}Gaindé {\k32}voyait {\k32}rouge {\k32}et {\k32}attribuait {\k32}son {\k32}manque {\k32}de {\k32}nourriture
+Dialogue: 0,0:00:21.64,0:00:24.32,Default,,0,0,0,,{\k26}à {\k26}une {\k26}mauvaise {\k26}gestion {\k26}de {\k26}la {\k26}part {\k26}de {\k26}son {\k26}ministre.
+Dialogue: 0,0:00:24.32,0:00:29.72,Default,,0,0,0,,{\k41}Aussi {\k41}Gaindé {\k41}entendait-il {\k41}le {\k41}retrouver {\k41}promptement {\k41}afin {\k41}de {\k41}s'assurer {\k41}de {\k41}ses {\k41}compétences, {\k41}pour
+Dialogue: 0,0:00:29.72,0:00:32.56,Default,,0,0,0,,{\k35}savoir {\k35}s'il {\k35}méritait {\k35}bien {\k35}sa {\k35}place {\k35}de {\k35}ministre.
+Dialogue: 0,0:00:32.56,0:00:37.40,Default,,0,0,0,,{\k44}Seulement, {\k44}avant {\k44}d'avoir {\k44}pu {\k44}appréhender {\k44}son {\k44}ministre, {\k44}Gaindé {\k44}croisât {\k44}Aguérra {\k44}l'
+Dialogue: 0,0:00:37.40,0:00:40.44,Default,,0,0,0,,{\k50}araignée, {\k50}sa {\k50}sage {\k50}et {\k50}respectée {\k50}conseillère.
+Dialogue: 0,0:00:40.44,0:00:44.80,Default,,0,0,0,,{\k36}Percevant {\k36}immédiatement {\k36}la {\k36}fureur {\k36}dans {\k36}le {\k36}regard {\k36}du {\k36}roi, {\k36}Aguérra {\k36}s'empressa {\k36}d'engager
+Dialogue: 0,0:00:44.80,0:00:47.52,Default,,0,0,0,,{\k30}la {\k30}conversation {\k30}avec {\k30}lui {\k30}pour {\k30}s'enquérir {\k30}de {\k30}la {\k30}situation.
+Dialogue: 0,0:00:47.52,0:00:51.64,Default,,0,0,0,,{\k137}Elle {\k137}lui {\k137}dit:

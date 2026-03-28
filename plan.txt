@@ -1,0 +1,31 @@
+ASS
+ ↓
+parser PYTHON selon le mapping des visemes
+ ↓
+viseme_timeline
+ ↓
+FFmpeg génère les frames
+
+
+
+Commands:
+
+ass to bloc texte
+python3 ass_to_visemes.py episodes/ass/episode-test-mouth-lion.ass episodes/visemes-timeline/episode-test-mouth-lion.json visemes-mapping.json
+
+json_speach to bloc de texte:
+python3 json_speach_to_viseme_timeline.py episodes/json-speaches/episode-test-mouth-lion.json episodes/visemes-timeline/episode-test-mouth-lion.json visemes-mapping.json
+
+génération de la vidéo avec les personnages qui parlent:
+python3 render_episode.py --episode episode-test-antilope --character antilope --position 2
+python3 render_episode.py --episode episode-test-antilope --character antilope
+
+
+python3 render_episode.py --episode episode-test-mouth-lion
+
+TO DO
+Dessiner quelques images d'idle de l'antilope.
+demander à claude de faire un script qui permette de tester l'idle d'un personnage dans l'espace.
+Claude fait un script qui permet de déplacer un personnage dans l'espace.
+Claude fait un script qui déplace, fait cliquer des yeux et fait parler le personnage.
+chercher un moyen de redessiner les personnage pour les faire marcher.

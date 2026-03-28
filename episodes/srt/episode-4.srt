@@ -1,0 +1,420 @@
+1
+00:00:00,000 --> 00:00:08,640
+...
+
+2
+00:00:08,640 --> 00:00:10,840
+Dans la lointaine Savane,
+
+3
+00:00:10,840 --> 00:00:14,520
+Maépatou l'épervier, le plus grand raiteur de tous les animaux,
+
+4
+00:00:14,520 --> 00:00:18,560
+volait en pensant à la préparation de son futur spectacle.
+
+5
+00:00:18,560 --> 00:00:22,400
+Il revenait d'une discussion avec la sage administratrice de la Savane.
+
+6
+00:00:22,400 --> 00:00:26,120
+Elle l'avait sommé de cesser de faire étalage de sa vertu.
+
+7
+00:00:26,120 --> 00:00:29,360
+Maépatou se demandait donc comment il pourrait rendre son spectacle
+
+8
+00:00:29,400 --> 00:00:31,800
+sur la sagesse intéressante.
+
+9
+00:00:31,800 --> 00:00:35,040
+C'est alors qu'il a perçu une luciole scintillier.
+
+10
+00:00:35,040 --> 00:00:37,600
+Voyant là l'incarnation même de la beauté,
+
+11
+00:00:37,600 --> 00:00:41,600
+il se convainquit que ça devait être le signe d'une grande sagesse
+
+12
+00:00:41,600 --> 00:00:44,680
+et décida d'aller engager la conversation avec la luciole
+
+13
+00:00:44,680 --> 00:00:47,640
+pour voir s'il pourrait en retirer de bonnes idées.
+
+14
+00:00:47,640 --> 00:00:49,320
+Il lui dit donc...
+
+15
+00:00:49,320 --> 00:00:51,560
+Bonsoir, Madame.
+
+16
+00:00:51,560 --> 00:00:53,040
+Bonsoir, Monsieur.
+
+17
+00:00:53,040 --> 00:00:57,520
+Ne seriez-vous pas Maépatou, le grand discoureur de la Savane ?
+
+18
+00:00:57,520 --> 00:00:59,280
+Eh bien oui.
+
+19
+00:00:59,360 --> 00:01:01,920
+Maépatou, c'est moi.
+
+20
+00:01:01,920 --> 00:01:04,400
+Mais grand, je ne suis pas si sûr.
+
+21
+00:01:04,400 --> 00:01:05,680
+Comment cela ?
+
+22
+00:01:05,680 --> 00:01:09,320
+Vous êtes un grand orateur, c'est certain ?
+
+23
+00:01:09,320 --> 00:01:10,440
+Grand.
+
+24
+00:01:10,440 --> 00:01:15,560
+C'est le nom que l'on donne à ceux qui savent convaincre tout le monde.
+
+25
+00:01:15,560 --> 00:01:18,000
+Que s'est-il passé ?
+
+26
+00:01:18,000 --> 00:01:20,240
+Racontez-moi, Maépatou.
+
+27
+00:01:20,240 --> 00:01:22,280
+Eh bien, voilà.
+
+28
+00:01:22,280 --> 00:01:24,920
+J'ai préparé un discours sur la sagesse,
+
+29
+00:01:24,920 --> 00:01:29,440
+pensant qu'il s'agirait d'une thématique qui intéresserait le public.
+
+30
+00:01:29,440 --> 00:01:33,360
+Seulement, j'ai remarqué que ça ne les intéresse pas.
+
+31
+00:01:33,360 --> 00:01:37,560
+Et j'ignore comment rendre la sagesse intéressante.
+
+32
+00:01:37,560 --> 00:01:38,800
+À cet instant-là,
+
+33
+00:01:38,800 --> 00:01:43,680
+Lucili a compris que Maépatou venait chercher auprès d'elle des conseils sur son travail.
+
+34
+00:01:43,680 --> 00:01:48,360
+Elle trouva coquasse qu'un animal aussi important se trouve ainsi à requérir son aide.
+
+35
+00:01:48,360 --> 00:01:52,760
+D'humeur taquine, elle choisit de profiter de la situation pour s'amuser un peu
+
+36
+00:01:52,800 --> 00:01:55,520
+avant d'offrir à son interlocuteur ce qu'il cherchait.
+
+37
+00:01:55,520 --> 00:01:57,720
+Elle reprit donc candidement:
+
+38
+00:01:57,720 --> 00:01:59,480
+Ha ha ha ha !
+
+39
+00:01:59,480 --> 00:02:01,240
+Ais-je dis quelque chose de drôle ?
+
+40
+00:02:01,240 --> 00:02:03,520
+Votre question ne manque pas de mordant.
+
+41
+00:02:03,520 --> 00:02:05,080
+De mordant ?
+
+42
+00:02:05,080 --> 00:02:09,520
+Vous devez vous adresser à la foule avec des thèmes qui les intéressent.
+
+43
+00:02:09,520 --> 00:02:13,240
+C'est le B.A.B.A. de votre métier.
+
+44
+00:02:13,240 --> 00:02:16,200
+Qu'est-ce qui vous a pris de choisir un tel sujet ?
+
+45
+00:02:16,200 --> 00:02:19,240
+Eh bien, c'est un sujet qui me tient à cœur, voilà tout.
+
+46
+00:02:19,240 --> 00:02:21,160
+Qui lui tient à cœur ?
+
+47
+00:02:21,200 --> 00:02:25,480
+Comment vous y êtes-vous pris pour faire un spectacle sur la fâcheuse ?
+
+48
+00:02:25,480 --> 00:02:31,280
+J'ai cherché à montrer que le sage devait être l'individu le plus important de la société
+
+49
+00:02:31,280 --> 00:02:33,280
+grâce à ce qu'il peut apporter.
+
+50
+00:02:33,280 --> 00:02:35,000
+Ha ha ha ha !
+
+51
+00:02:35,000 --> 00:02:36,840
+Je vois que cela vous divertit au moins.
+
+52
+00:02:36,840 --> 00:02:38,520
+Ha ha ha !
+
+53
+00:02:38,520 --> 00:02:40,080
+Veuillez m'excuser.
+
+54
+00:02:40,080 --> 00:02:45,680
+Seulement l'innocence de vos propos m'a frappé si fort au cœur que je n'ai pu me retenir.
+
+55
+00:02:45,680 --> 00:02:47,200
+Eh bien, puisque ça vient du…
+
+56
+00:02:47,200 --> 00:02:48,720
+Monsieur l'épervier,
+
+57
+00:02:48,720 --> 00:02:54,160
+l'individu le plus important de la société, c'est l'individu riche.
+
+58
+00:02:54,160 --> 00:02:55,760
+Que dites-vous ?
+
+59
+00:02:55,760 --> 00:03:00,560
+Vous n'êtes pas sans savoir que les individus riches sont généralement bien entourés.
+
+60
+00:03:00,560 --> 00:03:06,720
+Leur richesse leur permet de s'attirer les faveurs des plus talentueux dans divers domaines.
+
+61
+00:03:06,720 --> 00:03:07,920
+Certes.
+
+62
+00:03:07,920 --> 00:03:09,120
+Et donc ?
+
+63
+00:03:09,120 --> 00:03:11,640
+Et donc, qu'est-ce que cela fait ? Je vous écoute.
+
+64
+00:03:11,640 --> 00:03:15,880
+Cela fait en sorte que les animaux riches bénéficient
+
+65
+00:03:15,880 --> 00:03:22,200
+par le biais de ceux qui les entourent de talents qu'ils n'ont pas directement.
+
+66
+00:03:22,200 --> 00:03:28,040
+Ils bénéficient alors de force, d'intelligence et de courage.
+
+67
+00:03:28,040 --> 00:03:33,600
+Et même de sagesse, en quantité supérieure aux individus normaux.
+
+68
+00:03:33,600 --> 00:03:36,080
+Cela est bien vrai.
+
+69
+00:03:36,080 --> 00:03:38,000
+Oui, Maépatou.
+
+70
+00:03:38,000 --> 00:03:42,680
+Comment voudriez-vous qu'un sage puisse être plus intéressant qu'un riche dans ces conditions ?
+
+71
+00:03:42,720 --> 00:03:46,080
+La concurrence semble effectivement inégale.
+
+72
+00:03:46,080 --> 00:03:47,280
+Tout à fait.
+
+73
+00:03:47,280 --> 00:03:54,760
+C'est pour cette raison que les individus tendent naturellement à préférer les animaux riches aux animaux sages.
+
+74
+00:03:54,760 --> 00:03:58,560
+Oh, cela est tout de même triste.
+
+75
+00:03:58,560 --> 00:04:02,520
+Ne voyez donc pas les choses comme ça, voyons. Soyez positif.
+
+76
+00:04:02,520 --> 00:04:07,320
+Vous me dites que la sagesse est inutile. Comment voulez-vous que je sois positif ?
+
+77
+00:04:07,320 --> 00:04:09,880
+La sagesse a son utilité.
+
+78
+00:04:09,880 --> 00:04:16,440
+Tenez, par exemple, l'acquisition de richesses elle-même ne demande-t-elle pas de la sagesse ?
+
+79
+00:04:16,440 --> 00:04:18,120
+Comment cela ?
+
+80
+00:04:18,120 --> 00:04:21,560
+La richesse provient du profit, n'est-ce pas ?
+
+81
+00:04:21,560 --> 00:04:22,320
+Oui.
+
+82
+00:04:22,320 --> 00:04:28,040
+Faire du profit nécessite que l'on nous confie des charges, n'est-ce pas ?
+
+83
+00:04:28,040 --> 00:04:30,040
+Oui, mais encore ?
+
+84
+00:04:30,040 --> 00:04:37,640
+Le fait de se faire confier des charges nécessite que l'on nous fasse confiance.
+
+85
+00:04:37,680 --> 00:04:40,960
+Et comment s'acquiert la confiance selon vous ?
+
+86
+00:04:40,960 --> 00:04:42,960
+Avec le temps.
+
+87
+00:04:42,960 --> 00:04:47,360
+La bonne réponse est la bonne conduite.
+
+88
+00:04:47,360 --> 00:04:52,520
+C'est donc la bonne conduite qui est à la base de l'acquisition de richesses.
+
+89
+00:04:52,520 --> 00:04:58,680
+Ah, voilà qui est bien amené, en effet. Donc la sagesse permet la richesse.
+
+90
+00:04:58,680 --> 00:05:03,360
+Pourquoi n'avez-vous pas pensé à présenter la sagesse sous cet angle à vos auditeurs ?
+
+91
+00:05:03,400 --> 00:05:07,920
+Eh bien, je ne m'étais peut-être pas plongé suffisamment profondément sur la question.
+
+92
+00:05:07,920 --> 00:05:09,720
+Ah ah ah ah ah !
+
+93
+00:05:09,720 --> 00:05:11,480
+Vous recommencez !
+
+94
+00:05:11,480 --> 00:05:13,760
+Oh, vous me faites rire, c'est tout !
+
+95
+00:05:13,760 --> 00:05:16,920
+J'aurais donc au moins trouvé un public satisfait ce soir.
+
+96
+00:05:16,920 --> 00:05:19,040
+Ah ah ah ah ah !
+
+97
+00:05:19,040 --> 00:05:25,400
+Eh bien Madame, sur ces paroles, je vous laisse, car je n'aimerais pas abuser de votre temps.
+
+98
+00:05:25,400 --> 00:05:27,760
+Cela n'a fait plaisir, voyons.
+
+99
+00:05:27,760 --> 00:05:29,920
+Monsieur le Discoureur...
+
+100
+00:05:29,960 --> 00:05:33,440
+Et sur ces mots, Maépatou s'en vaut là rassuré,
+
+101
+00:05:33,440 --> 00:05:40,200
+car il avait compris que la richesse était un thème qu'il pourrait utiliser pour rendre la sagesse intéressante.
+
+102
+00:05:40,200 --> 00:05:46,720
+De son côté, Lucilia prit conscience que sa discussion avec Maépatou avait fait naître en elle un désir nouveau.
+
+103
+00:05:46,720 --> 00:05:51,160
+Comment pourrait-elle faire en sorte que ses bonnes idées deviennent populaires ?
+
+104
+00:05:51,160 --> 00:05:54,160
+Reprenant alors paisiblement sa parade nocturne,
+
+105
+00:05:54,160 --> 00:05:59,880
+Lucilia sourit en se demandant si elle trouverait le temps d'aller voir Maépatou performer à la prairie des tulipes.
+
