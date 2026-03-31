@@ -1,0 +1,29 @@
+{
+  "episode_id": "ep001",
+  "output": {
+    "filename": "episode_001.mp4",
+    "duration_seconds": 10,
+    "fps": 24,
+    "resolution": [1920, 1080]
+  },
+  "background": {
+    "image": "background_forest.png"
+  },
+  "characters": [
+    {
+      "id": "antilope_main",
+      "character": "antilope",
+      "position": 1,
+      "screen_anchor": {
+        "x": 960,
+        "y": 540,
+        "align": "center-bottom"
+      },
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "dialogue": null
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "character_id": "antilope",
+  "label": "Antilope",
+
+  "_positioning_note": "Toutes les coordonnées (x, y) sont le coin supérieur gauche de l'overlay dans l'image idle ORIGINALE (non scalée), en pixels — même convention que Figma. Le script les multiplie automatiquement par le `scale` défini dans episode-settings.",
+
+  "positions": {
+    "1": {
+
+      "idle": {
+        "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"],
+        "fps": 3,
+        "_comment": "Boucle ping-pong : 1→2→3→4→3→2→1→…"
+      },
+
+      "eyes": {
+        "anchor": {
+          "x": 242,
+          "y": 217,
+          "_comment": "Coin supérieur gauche de l'image yeux, dans l'espace de l'idle original."
+        },
+        "scale": 1.0,
+        "_scale_comment": "Scale propre aux yeux, appliqué APRÈS le scale global du personnage et le overlay_scale de episode-settings. Permet d'ajuster finement la taille des yeux indépendamment de la bouche.",
+        "blink": {
+          "interval_seconds": 3.5,
+          "interval_jitter_seconds": 1.5,
+          "sequence": ["OPEN.png", "HALF-OPEN.png", "CLOSED.png", "HALF-OPEN.png", "OPEN.png"],
+          "frame_duration_seconds": 0.05
+        }
+      },
+
+      "mouth": {
+        "anchor": {
+          "x": 234,
+          "y": 345,
+          "_comment": "Coin supérieur gauche de l'image bouche, dans l'espace de l'idle original."
+        },
+        "scale": 0.37,
+        "_scale_comment": "Scale propre à la bouche, appliqué APRÈS le scale global du personnage et le overlay_scale de episode-settings. Permet d'ajuster finement la taille de la bouche indépendamment des yeux.",
+        "idle_viseme": "CLOSED.png",
+        "_comment": "Visème affiché hors dialogue. Sera remplacé dynamiquement plus tard."
+      }
+
+    }
+  }
+}

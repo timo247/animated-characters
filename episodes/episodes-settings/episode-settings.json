@@ -1,0 +1,38 @@
+{
+  "episode_id": "ep001",
+  "output": {
+    "filename": "episode_001.mp4",
+    "duration_seconds": 10,
+    "fps": 24,
+    "resolution": [1920, 1080]
+  },
+  "background": {
+    "image": "episode-test-1.png"
+  },
+  "characters": [
+    {
+      "id": "antilope_main",
+      "character": "antilope",
+      "position": 1,
+
+      "screen_position": {
+        "x": 917,
+        "y": 212,
+        "_comment": "Coin supérieur gauche du sprite sur le background, en pixels — même convention que Figma."
+      },
+
+      "scale": 0.75,
+      "_scale_comment": "Échelle globale du personnage (1.0 = taille originale des assets).",
+
+      "overlay_scale": 1.0,
+      "_overlay_scale_comment": "Facteur supplémentaire appliqué aux yeux ET à la bouche par rapport au sprite scalé (1.0 = même scale que le corps).",
+
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+
+      "dialogue": null
+    }
+  ]
+}
