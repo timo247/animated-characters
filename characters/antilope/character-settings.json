@@ -2,43 +2,152 @@
   "character_id": "antilope",
   "label": "Antilope",
 
-  "_positioning_note": "Toutes les coordonnées (x, y) sont le coin supérieur gauche de l'overlay dans l'image idle ORIGINALE (non scalée), en pixels — même convention que Figma. Le script les multiplie automatiquement par le `scale` défini dans episode-settings.",
+  "_notes": {
+    "coordinates":  "x, y = coin supérieur gauche de l'overlay dans l'image de base ORIGINALE (non scalée), pixels, convention Figma. Multipliés automatiquement par `scale` du personnage.",
+    "rotation":     "Rotation en degrés, sens horaire, autour du centre de l'overlay. Défaut : 0.",
+    "flip_x":       "Miroir horizontal de l'overlay. Défaut : false.",
+    "frames_config": "Optionnel. Surcharge frame par frame les valeurs du `default`. Seules les clés explicitement présentes dans une entrée de frames_config écrasent le défaut — les autres héritent.",
+    "frame_key":    "Dans frames_config, la clé 'frame' est le nom du fichier de sprite de base (ex: 'MOVE-1.png'), pas un index numérique."
+  },
 
   "positions": {
     "1": {
 
       "idle": {
         "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"],
-        "fps": 3,
-        "_comment": "Boucle ping-pong : 1→2→3→4→3→2→1→…"
+        "fps": 8,
+        "flip_x": false,
+
+        "default": {
+          "eyes": {
+            "anchor":   { "x": 244, "y": 277 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 0
+          },
+          "mouth": {
+            "anchor":   { "x": 236, "y": 404 },
+            "scale":    0.37,
+            "flip_x":   false,
+            "rotation": 0,
+            "idle_viseme": "CLOSED.png"
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "IDLE-2.png",
+            "_comment": "Exemple : légère translation vers le bas lors de l'expiration",
+            "eyes":  { "anchor": { "x": 245, "y": 276 } },
+            "mouth": { "anchor": { "x": 237, "y": 405 } }
+          },
+          {
+            "frame": "IDLE-3.png",
+            "eyes":  { "anchor": { "x": 244, "y": 277 } },
+            "mouth": { "anchor": { "x": 236, "y": 404 } }
+          }
+        ]
       },
 
-      "eyes": {
-        "anchor": {
-          "x": 242,
-          "y": 217,
-          "_comment": "Coin supérieur gauche de l'image yeux, dans l'espace de l'idle original."
+      "transitions": {
+        "frames": ["TRANSITION-1.png", "TRANSITION-2.png", "TRANSITION-3.png"],
+        "fps": 8,
+        "flip_x": false,
+
+        "default": {
+          "eyes": {
+            "anchor":   { "x": 369, "y": 216 },
+            "scale":    1.0,
+            "flip_x":   true,
+            "rotation": 14
+          },
+          "mouth": {
+            "anchor":   { "x": 507, "y": 340 },
+            "scale":    0.37,
+            "flip_x":   true,
+            "rotation": 0
+          }
         },
-        "scale": 1.0,
-        "_scale_comment": "Scale propre aux yeux, appliqué APRÈS le scale global du personnage et le overlay_scale de episode-settings. Permet d'ajuster finement la taille des yeux indépendamment de la bouche.",
-        "blink": {
-          "interval_seconds": 3.5,
-          "interval_jitter_seconds": 1.5,
-          "sequence": ["OPEN.png", "HALF-OPEN.png", "CLOSED.png", "HALF-OPEN.png", "OPEN.png"],
-          "frame_duration_seconds": 0.05
-        }
+
+        "frames_config": [
+          {
+            "frame": "TRANSITION-1.png",
+            "_comment": "Début du mouvement : corps penché en avant, yeux et bouche décalés",
+            "eyes":  { "anchor": { "x": 244, "y": 277 }, "rotation": 0, "flip_x": false },
+            "mouth": { "anchor": { "x": 236, "y": 404 }, "rotation": 0, "flip_x": false }
+          },
+          {
+            "frame": "TRANSITION-2.png",
+            "eyes":  { "anchor": { "x": 369, "y": 216 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 507, "y": 340 }, "rotation": 0 }
+          },
+          {
+            "frame": "TRANSITION-3.png",
+            "eyes":  { "anchor": { "x": 386, "y": 213 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 524, "y": 337 }, "rotation": 0 }
+          }
+        ]
       },
 
-      "mouth": {
-        "anchor": {
-          "x": 234,
-          "y": 345,
-          "_comment": "Coin supérieur gauche de l'image bouche, dans l'espace de l'idle original."
+      "moves": {
+        "frames": ["MOVE-1.png", "MOVE-2.png", "MOVE-3.png", "MOVE-4.png"],
+        "fps": 10,
+        "flip_x": false,
+
+        "default": {
+          "eyes": {
+            "anchor":   { "x": 242, "y": 217 },
+            "scale":    1.0,
+            "flip_x":   true,
+            "rotation": 0
+          },
+          "mouth": {
+            "anchor":   { "x": 234, "y": 345 },
+            "scale":    0.37,
+            "flip_x":   true,
+            "rotation": 0
+          }
         },
-        "scale": 0.37,
-        "_scale_comment": "Scale propre à la bouche, appliqué APRÈS le scale global du personnage et le overlay_scale de episode-settings. Permet d'ajuster finement la taille de la bouche indépendamment des yeux.",
-        "idle_viseme": "CLOSED.png",
-        "_comment": "Visème affiché hors dialogue. Sera remplacé dynamiquement plus tard."
+
+        "frames_config": [
+          {
+            "frame": "MOVE-1.png",
+            "_comment": "Foulée 1 : corps légèrement monté",
+            "eyes":  { "anchor": { "x": 385, "y": 215 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 525, "y": 339 }, "rotation": 0 }
+          },
+          {
+            "frame": "MOVE-2.png",
+            "_comment": "Foulée 2 : corps neutre",
+            "eyes":  { "anchor": { "x": 410, "y": 216 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 548, "y": 340 }, "rotation": 0 }
+          },
+          {
+            "frame": "MOVE-3.png",
+            "_comment": "Foulée 3 : corps descendu, légère rotation",
+            "eyes":  { "anchor": { "x": 410, "y": 211 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 548, "y": 335 }, "rotation": 0 }
+          },
+          {
+            "frame": "MOVE-4.png",
+            "eyes":  { "anchor": { "x": 401, "y": 203 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 539, "y": 327 }, "rotation": 0}
+          },
+          {
+            "frame": "MOVE-5.png",
+            "_comment": "Foulée 5 : corps monté côté opposé",
+            "eyes":  { "anchor": { "x": 385, "y": 214 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 523, "y": 338 }, "rotation": 0}
+          }
+        ]
+      },
+
+      "blink": {
+        "_comment": "Paramètres de clignement partagés entre tous les états.",
+        "interval_seconds": 3.5,
+        "interval_jitter_seconds": 1.5,
+        "sequence": ["OPEN.png", "HALF-OPEN.png", "CLOSED.png", "HALF-OPEN.png", "OPEN.png"],
+        "frame_duration_seconds": 0.05
       }
 
     }

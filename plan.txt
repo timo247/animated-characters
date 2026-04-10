@@ -21,9 +21,13 @@ python3 render_episode.py --episode episode-test-antilope --character antilope -
 python3 render_episode.py --episode episode-test-antilope --character antilope
 
 
-python3 render_episode.py --episode episode-test-mouth-lion
+python3 render_episode.py --settings episodes/episodes-settings/episode-settings.json
 
 TO DO
+mettre toutes les images d'antilopes dans le même frame, l'aligner en bas à gauche.
+repenser l'orga des characters: lorsque le personnage bouge, il a ses propres yeux, sa propre bouche, et sa propre direction. faire une copie d'écran et un treeq de antilope et demander à claude un proposition d'architecture.
+configurer character.json et episode-settings.json et tester le déplacement de l'antilope.
+Rescaler l bouche et les yeux de l'antilope, réduire le nombre de frames par secondes
 Dessiner quelques images d'idle de l'antilope.
 demander à claude de faire un script qui permette de tester l'idle d'un personnage dans l'espace.
 Claude fait un script qui permet de déplacer un personnage dans l'espace.
