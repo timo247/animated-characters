@@ -23,7 +23,12 @@ python3 render_episode.py --episode episode-test-antilope --character antilope
 
 python3 render_episode.py --settings episodes/episodes-settings/episode-settings.json
 
+python3 render_episode.py \
+  --settings episodes/episodes-settings/episode-settings.json \
+  --visemes  episodes/visemes-timeline/episode-001.json
+
 TO DO
+Tester le rendering avec les viesemes
 mettre toutes les images d'antilopes dans le même frame, l'aligner en bas à gauche.
 repenser l'orga des characters: lorsque le personnage bouge, il a ses propres yeux, sa propre bouche, et sa propre direction. faire une copie d'écran et un treeq de antilope et demander à claude un proposition d'architecture.
 configurer character.json et episode-settings.json et tester le déplacement de l'antilope.

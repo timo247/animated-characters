@@ -155,9 +155,30 @@ def build_eye_sequence(blink_cfg: dict, total_frames: int, fps: int) -> list[str
         t += interval + random.uniform(-jitter, jitter)
     return eye_seq
 
-def build_mouth_sequence(idle_viseme: str, total_frames: int) -> list[str]:
-    """Bouche idle (CLOSED) pour l'instant. Branchement futur : visèmes dynamiques."""
-    return [idle_viseme] * total_frames
+def build_mouth_sequence(idle_viseme: str, total_frames: int,
+                         fps: int,
+                         viseme_timeline: list[dict] | None = None) -> list[str]:
+    """
+    Construit la séquence bouche frame par frame.
+
+    Sans viseme_timeline : bouche idle toute la durée.
+    Avec viseme_timeline  : liste de { "start": float, "end": float, "viseme": str }
+        → chaque frame reçoit le visème actif à cet instant ;
+          entre deux visèmes (gap) la bouche revient à idle_viseme.
+    """
+    seq = [idle_viseme] * total_frames
+
+    if not viseme_timeline:
+        return seq
+
+    for entry in viseme_timeline:
+        frame_start = int(entry["start"] * fps)
+        frame_end   = min(int(entry["end"]   * fps) + 1, total_frames)
+        viseme_file = entry["viseme"] + ".png"
+        for f in range(frame_start, frame_end):
+            seq[f] = viseme_file
+
+    return seq
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +452,8 @@ def composite_character(
 # Rendu de toutes les frames
 # ---------------------------------------------------------------------------
 
-def render_frames(episode: dict, frames_dir: Path) -> tuple[int, int]:
+def render_frames(episode: dict, frames_dir: Path,
+                  visemes_data: dict | None = None) -> tuple[int, int]:
     fps           = episode["output"]["fps"]
     duration      = episode["output"]["duration_seconds"]
     total_frames  = fps * duration
@@ -460,12 +482,23 @@ def render_frames(episode: dict, frames_dir: Path) -> tuple[int, int]:
         blink_cfg  = pos_cfg["blink"]
         idle_vis   = pos_cfg["idle"]["default"]["mouth"].get("idle_viseme", "CLOSED.png")
 
+        # Timeline visèmes : récupérée depuis le fichier si un speaker est défini
+        speaker         = char_cfg.get("speaker")
+        viseme_timeline = None
+        if speaker and visemes_data:
+            viseme_timeline = visemes_data.get(speaker)
+            if viseme_timeline is None:
+                print(f"  [WARN] Speaker '{speaker}' introuvable dans le fichier visèmes.")
+            else:
+                print(f"  [INFO] {character_id} → speaker '{speaker}' "
+                      f"({len(viseme_timeline)} visèmes chargés)")
+
         timeline = build_move_timeline(moves_cfg, total_frames, fps,
                                        char_settings, position)
         fill_idle_positions(timeline, default_x, default_y, moves_cfg, fps)
 
         eye_seq   = build_eye_sequence(blink_cfg, total_frames, fps)
-        mouth_seq = build_mouth_sequence(idle_vis, total_frames)
+        mouth_seq = build_mouth_sequence(idle_vis, total_frames, fps, viseme_timeline)
 
         char_data.append({
             "cfg":           char_cfg,
@@ -546,32 +579,56 @@ def assemble_video(frames_dir: Path, output_path: Path, fps: int, width: int, he
 # Point d'entrée
 # ---------------------------------------------------------------------------
 
+def load_visemes(visemes_path: str | None) -> dict | None:
+    """Charge le fichier JSON de timeline visèmes. Retourne None si non fourni."""
+    if not visemes_path:
+        return None
+    path = Path(visemes_path)
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    if not path.exists():
+        sys.exit(f"[ERREUR] Fichier visèmes introuvable : {path}")
+    data = load_json(path)
+    print(f"  [INFO] Visèmes chargés : {path.name} "
+          f"({list(data.keys())} speakers)")
+    return data
+
+
 def main():
     parser = argparse.ArgumentParser(description="Render an episode from a JSON settings file.")
     parser.add_argument("--settings", required=True,
                         help="Chemin vers le fichier episode-settings.json")
+    parser.add_argument("--visemes",  default=None,
+                        help="Chemin vers le fichier JSON de timeline visèmes "
+                             "(ex: episodes/visemes-timeline/episode-test-antilope.json)")
     parser.add_argument("--keep-frames", action="store_true",
                         help="Conserver les frames PNG après rendu (debug)")
     args = parser.parse_args()
 
-    episode     = load_episode_settings(args.settings)
+    episode      = load_episode_settings(args.settings)
+    visemes_data = load_visemes(args.visemes)
+
     output_dir  = DEFAULT_OUTPUT_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / episode["output"]["filename"]
 
+    speakers = [c.get("speaker", "—") for c in episode["characters"]]
     print(f"[render_episode] Épisode   : {episode['episode_id']}")
     print(f"  Résolution  : {episode['output']['resolution']}")
     print(f"  FPS         : {episode['output']['fps']}")
     print(f"  Durée       : {episode['output']['duration_seconds']}s")
     print(f"  Sortie      : {output_path}")
     print(f"  Personnages : {[c['character'] for c in episode['characters']]}")
+    print(f"  Speakers    : {speakers}")
+    if visemes_data:
+        print(f"  Visèmes     : {args.visemes}")
 
     with tempfile.TemporaryDirectory() as tmp:
         frames_dir = Path(tmp) / "frames"
         frames_dir.mkdir()
 
         print("\n[1/2] Rendu des frames…")
-        width, height = render_frames(episode, frames_dir)
+        width, height = render_frames(episode, frames_dir, visemes_data)
 
         print("\n[2/2] Assemblage ffmpeg…")
         assemble_video(frames_dir, output_path, episode["output"]["fps"], width, height)

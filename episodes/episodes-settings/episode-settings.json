@@ -23,23 +23,24 @@
 
       "scale": 1.0,
       "overlay_scale": 1.0,
+      "flip_x": false,
 
       "emotions": {
         "eyes": "HAPPY",
         "mouth": "HAPPY"
       },
 
+      "speaker": "SPEAKER_01",
+      "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
+
       "moves": [
         {
-          "_comment": "Premier déplacement : le personnage quitte sa position initiale vers la droite.",
-          "at_second": 1.0,
-          "from_position": { "x": 200, "y": 208 },
-          "to_position":   { "x": 1400, "y": 208 },
+          "at_second": 2.0,
+          "from_position": { "x": 200, "y": 180 },
+          "to_position":   { "x": 900, "y": 180 },
           "move_duration_seconds": 2.5,
           "transition_fps": 8,
-          "_transition_fps_comment": "FPS de l'animation de transition (entrée/sortie d'idle). Optionnel — utilise la valeur de character-settings si absent.",
-          "move_fps": 10,
-          "_move_fps_comment": "FPS de l'animation de marche. Optionnel."
+          "move_fps": 10
         }
       ],
 
