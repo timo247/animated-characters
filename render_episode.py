@@ -408,10 +408,10 @@ def composite_character(
     mouth_rot    = float(mouth_cfg.get("rotation", 0.0))
 
     # Résolution flip_x par couche (global_flip_x prend le dessus si True)
-    base_flip  = global_flip_x or bool(anim_cfg.get("flip_x",       False))
-    eye_flip   = global_flip_x or bool(eye_cfg.get("flip_x",        False))
-    mouth_flip = global_flip_x or bool(mouth_cfg.get("flip_x",      False))
-
+    base_flip  = global_flip_x ^ bool(anim_cfg.get("flip_x",  False))
+    eye_flip   = global_flip_x ^ bool(eye_cfg.get("flip_x",   False))
+    mouth_flip = global_flip_x ^ bool(mouth_cfg.get("flip_x", False))
+    
     # --- Sprite de base ---
     base_path = pos_dir(character_id, position) / base_dir / base_file
     if not base_path.exists():

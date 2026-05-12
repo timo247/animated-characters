@@ -7,6 +7,10 @@ Améliorations vs v1 :
   - Micro-fermetures entre voyelles ouvertes consécutives (O/A)
   - Durée de fermeture pondérée par le type de visème
   - Seuil MIN_OPEN_DURATION pour éviter de coller un O/A trop court
+
+Améliorations vs v2 :
+  - Fermeture forcée inter-speakers : un personnage ferme la bouche
+    pendant que les autres parlent (post-traitement global)
 """
 
 import json
@@ -205,6 +209,87 @@ def build_word_events(
     return events
 
 
+# ── Intervalles de parole par speaker ───────────────────────────────────────
+
+def speaking_intervals(words: List[dict]) -> List[Tuple[float, float]]:
+    """
+    Retourne la liste fusionnée des intervalles [start, end] où ce speaker
+    produit effectivement de la parole (avec un petit buffer d'anticipation).
+    Les intervalles contigus ou qui se chevauchent sont fusionnés.
+    """
+    raw = [(max(0.0, w["start"] + VISEME_OFFSET), w["end"]) for w in words
+           if w["end"] - w["start"] >= MIN_DURATION]
+    if not raw:
+        return []
+    raw.sort()
+    merged: List[Tuple[float, float]] = [raw[0]]
+    for s, e in raw[1:]:
+        if s <= merged[-1][1] + WORD_GAP_THRESHOLD:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+    return merged
+
+
+def enforce_silence_between_speakers(
+    timeline: List[dict],
+    other_intervals: List[Tuple[float, float]],
+) -> List[dict]:
+    """
+    Prend la timeline d'un speaker et y découpe des plages CLOSED partout
+    où d'autres speakers sont en train de parler.
+
+    Algorithme :
+      Pour chaque intervalle [oa, ob] d'un autre speaker :
+        - Supprimer ou tronquer tout événement de ce speaker qui chevauche [oa, ob]
+        - Insérer un événement CLOSED couvrant exactement [oa, ob]
+      Puis re-trier et fusionner les CLOSED adjacents.
+    """
+    if not other_intervals or not timeline:
+        return timeline
+
+    events = [VisemeEvent(e["start"], e["end"], e["viseme"]) for e in timeline]
+
+    for oa, ob in other_intervals:
+        new_events: List[VisemeEvent] = []
+        for ev in events:
+            # Pas de chevauchement → garder tel quel
+            if ev.end <= oa or ev.start >= ob:
+                new_events.append(ev)
+                continue
+            # Partie avant le silence → garder si assez longue
+            if ev.start < oa:
+                trimmed = VisemeEvent(ev.start, oa, ev.viseme)
+                if trimmed.end - trimmed.start >= MIN_DURATION:
+                    new_events.append(trimmed)
+            # Partie après le silence → garder si assez longue
+            if ev.end > ob:
+                trimmed = VisemeEvent(ob, ev.end, ev.viseme)
+                if trimmed.end - trimmed.start >= MIN_DURATION:
+                    new_events.append(trimmed)
+            # La plage [oa, ob] elle-même sera comblée ci-dessous
+        # Insérer le CLOSED pour cet intervalle
+        new_events.append(VisemeEvent(oa, ob, "CLOSED"))
+        events = new_events
+
+    # Re-trier par start
+    events.sort(key=lambda e: e.start)
+
+    # Fusionner les CLOSED consécutifs/adjacents
+    merged: List[VisemeEvent] = []
+    for ev in events:
+        if merged and merged[-1].viseme == "CLOSED" and ev.viseme == "CLOSED" \
+                and ev.start <= merged[-1].end + 0.001:
+            merged[-1] = VisemeEvent(merged[-1].start, max(merged[-1].end, ev.end), "CLOSED")
+        else:
+            merged.append(ev)
+
+    return [
+        {"start": round(e.start, 3), "end": round(e.end, 3), "viseme": e.viseme}
+        for e in merged
+    ]
+
+
 def build_timeline(words: List[dict], rules, default: str) -> List[dict]:
     timeline: List[VisemeEvent] = []
     previous_end: Optional[float] = None
@@ -261,6 +346,28 @@ def main():
     output = {}
     for spk, words in speakers.items():
         output[spk] = build_timeline(words, rules, default)
+
+    # ── Fermeture inter-speakers ──────────────────────────────────────────────
+    # Pour chaque speaker, calculer les intervalles de parole de TOUS les autres,
+    # puis forcer CLOSED dans sa timeline pendant ces intervalles.
+    speaking: Dict[str, List[Tuple[float, float]]] = {
+        spk: speaking_intervals(words) for spk, words in speakers.items()
+    }
+    for spk in list(output.keys()):
+        # Réunir les intervalles de parole de tous les autres speakers
+        others: List[Tuple[float, float]] = []
+        for other_spk, intervals in speaking.items():
+            if other_spk != spk:
+                others.extend(intervals)
+        # Fusionner ces intervalles entre eux (plusieurs speakers peuvent se chevaucher)
+        others.sort()
+        merged_others: List[Tuple[float, float]] = []
+        for s, e in others:
+            if merged_others and s <= merged_others[-1][1] + 0.001:
+                merged_others[-1] = (merged_others[-1][0], max(merged_others[-1][1], e))
+            else:
+                merged_others.append((s, e))
+        output[spk] = enforce_silence_between_speakers(output[spk], merged_others)
 
     Path(args.output_json).write_text(
         json.dumps(output, indent=2, ensure_ascii=False)

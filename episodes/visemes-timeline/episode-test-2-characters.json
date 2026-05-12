@@ -217,11 +217,11 @@
     },
     {
       "start": 17.935,
-      "end": 53.996,
+      "end": 54.016,
       "viseme": "CLOSED"
     },
     {
-      "start": 53.996,
+      "start": 54.016,
       "end": 54.066,
       "viseme": "E"
     },
@@ -747,11 +747,11 @@
     },
     {
       "start": 71.467,
-      "end": 72.288,
+      "end": 72.308,
       "viseme": "CLOSED"
     },
     {
-      "start": 72.288,
+      "start": 72.308,
       "end": 72.365,
       "viseme": "A"
     },
@@ -792,11 +792,6 @@
     },
     {
       "start": 73.189,
-      "end": 73.229,
-      "viseme": "CLOSED"
-    },
-    {
-      "start": 73.209,
       "end": 73.249,
       "viseme": "CLOSED"
     },
@@ -851,17 +846,12 @@
       "viseme": "E"
     },
     {
-      "start": 75.292,
-      "end": 75.332,
+      "start": 75.312,
+      "end": 75.713,
       "viseme": "CLOSED"
     },
     {
-      "start": 75.332,
-      "end": 75.693,
-      "viseme": "CLOSED"
-    },
-    {
-      "start": 75.693,
+      "start": 75.713,
       "end": 75.763,
       "viseme": "A"
     },
@@ -942,11 +932,6 @@
     },
     {
       "start": 79.478,
-      "end": 79.519,
-      "viseme": "CLOSED"
-    },
-    {
-      "start": 79.519,
       "end": 79.559,
       "viseme": "CLOSED"
     },
@@ -1051,14 +1036,9 @@
       "viseme": "O"
     },
     {
-      "start": 83.024,
-      "end": 83.385,
+      "start": 83.004,
+      "end": 83.404,
       "viseme": "CLOSED"
-    },
-    {
-      "start": 83.385,
-      "end": 83.435,
-      "viseme": "A"
     },
     {
       "start": 83.471,
@@ -1119,9 +1099,24 @@
       "start": 84.136,
       "end": 84.185,
       "viseme": "A"
+    },
+    {
+      "start": 84.186,
+      "end": 84.426,
+      "viseme": "CLOSED"
     }
   ],
   "SPEAKER_03": [
+    {
+      "start": 9.154,
+      "end": 16.251,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 16.331,
+      "end": 17.935,
+      "viseme": "CLOSED"
+    },
     {
       "start": 17.935,
       "end": 19.338,
@@ -1143,12 +1138,12 @@
       "viseme": "E"
     },
     {
-      "start": 23.708,
-      "end": 26.174,
+      "start": 23.688,
+      "end": 26.194,
       "viseme": "CLOSED"
     },
     {
-      "start": 26.174,
+      "start": 26.194,
       "end": 26.238,
       "viseme": "E"
     },
@@ -1174,38 +1169,8 @@
     },
     {
       "start": 26.555,
-      "end": 34.96,
+      "end": 47.126,
       "viseme": "CLOSED"
-    },
-    {
-      "start": 34.96,
-      "end": 36.96,
-      "viseme": "A"
-    },
-    {
-      "start": 36.96,
-      "end": 38.96,
-      "viseme": "E"
-    },
-    {
-      "start": 38.96,
-      "end": 40.96,
-      "viseme": "A"
-    },
-    {
-      "start": 40.96,
-      "end": 41.96,
-      "viseme": "E"
-    },
-    {
-      "start": 42,
-      "end": 47.106,
-      "viseme": "CLOSED"
-    },
-    {
-      "start": 47.106,
-      "end": 47.155,
-      "viseme": "A"
     },
     {
       "start": 47.191,
@@ -1288,14 +1253,9 @@
       "viseme": "E"
     },
     {
-      "start": 53.716,
-      "end": 54.237,
+      "start": 53.696,
+      "end": 54.257,
       "viseme": "CLOSED"
-    },
-    {
-      "start": 54.237,
-      "end": 54.293,
-      "viseme": "A"
     },
     {
       "start": 54.323,
@@ -1326,9 +1286,34 @@
       "start": 55.018,
       "end": 55.162,
       "viseme": "E"
+    },
+    {
+      "start": 55.763,
+      "end": 62.653,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 62.733,
+      "end": 71.467,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 72.228,
+      "end": 84.426,
+      "viseme": "CLOSED"
     }
   ],
   "UNKNOWN": [
+    {
+      "start": 9.154,
+      "end": 16.251,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 16.331,
+      "end": 23.708,
+      "viseme": "CLOSED"
+    },
     {
       "start": 23.728,
       "end": 23.78,
@@ -1356,26 +1341,21 @@
     },
     {
       "start": 24.119,
-      "end": 24.175,
+      "end": 24.169,
       "viseme": "E"
     },
     {
-      "start": 24.189,
-      "end": 26.535,
-      "viseme": "CLOSED"
-    },
-    {
-      "start": 26.535,
-      "end": 26.595,
+      "start": 24.169,
+      "end": 26.555,
       "viseme": "CLOSED"
     },
     {
       "start": 26.595,
-      "end": 42.099,
+      "end": 42.119,
       "viseme": "CLOSED"
     },
     {
-      "start": 42.099,
+      "start": 42.119,
       "end": 42.179,
       "viseme": "E"
     },
@@ -1385,14 +1365,9 @@
       "viseme": "E"
     },
     {
-      "start": 42.3,
-      "end": 46.626,
+      "start": 42.28,
+      "end": 46.646,
       "viseme": "CLOSED"
-    },
-    {
-      "start": 46.626,
-      "end": 46.674,
-      "viseme": "E"
     },
     {
       "start": 46.686,
@@ -1421,16 +1396,16 @@
     },
     {
       "start": 47.033,
-      "end": 47.107,
+      "end": 47.106,
       "viseme": "E"
     },
     {
-      "start": 47.126,
-      "end": 53.696,
+      "start": 47.106,
+      "end": 53.716,
       "viseme": "CLOSED"
     },
     {
-      "start": 53.696,
+      "start": 53.716,
       "end": 53.824,
       "viseme": "E"
     },
@@ -1440,22 +1415,22 @@
       "viseme": "E"
     },
     {
-      "start": 54.016,
+      "start": 53.996,
       "end": 72.228,
       "viseme": "CLOSED"
     },
     {
       "start": 72.228,
-      "end": 72.292,
+      "end": 72.288,
       "viseme": "E"
     },
     {
-      "start": 72.308,
-      "end": 75.312,
+      "start": 72.288,
+      "end": 75.332,
       "viseme": "CLOSED"
     },
     {
-      "start": 75.312,
+      "start": 75.332,
       "end": 75.392,
       "viseme": "E"
     },
@@ -1480,12 +1455,12 @@
       "viseme": "E"
     },
     {
-      "start": 75.713,
-      "end": 83.004,
+      "start": 75.693,
+      "end": 83.024,
       "viseme": "CLOSED"
     },
     {
-      "start": 83.004,
+      "start": 83.024,
       "end": 83.068,
       "viseme": "E"
     },
@@ -1510,12 +1485,12 @@
       "viseme": "E"
     },
     {
-      "start": 83.404,
-      "end": 84.186,
+      "start": 83.385,
+      "end": 84.206,
       "viseme": "CLOSED"
     },
     {
-      "start": 84.186,
+      "start": 84.206,
       "end": 84.266,
       "viseme": "O"
     },
@@ -1532,9 +1507,14 @@
   ],
   "SPEAKER_01": [
     {
-      "start": 24.169,
-      "end": 24.211,
-      "viseme": "A"
+      "start": 9.154,
+      "end": 16.251,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 16.331,
+      "end": 24.189,
+      "viseme": "CLOSED"
     },
     {
       "start": 24.229,
@@ -1572,7 +1552,7 @@
       "viseme": "E"
     },
     {
-      "start": 26.194,
+      "start": 26.174,
       "end": 27.919,
       "viseme": "CLOSED"
     },
@@ -1748,22 +1728,22 @@
     },
     {
       "start": 34.168,
-      "end": 36.778,
+      "end": 34.96,
       "viseme": "O"
     },
     {
-      "start": 36.858,
-      "end": 39.429,
-      "viseme": "O"
+      "start": 34.96,
+      "end": 42,
+      "viseme": "CLOSED"
     },
     {
-      "start": 39.469,
+      "start": 42,
       "end": 42.079,
       "viseme": "E"
     },
     {
-      "start": 42.119,
-      "end": 42.28,
+      "start": 42.099,
+      "end": 42.3,
       "viseme": "CLOSED"
     },
     {
@@ -1815,6 +1795,36 @@
       "start": 45.464,
       "end": 46.606,
       "viseme": "E"
+    },
+    {
+      "start": 46.626,
+      "end": 47.707,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 47.807,
+      "end": 54.257,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 54.297,
+      "end": 55.198,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 55.763,
+      "end": 62.653,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 62.733,
+      "end": 71.467,
+      "viseme": "CLOSED"
+    },
+    {
+      "start": 72.228,
+      "end": 84.426,
+      "viseme": "CLOSED"
     }
   ]
 }

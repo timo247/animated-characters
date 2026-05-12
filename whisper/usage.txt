@@ -28,3 +28,16 @@ docker run --runtime=nvidia --gpus all -it \
     --output_dir /app/output \
     --output_format json \
     --language fr
+
+docker run --runtime=nvidia --gpus all -it \
+  -v $(pwd):/app \
+  -v ~/.cache/huggingface:/root/.cache/huggingface \
+  whisperx-gpu \
+  whisperx /app/episode-test-2-characters.mp3 \
+    --model medium \
+    --device cuda \
+    --diarize \
+    --output_dir /app/output \
+    --output_format json \
+    --language fr
+
