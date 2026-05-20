@@ -14,25 +14,25 @@
       "id": "antilope_main",
       "character": "antilope",
       "position": 1,
-
       "screen_position": {
         "x": 200,
         "y": 180,
         "_comment": "Position initiale — coin supérieur gauche du sprite, convention Figma."
       },
-
       "scale": 1.0,
       "overlay_scale": 1.0,
-      "flip_x": false,
-
+      "flip_x": {
+        "_comment": "Orientation de l'antilope : regarde à droite au départ, idem pendant le move, idem à l'arrivée.",
+        "idle_before": true,
+        "move": false,
+        "idle_after": false
+      },
       "emotions": {
         "eyes": "HAPPY",
         "mouth": "HAPPY"
       },
-
       "speaker": "SPEAKER_01",
       "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
-
       "moves": [
         {
           "at_second": 2.0,
@@ -43,29 +43,29 @@
           "move_fps": 10
         }
       ],
-
       "dialogue": null
     },
     {
       "id": "lion_main",
       "character": "lion",
       "position": 1,
-
       "screen_position": {
         "x": 1200,
         "y": 180,
         "_comment": "Position initiale — coin supérieur gauche du sprite, convention Figma."
       },
-
       "scale": 1.0,
       "overlay_scale": 1.0,
-      "flip_x": true,
-
+      "flip_x": {
+        "_comment": "Le lion regarde à gauche (vers l'antilope) avant de bouger, garde cette orientation pendant le move, puis se retourne pour regarder à droite une fois arrivé à gauche.",
+        "idle_before": false,
+        "move": true,
+        "idle_after": true
+      },
       "emotions": {
         "eyes": "HAPPY",
         "mouth": "HAPPY"
       },
-
       "speaker": "SPEAKER_02",
       "moves": [
         {

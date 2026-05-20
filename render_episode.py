@@ -20,6 +20,11 @@ Assets yeux / bouche par type d'animation :
 
 Machine à états :
     idle ──► transition_out ──► move ──► transition_in ──► idle
+
+Flip X par phase :
+    flip_x peut être un booléen (legacy, appliqué partout) ou un dict :
+      { "idle_before": bool, "move": bool, "idle_after": bool }
+    La phase "move" couvre transition_out + move + transition_in.
 """
 
 import argparse
@@ -88,6 +93,32 @@ def load_character_settings(character_id: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Résolution du flip_x par phase
+# ---------------------------------------------------------------------------
+
+def resolve_flip_x(flip_cfg, phase: str) -> bool:
+    """
+    Résout le flip_x pour une phase donnée.
+
+    flip_cfg peut être :
+      - un bool (legacy) → appliqué à toutes les phases
+      - un dict avec les clés idle_before / move / idle_after
+
+    phase : "idle_before" | "move" | "idle_after"
+
+    Exemples :
+      resolve_flip_x(True,  "idle_before") → True
+      resolve_flip_x(False, "move")        → False
+      resolve_flip_x({"idle_before": True, "move": True, "idle_after": False}, "idle_after") → False
+    """
+    if isinstance(flip_cfg, bool):
+        return flip_cfg
+    if isinstance(flip_cfg, dict):
+        return bool(flip_cfg.get(phase, False))
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Chemins d'assets
 # ---------------------------------------------------------------------------
 
@@ -134,7 +165,7 @@ def mouth_img_path(character_id: str, position: int, state: str,
 def build_eye_sequence(blink_cfg: dict, total_frames: int, fps: int) -> list[str]:
     """
     Séquence des fichiers yeux frame par frame (clignement aléatoire).
-    Les paramètres de clignement sont désormais dans pos_cfg["blink"].
+    Les paramètres de clignement sont dans pos_cfg["blink"].
     """
     open_file = blink_cfg["sequence"][0]
     interval  = blink_cfg["interval_seconds"]
@@ -189,7 +220,12 @@ def build_move_timeline(moves_cfg: list[dict], total_frames: int, fps: int,
                         char_settings: dict, position: int) -> list[dict]:
     """
     Retourne une liste de `total_frames` dicts :
-      { "state": str, "sprite": str, "x": int, "y": int }
+      { "state": str, "sprite": str, "x": int, "y": int, "flip_phase": str }
+
+    flip_phase vaut :
+      - "idle_before"  pour les frames IDLE avant tout move
+      - "move"         pour transition_out, move, transition_in
+      - "idle_after"   pour les frames IDLE après un move
 
     Séquences de base (idle ping-pong) pré-remplies, écrasées par move/transition.
     """
@@ -201,9 +237,11 @@ def build_move_timeline(moves_cfg: list[dict], total_frames: int, fps: int,
     move_frames   = pos_cfg["moves"]["frames"]
     move_fps_cfg  = pos_cfg["moves"].get("fps", 10)
 
-    # Timeline initiale : tout en idle
-    timeline = [{"state": IDLE, "sprite": None, "x": 0, "y": 0}
-                for _ in range(total_frames)]
+    # Timeline initiale : tout en idle_before
+    timeline = [
+        {"state": IDLE, "sprite": None, "x": 0, "y": 0, "flip_phase": "idle_before"}
+        for _ in range(total_frames)
+    ]
 
     # Pré-remplissage des sprites idle (ping-pong)
     idle_hold      = max(1, round(fps / idle_fps_cfg))
@@ -236,8 +274,13 @@ def build_move_timeline(moves_cfg: list[dict], total_frames: int, fps: int,
         for tf in trans_frames:
             for _ in range(t_hold):
                 if f >= total_frames: break
-                timeline[f] = {"state": TRANSITION_OUT, "sprite": tf,
-                               "x": from_x, "y": from_y}
+                timeline[f] = {
+                    "state":      TRANSITION_OUT,
+                    "sprite":     tf,
+                    "x":          from_x,
+                    "y":          from_y,
+                    "flip_phase": "move",
+                }
                 f += 1
 
         # MOVE (ping-pong, interpolation linéaire)
@@ -248,10 +291,11 @@ def build_move_timeline(moves_cfg: list[dict], total_frames: int, fps: int,
             if f >= total_frames: break
             t_lerp = mf / max(move_dur_f - 1, 1)
             timeline[f] = {
-                "state":  MOVE,
-                "sprite": move_pp[mi % len(move_pp)],
-                "x":      round(from_x + (to_x - from_x) * t_lerp),
-                "y":      round(from_y + (to_y - from_y) * t_lerp),
+                "state":      MOVE,
+                "sprite":     move_pp[mi % len(move_pp)],
+                "x":          round(from_x + (to_x - from_x) * t_lerp),
+                "y":          round(from_y + (to_y - from_y) * t_lerp),
+                "flip_phase": "move",
             }
             mc += 1
             if mc >= m_hold:
@@ -263,15 +307,21 @@ def build_move_timeline(moves_cfg: list[dict], total_frames: int, fps: int,
         for tf in reversed(trans_frames):
             for _ in range(t_hold):
                 if f >= total_frames: break
-                timeline[f] = {"state": TRANSITION_IN, "sprite": tf,
-                               "x": to_x, "y": to_y}
+                timeline[f] = {
+                    "state":      TRANSITION_IN,
+                    "sprite":     tf,
+                    "x":          to_x,
+                    "y":          to_y,
+                    "flip_phase": "move",
+                }
                 f += 1
 
-        # Mettre à jour la position des frames idle suivantes
+        # Marquer toutes les frames idle suivantes comme idle_after
         for ff in range(f, total_frames):
             if timeline[ff]["state"] == IDLE:
-                timeline[ff]["x"] = to_x
-                timeline[ff]["y"] = to_y
+                timeline[ff]["x"]          = to_x
+                timeline[ff]["y"]          = to_y
+                timeline[ff]["flip_phase"] = "idle_after"
 
     return timeline
 
@@ -339,14 +389,12 @@ def resolve_overlay_cfg(anim_cfg: dict, base_filename: str, overlay_key: str) ->
          fusionner récursivement ses valeurs (seules les clés présentes écrasent).
     """
     default_cfg = dict(anim_cfg.get("default", {}).get(overlay_key, {}))
-    # Copie profonde de l'anchor pour ne pas muter le default
     if "anchor" in default_cfg:
         default_cfg["anchor"] = dict(default_cfg["anchor"])
 
     for fc in anim_cfg.get("frames_config", []):
         if fc.get("frame") == base_filename and overlay_key in fc:
             override = fc[overlay_key]
-            # Fusion : anchor est lui-même un dict, on le merge
             if "anchor" in override:
                 default_cfg.setdefault("anchor", {})
                 default_cfg["anchor"] = {**default_cfg["anchor"], **override["anchor"]}
@@ -380,7 +428,7 @@ def composite_character(
     Assemble base_sprite + yeux + bouche.
 
     Flip X — priorité décroissante :
-      1. global_flip_x (episode-settings, clé "flip_x" au niveau du personnage)
+      1. global_flip_x (résolu par phase depuis episode-settings)
          → surcharge toutes les couches si True.
       2. flip_x par couche dans character-settings :
          anim_cfg["flip_x"]       pour le sprite de base
@@ -388,7 +436,7 @@ def composite_character(
          mouth_cfg["flip_x"]      pour la bouche
 
     Quand la base est flippée, les anchors x des overlays sont recalculés
-    automatiquement (miroir horizontal) pour rester cohérents :
+    automatiquement (miroir horizontal) :
         ex_flipped = base_width - ex_original - overlay_width
     """
     pos_cfg  = char_settings["positions"][str(position)]
@@ -396,7 +444,6 @@ def composite_character(
     anim_cfg = pos_cfg[anim_key]
     base_dir = STATE_TO_BASE_DIR[state]
 
-    # Résolution du config overlay pour cette frame précise
     eye_cfg   = resolve_overlay_cfg(anim_cfg, base_file, "eyes")
     mouth_cfg = resolve_overlay_cfg(anim_cfg, base_file, "mouth")
 
@@ -407,11 +454,10 @@ def composite_character(
     eye_rot      = float(eye_cfg.get("rotation",   0.0))
     mouth_rot    = float(mouth_cfg.get("rotation", 0.0))
 
-    # Résolution flip_x par couche (global_flip_x prend le dessus si True)
     base_flip  = global_flip_x ^ bool(anim_cfg.get("flip_x",  False))
     eye_flip   = global_flip_x ^ bool(eye_cfg.get("flip_x",   False))
     mouth_flip = global_flip_x ^ bool(mouth_cfg.get("flip_x", False))
-    
+
     # --- Sprite de base ---
     base_path = pos_dir(character_id, position) / base_dir / base_file
     if not base_path.exists():
@@ -476,13 +522,13 @@ def render_frames(episode: dict, frames_dir: Path,
         default_y   = char_cfg["screen_position"]["y"]
         char_scale  = float(char_cfg.get("scale",         1.0))
         over_scale  = float(char_cfg.get("overlay_scale", 1.0))
-        global_flip = bool(char_cfg.get("flip_x",         False))
 
-        # Clignement défini au niveau de la position (partagé entre états)
+        # flip_x : bool (legacy) ou dict {idle_before, move, idle_after}
+        flip_cfg = char_cfg.get("flip_x", False)
+
         blink_cfg  = pos_cfg["blink"]
         idle_vis   = pos_cfg["idle"]["default"]["mouth"].get("idle_viseme", "CLOSED.png")
 
-        # Timeline visèmes : récupérée depuis le fichier si un speaker est défini
         speaker         = char_cfg.get("speaker")
         viseme_timeline = None
         if speaker and visemes_data:
@@ -508,7 +554,7 @@ def render_frames(episode: dict, frames_dir: Path,
             "mouth_seq":     mouth_seq,
             "char_scale":    char_scale,
             "overlay_scale": over_scale,
-            "global_flip_x": global_flip,
+            "flip_cfg":      flip_cfg,      # ← stocké tel quel (bool ou dict)
         })
 
     pad = len(str(total_frames))
@@ -518,6 +564,10 @@ def render_frames(episode: dict, frames_dir: Path,
         for cd in char_data:
             char_cfg = cd["cfg"]
             tl       = cd["timeline"][f]
+
+            # Résolution du flip pour cette frame selon sa phase
+            flip_phase  = tl.get("flip_phase", "idle_before")
+            global_flip = resolve_flip_x(cd["flip_cfg"], flip_phase)
 
             sprite = composite_character(
                 character_id  = char_cfg["character"],
@@ -531,7 +581,7 @@ def render_frames(episode: dict, frames_dir: Path,
                 mouth_file    = cd["mouth_seq"][f],
                 char_scale    = cd["char_scale"],
                 overlay_scale = cd["overlay_scale"],
-                global_flip_x = cd["global_flip_x"],
+                global_flip_x = global_flip,
             )
 
             frame.paste(sprite, (tl["x"], tl["y"]), sprite)
