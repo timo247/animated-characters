@@ -31,6 +31,11 @@
         "eyes": "HAPPY",
         "mouth": "HAPPY"
       },
+      "gaze": {
+        "x": 0,
+        "y": 0,
+        "_comment": "Décalage des pupilles en pixels (avant scaling). 0,0 = regard centré. Peut être animé via gaze_timeline."
+      },
       "speaker": "SPEAKER_01",
       "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
       "moves": [
@@ -65,6 +70,11 @@
       "emotions": {
         "eyes": "HAPPY",
         "mouth": "HAPPY"
+      },
+      "gaze": {
+        "x": 0,
+        "y": 0,
+        "_comment": "Décalage des pupilles en pixels (avant scaling). 0,0 = regard centré. Peut être animé via gaze_timeline."
       },
       "speaker": "SPEAKER_02",
       "moves": [

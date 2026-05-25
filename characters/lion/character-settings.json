@@ -15,7 +15,7 @@
 
       "idle": {
         "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"],
-        "fps": 8,
+        "fps": 3,
         "flip_x": false,
 
         "default": {
@@ -25,7 +25,13 @@
             "flip_x":   false,
             "rotation": 0
           },
-          "mouth": {
+          "pupils": {
+              "anchor": { "x": 18, "y": 24 },
+              "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+              "_comment": "Décalage du regard par rapport à l'anchor"
+          },
+	  "mouth": {
             "anchor":   { "x": 292, "y": 392 },
             "scale":    1,
             "flip_x":   false,
@@ -50,18 +56,24 @@
       },
 
       "transitions": {
-        "frames": ["TRANSITION-1.png", "TRANSITION-2.png"],
-        "fps": 8,
+        "frames": ["TRANSITION-1.png"],
+        "fps": 3,
         "flip_x": false,
 
         "default": {
           "eyes": {
             "anchor":   { "x": 369, "y": 216 },
             "scale":    1.0,
-            "flip_x":   true,
+            "flip_x":   false,
             "rotation": 14
           },
-          "mouth": {
+          "pupils": {
+              "anchor": { "x": 18, "y": 24 },
+              "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+              "_comment": "Décalage du regard par rapport à l'anchor"
+          },
+	  "mouth": {
             "anchor":   { "x": 507, "y": 340 },
             "scale":    1,
             "flip_x":   true,
@@ -74,18 +86,13 @@
             "frame": "TRANSITION-1.png",
             "eyes":  { "anchor": { "x": 386, "y": 251 }, "rotation": 0, "flip_x": false },
             "mouth": { "anchor": { "x": 379, "y": 390 }, "rotation": 0, "flip_x": false }
-          },
-          {
-            "frame": "TRANSITION-2.png",
-            "eyes":  { "anchor": { "x": 509, "y": 252 }, "rotation": 9, "flip_x": true },
-            "mouth": { "anchor": { "x": 559, "y": 388 }, "rotation": 9, "flip_x": true }
           }
         ]
       },
 
       "moves": {
         "frames": ["MOVE-1.png", "MOVE-2.png", "MOVE-3.png", "MOVE-4.png"],
-        "fps": 10,
+        "fps": 3,
         "flip_x": false,
 
         "default": {
@@ -94,6 +101,12 @@
             "scale":    1.0,
             "flip_x":   true,
             "rotation": 0
+          },
+	  "pupils": {
+              "anchor": { "x": 18, "y": 24 },
+	      "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+              "_comment": "Décalage du regard par rapport à l'anchor"
           },
           "mouth": {
             "anchor":   { "x": 234, "y": 345 },
@@ -121,7 +134,7 @@
           },
           {
             "frame": "MOVE-4.png",
-            "eyes":  { "anchor": { "x": 827, "y": 347 }, "rotation": 14 },
+            "eyes":  { "anchor": { "x": 827, "y": 347 }, "rotation": 2 },
             "mouth": { "anchor": { "x": 869, "y": 475 }, "rotation": 0}
           }
         ]
