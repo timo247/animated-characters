@@ -37,6 +37,31 @@ Pupils :
     dans character-settings, et gaze / gaze_timeline dans episode-settings.
     Si le fichier pupils est absent, la couche est silencieusement ignoree.
     L'offset x est inverse automatiquement quand base_flip est actif.
+
+Mask pupils :
+    Si pupils_cfg contient une cle "mask" (et optionnellement "mask_eye_frame"),
+    un masque de decoupe est applique sur pupils_img avant de le coller.
+
+    Positionnement du mask :
+      Le mask est a la taille et position du sprite EYES (pas pupils).
+      On cree un canvas noir (transparent) de la taille de pupils_img,
+      puis on y colle le mask recadre a l'offset relatif (ex - px, ey - py).
+      Ainsi seule la zone blanche du mask (paupiere ouverte) laisse
+      apparaitre la pupille.
+
+    Condition d'application :
+      Si "mask_eye_frame" est defini dans pupils_cfg, le mask n'est applique
+      que lorsque eye_file == mask_eye_frame (ex : uniquement sur HALF-OPEN.png).
+      Sans "mask_eye_frame", le mask s'applique sur toutes les frames d'yeux.
+
+    Exemple dans character-settings.json (frames_config) :
+      {
+        "frame": "MOVE-1.png",
+        "pupils": {
+          "mask": "HALF-OPEN_mask.png",
+          "mask_eye_frame": "HALF-OPEN.png"
+        }
+      }
 """
 
 import argparse
@@ -398,10 +423,21 @@ def composite_character(
     Assemble : base --> eyes (GLANCE) --> pupils --> mouth
 
     Pupils :
-      - anchor  : coin centre-gauche du sprite yeux combine, en coords du sprite de base
+      - anchor  : coin superieur gauche du sprite yeux, en coords du sprite de base
       - offset  : decalage statique depuis character-settings
       - gaze_offset : decalage dynamique depuis episode-settings
       Quand base_flip est actif, gaze_x est inverse pour que le regard reste coherent.
+
+    Mask pupils :
+      Le mask est positionne et scale comme le sprite EYES (pas pupils).
+      Un canvas noir (= transparent) de la taille de pupils_img est cree,
+      puis le mask (scale comme eyes) y est colle a l'offset (ex - px, ey - py).
+      Ainsi la zone blanche du mask (paupiere ouverte) laisse apparaitre la pupille,
+      et la zone noire (paupiere fermee) la masque.
+
+      Si "mask_eye_frame" est defini, le mask n'est applique que quand
+      eye_file == mask_eye_frame. Sans cette cle, il s'applique sur toutes
+      les frames d'yeux.
 
     Si le fichier pupils n'existe pas pour cet etat/emotion, la couche est ignoree.
     """
@@ -449,6 +485,8 @@ def composite_character(
         base.paste(eye_img, (ex, ey), eye_img)
     else:
         print(f"  [WARN] Yeux introuvables : {ep}")
+        # ex/ey non definis si yeux absents : on initialise a 0 pour le mask
+        ex, ey = 0, 0
 
     # Pupils
     # Position finale (en coords du sprite de base, avant char_scale) :
@@ -478,6 +516,37 @@ def composite_character(
         px_raw = round(abs_x * char_scale)
         px = (base_w - px_raw - pupils_img.width) if base_flip else px_raw
         py = round(abs_y * char_scale)
+
+        # --- Mask pupils ---
+        # Le mask est positionne comme EYES (scale eye_scale, position ex/ey),
+        # pas comme pupils. On cree un canvas noir (transparent) a la taille
+        # de pupils_img, puis on y colle le mask a l'offset (ex - px, ey - py).
+        # Condition : si mask_eye_frame est defini, n'appliquer que sur cette
+        # frame d'yeux specifique.
+        mask_file      = pupils_cfg.get("mask")
+        mask_eye_frame = pupils_cfg.get("mask_eye_frame")
+        apply_mask     = mask_file and (mask_eye_frame is None or eye_file == mask_eye_frame)
+
+        if apply_mask:
+            mask_path = pupils_img_path(character_id, position, state, eye_emotion, mask_file)
+            if mask_path.exists():
+                # Scale et flip identiques a eye_img (pas pupils_img)
+                mask_full = transform_img(
+                    Image.open(mask_path).convert("L"),
+                    char_scale * overlay_scale * eye_scale,
+                    eye_flip,
+                )
+                # Canvas noir = tout transparent, taille pupils_img
+                mask_canvas = Image.new("L", pupils_img.size, 0)
+                # Offset du mask (position eyes) par rapport au coin de pupils
+                offset_x = ex - px
+                offset_y = ey - py
+                mask_canvas.paste(mask_full, (offset_x, offset_y))
+                pupils_img.putalpha(mask_canvas)
+            else:
+                print(f"  [WARN] Mask pupils introuvable : {mask_path}")
+        # -------------------
+
         base.paste(pupils_img, (px, py), pupils_img)
     # Pas de WARN : pupils est optionnel
 

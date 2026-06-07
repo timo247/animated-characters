@@ -1,0 +1,159 @@
+{
+  "character_id": "bird",
+  "label": "Bird",
+
+  "_notes": {
+    "coordinates":  "x, y = coin supérieur gauche de l'overlay dans l'image de base ORIGINALE (non scalée), pixels, convention Figma. Multipliés automatiquement par `scale` du personnage.",
+    "rotation":     "Rotation en degrés, sens horaire, autour du centre de l'overlay. Défaut : 0.",
+    "flip_x":       "Miroir horizontal de l'overlay. Défaut : false.",
+    "frames_config": "Optionnel. Surcharge frame par frame les valeurs du `default`. Seules les clés explicitement présentes dans une entrée de frames_config écrasent le défaut — les autres héritent.",
+    "frame_key":    "Dans frames_config, la clé 'frame' est le nom du fichier de sprite de base (ex: 'MOVE-1.png'), pas un index numérique."
+  },
+
+  "positions": {
+    "1": {
+
+      "idle": {
+        "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eyes": {
+            "anchor":   { "x": 61, "y": 333 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 0
+          },
+          "pupils": {
+              "anchor": { "x": 18, "y": 24 },
+              "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+	      "mask": "HALF-OPEN_mask.png",
+              "mask_eye_frame": "HALF-OPEN.png",
+              "_comment": "Décalage du regard par rapport à l'anchor"
+          },
+	  "mouth": {
+            "anchor":   { "x": 81, "y": 389 },
+            "scale":    1,
+            "flip_x":   false,
+            "rotation": 0,
+            "idle_viseme": "CLOSED.png"
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "IDLE-2.png",
+            "_comment": "Exemple : légère translation vers le bas lors de l'expiration",
+            "eyes":  { "anchor": { "x": 61, "y": 331 } },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png" },
+            "mouth": { "anchor": { "x": 81, "y": 389 } }
+          },
+          {
+            "frame": "IDLE-3.png",
+            "eyes":  { "anchor": { "x": 62, "y": 330 } },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "mouth": { "anchor": { "x": 81, "y": 386 } }
+          }
+        ]
+      },
+
+      "transitions": {
+        "frames": ["TRANSITION-1.png", "TRANSITION-2.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eyes": {
+            "anchor":   { "x": 57, "y": 679 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 14
+          },
+          "pupils": {
+              "anchor": { "x": 18, "y": 24 },
+              "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+	      "mask": "HALF-OPEN_mask.png",
+	      "mask_eye_frame": "HALF-OPEN.png",
+              "_comment": "Décalage du regard par rapport à l'anchor"
+          },
+	  "mouth": {
+            "anchor":   { "x": 1, "y": 721 },
+            "scale":    1,
+            "flip_x":   false,
+            "rotation": -3
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "TRANSITION-2.png",
+            "eyes":  { "anchor": { "x": 64, "y": 515 }, "rotation": -1, "flip_x": false },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "mouth": { "anchor": { "x": -3, "y": 538 }, "rotation": -16, "flip_x": false }
+          }
+        ]
+      },
+
+      "moves": {
+        "frames": ["MOVE-1.png", "MOVE-2.png", "MOVE-3.png", "MOVE-4.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eyes": {
+            "anchor":   { "x": 49, "y": 751 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 18
+          },
+	  "pupils": {
+              "anchor": { "x": 18, "y": 24 },
+	      "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+	      "mask": "HALF-OPEN_mask.png",
+              "mask_eye_frame": "HALF-OPEN.png",
+              "_comment": "Décalage du regard par rapport à l'anchor"
+          },
+          "mouth": {
+            "anchor":   { "x": 1, "y": 799 },
+            "scale":    1,
+            "flip_x":   false,
+            "rotation": 3
+          }
+        },
+        "frames_config": [
+          {
+            "frame": "MOVE-2.png",
+            "eyes":  { "anchor": { "x": 45, "y": 722 }, "rotation": 20 },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "mouth": { "anchor": { "x": 1, "y": 768 }, "rotation": 6 }
+          },
+          {
+            "frame": "MOVE-3.png",
+            "eyes":  { "anchor": { "x": 47, "y": 722 }, "rotation": 19 },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "mouth": { "anchor": { "x": 1, "y": 768 }, "rotation": 5 }
+          },
+          {
+            "frame": "MOVE-4.png",
+            "eyes":  { "anchor": { "x": 43, "y": 548 }, "rotation": 23 },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "mouth": { "anchor": { "x": 1, "y": 595 }, "rotation": 9}
+          }
+        ]
+      },
+
+      "blink": {
+        "_comment": "Paramètres de clignement partagés entre tous les états.",
+        "interval_seconds": 3.5,
+        "interval_jitter_seconds": 1.5,
+        "sequence": ["OPEN.png", "HALF-OPEN.png", "CLOSED.png", "HALF-OPEN.png", "OPEN.png"],
+        "frame_duration_seconds": 0.05
+      }
+
+    }
+  }
+}
