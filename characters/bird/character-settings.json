@@ -19,18 +19,16 @@
         "flip_x": false,
 
         "default": {
-          "eyes": {
+          "eye_layers": {
             "anchor":   { "x": 61, "y": 333 },
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 0
           },
           "pupils": {
-              "anchor": { "x": 18, "y": 24 },
+              "anchor": { "x": 0, "y": 0 },
               "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
               "offset": { "x": 0,  "y": 0  },
-	      "mask": "HALF-OPEN_mask.png",
-              "mask_eye_frame": "HALF-OPEN.png",
               "_comment": "Décalage du regard par rapport à l'anchor"
           },
 	  "mouth": {
@@ -46,13 +44,12 @@
           {
             "frame": "IDLE-2.png",
             "_comment": "Exemple : légère translation vers le bas lors de l'expiration",
-            "eyes":  { "anchor": { "x": 61, "y": 331 } },
-	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png" },
+            "eye_layers":  { "anchor": { "x": 61, "y": 331 } },
             "mouth": { "anchor": { "x": 81, "y": 389 } }
           },
           {
             "frame": "IDLE-3.png",
-            "eyes":  { "anchor": { "x": 62, "y": 330 } },
+            "eye_layers":  { "anchor": { "x": 62, "y": 330 } },
 	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
             "mouth": { "anchor": { "x": 81, "y": 386 } }
           }
@@ -65,14 +62,14 @@
         "flip_x": false,
 
         "default": {
-          "eyes": {
+          "eye_layers": {
             "anchor":   { "x": 57, "y": 679 },
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 14
           },
           "pupils": {
-              "anchor": { "x": 18, "y": 24 },
+              "anchor": { "x": 0, "y": 0 },
               "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
               "offset": { "x": 0,  "y": 0  },
 	      "mask": "HALF-OPEN_mask.png",
@@ -83,16 +80,15 @@
             "anchor":   { "x": 1, "y": 721 },
             "scale":    1,
             "flip_x":   false,
-            "rotation": -3
+            "rotation": 3
           }
         },
 
         "frames_config": [
           {
             "frame": "TRANSITION-2.png",
-            "eyes":  { "anchor": { "x": 64, "y": 515 }, "rotation": -1, "flip_x": false },
-	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
-            "mouth": { "anchor": { "x": -3, "y": 538 }, "rotation": -16, "flip_x": false }
+            "eye_layers":  { "anchor": { "x": 64, "y": 515 }, "rotation": 0, "flip_x": false },
+            "mouth": { "anchor": { "x": -3, "y": 538 }, "rotation": 16, "flip_x": false }
           }
         ]
       },
@@ -103,18 +99,16 @@
         "flip_x": false,
 
         "default": {
-          "eyes": {
+          "eye_layers": {
             "anchor":   { "x": 49, "y": 751 },
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 18
           },
 	  "pupils": {
-              "anchor": { "x": 18, "y": 24 },
+              "anchor": { "x": 0, "y": 0 },
 	      "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
               "offset": { "x": 0,  "y": 0  },
-	      "mask": "HALF-OPEN_mask.png",
-              "mask_eye_frame": "HALF-OPEN.png",
               "_comment": "Décalage du regard par rapport à l'anchor"
           },
           "mouth": {
@@ -127,20 +121,17 @@
         "frames_config": [
           {
             "frame": "MOVE-2.png",
-            "eyes":  { "anchor": { "x": 45, "y": 722 }, "rotation": 20 },
-	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "eye_layers":  { "anchor": { "x": 45, "y": 722 }, "rotation": 20 },
             "mouth": { "anchor": { "x": 1, "y": 768 }, "rotation": 6 }
           },
           {
             "frame": "MOVE-3.png",
-            "eyes":  { "anchor": { "x": 47, "y": 722 }, "rotation": 19 },
-	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "eye_layers":  { "anchor": { "x": 47, "y": 722 }, "rotation": 19 },
             "mouth": { "anchor": { "x": 1, "y": 768 }, "rotation": 5 }
           },
           {
             "frame": "MOVE-4.png",
-            "eyes":  { "anchor": { "x": 43, "y": 548 }, "rotation": 23 },
-	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "eye_layers":  { "anchor": { "x": 43, "y": 548 }, "rotation": 23 },
             "mouth": { "anchor": { "x": 1, "y": 595 }, "rotation": 9}
           }
         ]

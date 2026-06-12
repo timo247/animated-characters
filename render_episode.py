@@ -11,18 +11,29 @@ Systeme de coordonnees :
     Toutes les positions (x, y) = coin superieur gauche, convention Figma.
 
 Hierarchie de scaling :
-    scale_final_overlay = char_scale x overlay_scale x anim_cfg["eyes"|"mouth"|"pupils"]["scale"]
+    scale_final_overlay = char_scale x overlay_scale x anim_cfg["eye_layers"|"mouth"|"pupils"]["scale"]
 
 Assets yeux / bouche / pupilles par type d'animation :
     idle        -> positions/{N}/idles/eyes/{EMOTION}/
-                   positions/{N}/idles/pupils/{EMOTION}/
                    positions/{N}/idles/mouths/{EMOTION}/
     transitions -> positions/{N}/transitions/eyes/{EMOTION}/
-                   positions/{N}/transitions/pupils/{EMOTION}/
                    positions/{N}/transitions/mouths/{EMOTION}/
     moves       -> positions/{N}/moves/eyes/{EMOTION}/
-                   positions/{N}/moves/pupils/{EMOTION}/
                    positions/{N}/moves/mouths/{EMOTION}/
+
+Structure des calques oculaires (dans eyes/{EMOTION}/) :
+    FULL.png          -> blanc de l'oeil, toujours present
+    PUPILS.png        -> pupille, positionnee via pupils_anchor + offset + gaze
+    UPPER-EYELID.png  -> paupiere superieure
+    LOWER-EYELID.png  -> paupiere inferieure
+
+Composition selon l'etat oculaire (blink sequence) :
+    OPEN.png      -> FULL + PUPILS
+    HALF-OPEN.png -> FULL + PUPILS + UPPER-EYELID
+    CLOSED.png    -> FULL + PUPILS + UPPER-EYELID + LOWER-EYELID
+
+Tous les calques (sauf PUPILS) partagent le meme anchor que eye_layers.
+PUPILS est positionne via pupils.anchor (relatif a eye_layers.anchor) + offset + gaze.
 
 Machine a etats :
     idle --> transition_out --> move --> transition_in --> idle
@@ -30,38 +41,6 @@ Machine a etats :
 Flip X par phase :
     flip_x peut etre un booleen (legacy) ou un dict :
       { "idle_before": bool, "move": bool, "idle_after": bool }
-
-Pupils :
-    Le sprite "eyes" devient le fond du regard (GLANCE).
-    Le sprite "pupils" est place par-dessus via pupils.anchor + pupils.offset
-    dans character-settings, et gaze / gaze_timeline dans episode-settings.
-    Si le fichier pupils est absent, la couche est silencieusement ignoree.
-    L'offset x est inverse automatiquement quand base_flip est actif.
-
-Mask pupils :
-    Si pupils_cfg contient une cle "mask" (et optionnellement "mask_eye_frame"),
-    un masque de decoupe est applique sur pupils_img avant de le coller.
-
-    Positionnement du mask :
-      Le mask est a la taille et position du sprite EYES (pas pupils).
-      On cree un canvas noir (transparent) de la taille de pupils_img,
-      puis on y colle le mask recadre a l'offset relatif (ex - px, ey - py).
-      Ainsi seule la zone blanche du mask (paupiere ouverte) laisse
-      apparaitre la pupille.
-
-    Condition d'application :
-      Si "mask_eye_frame" est defini dans pupils_cfg, le mask n'est applique
-      que lorsque eye_file == mask_eye_frame (ex : uniquement sur HALF-OPEN.png).
-      Sans "mask_eye_frame", le mask s'applique sur toutes les frames d'yeux.
-
-    Exemple dans character-settings.json (frames_config) :
-      {
-        "frame": "MOVE-1.png",
-        "pupils": {
-          "mask": "HALF-OPEN_mask.png",
-          "mask_eye_frame": "HALF-OPEN.png"
-        }
-      }
 """
 
 import argparse
@@ -97,6 +76,21 @@ STATE_TO_BASE_DIR = {
     TRANSITION_OUT: "transitions",
     MOVE:           "moves",
     TRANSITION_IN:  "transitions",
+}
+
+# Fichiers de calques oculaires
+EYE_LAYER_FILES = {
+    "full":         "FULL.png",
+    "pupils":       "PUPILS.png",
+    "upper_eyelid": "UPPER-EYELID.png",
+    "lower_eyelid": "LOWER-EYELID.png",
+}
+
+# Calques a dessiner selon l'etat oculaire (ordre de composition)
+EYE_STATE_LAYERS = {
+    "OPEN.png":      ["full", "pupils"],
+    "HALF-OPEN.png": ["full", "pupils", "upper_eyelid"],
+    "CLOSED.png":    ["full", "pupils", "upper_eyelid", "lower_eyelid"],
 }
 
 
@@ -146,27 +140,14 @@ def resolve_flip_x(flip_cfg, phase):
 def pos_dir(character_id, position):
     return CHARACTERS_DIR / character_id / "positions" / str(position)
 
-def eye_img_path(character_id, position, state, emotion, filename):
-    base = pos_dir(character_id, position)
-    if state == IDLE:
-        return base / "idles" / "eyes" / emotion / filename
-    elif state in (TRANSITION_OUT, TRANSITION_IN):
-        return base / "transitions" / "eyes" / emotion / filename
-    else:
-        return base / "moves" / "eyes" / emotion / filename
-
-def pupils_img_path(character_id, position, state, emotion, filename):
+def eye_layer_path(character_id, position, state, emotion, layer_filename):
     """
-    positions/{N}/{state}/pupils/{EMOTION}/{filename}
-    Retourne le chemin ; l'appelant verifie .exists() avant d'utiliser.
+    Chemin vers un calque oculaire individuel.
+    positions/{N}/{idles|transitions|moves}/eyes/{EMOTION}/{layer_filename}
     """
-    base = pos_dir(character_id, position)
-    if state == IDLE:
-        return base / "idles" / "pupils" / emotion / filename
-    elif state in (TRANSITION_OUT, TRANSITION_IN):
-        return base / "transitions" / "pupils" / emotion / filename
-    else:
-        return base / "moves" / "pupils" / emotion / filename
+    base   = pos_dir(character_id, position)
+    subdir = STATE_TO_BASE_DIR[state]
+    return base / subdir / "eyes" / emotion / layer_filename
 
 def mouth_img_path(character_id, position, state, emotion, filename):
     base = pos_dir(character_id, position)
@@ -185,7 +166,8 @@ def mouth_img_path(character_id, position, state, emotion, filename):
 def build_eye_sequence(blink_cfg, total_frames, fps):
     """
     Sequence des fichiers yeux frame par frame (clignement aleatoire).
-    La meme sequence est reutilisee pour pupils (meme index de frame).
+    Retourne une liste de noms de fichier (ex: "OPEN.png", "HALF-OPEN.png"...)
+    qui determine quels calques sont composes pour chaque frame.
     """
     open_file = blink_cfg["sequence"][0]
     interval  = blink_cfg["interval_seconds"]
@@ -420,137 +402,112 @@ def composite_character(
     gaze_offset=(0, 0),
 ):
     """
-    Assemble : base --> eyes (GLANCE) --> pupils --> mouth
+    Assemble les calques dans cet ordre :
+        base -> FULL -> PUPILS -> UPPER-EYELID -> LOWER-EYELID -> mouth
 
-    Pupils :
-      - anchor  : coin superieur gauche du sprite yeux, en coords du sprite de base
-      - offset  : decalage statique depuis character-settings
-      - gaze_offset : decalage dynamique depuis episode-settings
-      Quand base_flip est actif, gaze_x est inverse pour que le regard reste coherent.
+    Les calques actifs dependent de eye_file (etat du clignement) :
+        OPEN.png      -> FULL + PUPILS
+        HALF-OPEN.png -> FULL + PUPILS + UPPER-EYELID
+        CLOSED.png    -> FULL + PUPILS + UPPER-EYELID + LOWER-EYELID
 
-    Mask pupils :
-      Le mask est positionne et scale comme le sprite EYES (pas pupils).
-      Un canvas noir (= transparent) de la taille de pupils_img est cree,
-      puis le mask (scale comme eyes) y est colle a l'offset (ex - px, ey - py).
-      Ainsi la zone blanche du mask (paupiere ouverte) laisse apparaitre la pupille,
-      et la zone noire (paupiere fermee) la masque.
+    Tous les calques oculaires (sauf PUPILS) partagent l'anchor et le scale
+    de eye_layers dans character-settings.
 
-      Si "mask_eye_frame" est defini, le mask n'est applique que quand
-      eye_file == mask_eye_frame. Sans cette cle, il s'applique sur toutes
-      les frames d'yeux.
-
-    Si le fichier pupils n'existe pas pour cet etat/emotion, la couche est ignoree.
+    PUPILS est positionne via :
+        pupils.anchor (relatif a eye_layers.anchor) + pupils.offset + gaze_offset
+    L'offset x du gaze est inverse automatiquement quand base_flip est actif.
     """
     pos_cfg  = char_settings["positions"][str(position)]
     anim_key = STATE_TO_ANIM_KEY[state]
     anim_cfg = pos_cfg[anim_key]
     base_dir = STATE_TO_BASE_DIR[state]
 
-    eye_cfg    = resolve_overlay_cfg(anim_cfg, base_file, "eyes")
-    pupils_cfg = resolve_overlay_cfg(anim_cfg, base_file, "pupils")
-    mouth_cfg  = resolve_overlay_cfg(anim_cfg, base_file, "mouth")
+    # --- Configs ---
+    eye_layers_cfg = resolve_overlay_cfg(anim_cfg, base_file, "eye_layers")
+    pupils_cfg     = resolve_overlay_cfg(anim_cfg, base_file, "pupils")
+    mouth_cfg      = resolve_overlay_cfg(anim_cfg, base_file, "mouth")
 
-    eye_anchor    = eye_cfg.get("anchor",    {})
+    eye_anchor    = eye_layers_cfg.get("anchor", {})
     pupils_anchor = pupils_cfg.get("anchor", {})
     pupils_offset = pupils_cfg.get("offset", {})
     mouth_anchor  = mouth_cfg.get("anchor",  {})
 
-    eye_scale    = float(eye_cfg.get("scale",    1.0))
-    pupils_scale = float(pupils_cfg.get("scale", 1.0))
-    mouth_scale  = float(mouth_cfg.get("scale",  1.0))
-    eye_rot      = float(eye_cfg.get("rotation",   0.0))
-    mouth_rot    = float(mouth_cfg.get("rotation", 0.0))
+    eye_scale    = float(eye_layers_cfg.get("scale",    1.0))
+    pupils_scale = float(pupils_cfg.get("scale",        1.0))
+    mouth_scale  = float(mouth_cfg.get("scale",         1.0))
+    eye_rot      = float(eye_layers_cfg.get("rotation", 0.0))
+    mouth_rot    = float(mouth_cfg.get("rotation",      0.0))
 
-    base_flip   = global_flip_x ^ bool(anim_cfg.get("flip_x",   False))
-    eye_flip    = global_flip_x ^ bool(eye_cfg.get("flip_x",    False))
-    pupils_flip = global_flip_x ^ bool(pupils_cfg.get("flip_x", False))
-    mouth_flip  = global_flip_x ^ bool(mouth_cfg.get("flip_x",  False))
+    base_flip    = global_flip_x ^ bool(anim_cfg.get("flip_x",          False))
+    eye_flip     = global_flip_x ^ bool(eye_layers_cfg.get("flip_x",    False))
+    pupils_flip  = global_flip_x ^ bool(pupils_cfg.get("flip_x",        False))
+    mouth_flip   = global_flip_x ^ bool(mouth_cfg.get("flip_x",         False))
 
-    # Base
+    # --- Base ---
     base_path = pos_dir(character_id, position) / base_dir / base_file
     if not base_path.exists():
         sys.exit(f"[ERREUR] Sprite introuvable : {base_path}")
     base   = transform_img(Image.open(base_path).convert("RGBA"), char_scale, base_flip)
     base_w = base.width
 
-    # Eyes (GLANCE)
-    ep = eye_img_path(character_id, position, state, eye_emotion, eye_file)
-    if ep.exists():
-        eye_img = transform_img(Image.open(ep).convert("RGBA"),
-                                char_scale * overlay_scale * eye_scale,
-                                eye_flip, eye_rot)
-        ex_raw = round(eye_anchor.get("x", 0) * char_scale)
-        ex = (base_w - ex_raw - eye_img.width) if base_flip else ex_raw
-        ey = round(eye_anchor.get("y", 0) * char_scale)
-        base.paste(eye_img, (ex, ey), eye_img)
-    else:
-        print(f"  [WARN] Yeux introuvables : {ep}")
-        # ex/ey non definis si yeux absents : on initialise a 0 pour le mask
-        ex, ey = 0, 0
+    # --- Calques oculaires ---
+    # Determine quels calques dessiner selon l'etat du clignement.
+    # Fallback sur ["full", "pupils"] si eye_file inconnu.
+    layers_to_draw = EYE_STATE_LAYERS.get(eye_file, ["full", "pupils"])
 
-    # Pupils
-    # Position finale (en coords du sprite de base, avant char_scale) :
-    #   pupils_abs_x = eye_anchor.x + pupils_anchor.x + pupils_offset.x + gaze_x
-    #   pupils_abs_y = eye_anchor.y + pupils_anchor.y + pupils_offset.y + gaze_y
-    # pupils_anchor est donc RELATIF a eye_anchor (pas absolu).
-    # pupils_offset est relatif a l'anchor calcule (eye_anchor + pupils_anchor).
-    # gaze_offset est l'offset dynamique depuis episode-settings.
-    pp = pupils_img_path(character_id, position, state, eye_emotion, eye_file)
-    if pp.exists():
-        pupils_img = transform_img(Image.open(pp).convert("RGBA"),
-                                   char_scale * overlay_scale * pupils_scale,
-                                   pupils_flip)
-        gaze_x, gaze_y = gaze_offset
-        # Inversion de l'offset x quand le sprite est flippe
-        effective_gaze_x = (-gaze_x) if base_flip else gaze_x
+    # Precalcul de la position commune des calques non-pupils
+    ex_raw = round(eye_anchor.get("x", 0) * char_scale)
+    ex = (base_w - ex_raw - 0) if base_flip else ex_raw  # largeur corrigee apres chargement
+    ey = round(eye_anchor.get("y", 0) * char_scale)
 
-        abs_x = (eye_anchor.get("x", 0)
-                 + pupils_anchor.get("x", 0)
-                 + pupils_offset.get("x", 0)
-                 + effective_gaze_x)
-        abs_y = (eye_anchor.get("y", 0)
-                 + pupils_anchor.get("y", 0)
-                 + pupils_offset.get("y", 0)
-                 + gaze_y)
+    # Precalcul de la position pupils
+    gaze_x, gaze_y   = gaze_offset
+    effective_gaze_x  = (-gaze_x) if base_flip else gaze_x
 
-        px_raw = round(abs_x * char_scale)
-        px = (base_w - px_raw - pupils_img.width) if base_flip else px_raw
-        py = round(abs_y * char_scale)
+    pupils_abs_x = (eye_anchor.get("x", 0)
+                    + pupils_anchor.get("x", 0)
+                    + pupils_offset.get("x", 0)
+                    + effective_gaze_x)
+    pupils_abs_y = (eye_anchor.get("y", 0)
+                    + pupils_anchor.get("y", 0)
+                    + pupils_offset.get("y", 0)
+                    + gaze_y)
 
-        # --- Mask pupils ---
-        # Le mask est positionne comme EYES (scale eye_scale, position ex/ey),
-        # pas comme pupils. On cree un canvas noir (transparent) a la taille
-        # de pupils_img, puis on y colle le mask a l'offset (ex - px, ey - py).
-        # Condition : si mask_eye_frame est defini, n'appliquer que sur cette
-        # frame d'yeux specifique.
-        mask_file      = pupils_cfg.get("mask")
-        mask_eye_frame = pupils_cfg.get("mask_eye_frame")
-        apply_mask     = mask_file and (mask_eye_frame is None or eye_file == mask_eye_frame)
+    for layer_key in layers_to_draw:
+        layer_filename = EYE_LAYER_FILES[layer_key]
+        lp = eye_layer_path(character_id, position, state, eye_emotion, layer_filename)
 
-        if apply_mask:
-            mask_path = pupils_img_path(character_id, position, state, eye_emotion, mask_file)
-            if mask_path.exists():
-                # Scale et flip identiques a eye_img (pas pupils_img)
-                mask_full = transform_img(
-                    Image.open(mask_path).convert("L"),
-                    char_scale * overlay_scale * eye_scale,
-                    eye_flip,
-                )
-                # Canvas noir = tout transparent, taille pupils_img
-                mask_canvas = Image.new("L", pupils_img.size, 0)
-                # Offset du mask (position eyes) par rapport au coin de pupils
-                offset_x = ex - px
-                offset_y = ey - py
-                mask_canvas.paste(mask_full, (offset_x, offset_y))
-                pupils_img.putalpha(mask_canvas)
-            else:
-                print(f"  [WARN] Mask pupils introuvable : {mask_path}")
-        # -------------------
+        if not lp.exists():
+            print(f"  [WARN] Calque oculaire introuvable : {lp}")
+            continue
 
-        base.paste(pupils_img, (px, py), pupils_img)
-    # Pas de WARN : pupils est optionnel
+        if layer_key == "pupils":
+            # Pupils : scale et position propres, mais rotation heritee de eye_layers
+            # (les pupils font partie du meme groupe oculaire rotatif)
+            layer_img = transform_img(
+                Image.open(lp).convert("RGBA"),
+                char_scale * overlay_scale * pupils_scale,
+                pupils_flip,
+                eye_rot,
+            )
+            px_raw = round(pupils_abs_x * char_scale)
+            px = (base_w - px_raw - layer_img.width) if base_flip else px_raw
+            py = round(pupils_abs_y * char_scale)
+            base.paste(layer_img, (px, py), layer_img)
 
-    # Mouth
+        else:
+            # FULL, UPPER-EYELID, LOWER-EYELID : scale et position communs (eye_layers)
+            layer_img = transform_img(
+                Image.open(lp).convert("RGBA"),
+                char_scale * overlay_scale * eye_scale,
+                eye_flip, eye_rot,
+            )
+            lx_raw = round(eye_anchor.get("x", 0) * char_scale)
+            lx = (base_w - lx_raw - layer_img.width) if base_flip else lx_raw
+            ly = round(eye_anchor.get("y", 0) * char_scale)
+            base.paste(layer_img, (lx, ly), layer_img)
+
+    # --- Mouth ---
     mp = mouth_img_path(character_id, position, state, mouth_emotion, mouth_file)
     if mp.exists():
         mouth_img = transform_img(Image.open(mp).convert("RGBA"),

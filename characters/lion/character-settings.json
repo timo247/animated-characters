@@ -29,6 +29,8 @@
               "anchor": { "x": 18, "y": 24 },
               "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
               "offset": { "x": 0,  "y": 0  },
+	      "mask": "HALF-OPEN_mask.png",
+              "mask_eye_frame": "HALF-OPEN.png",
               "_comment": "Décalage du regard par rapport à l'anchor"
           },
 	  "mouth": {
@@ -45,11 +47,13 @@
             "frame": "IDLE-2.png",
             "_comment": "Exemple : légère translation vers le bas lors de l'expiration",
             "eyes":  { "anchor": { "x": 297, "y": 252 } },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png" },
             "mouth": { "anchor": { "x": 290, "y": 390 } }
           },
           {
             "frame": "IDLE-3.png",
             "eyes":  { "anchor": { "x": 298, "y": 253 } },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
             "mouth": { "anchor": { "x": 291, "y": 391 } }
           }
         ]
@@ -71,6 +75,8 @@
               "anchor": { "x": 18, "y": 24 },
               "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
               "offset": { "x": 0,  "y": 0  },
+	      "mask": "HALF-OPEN_mask.png",
+              "mask_eye_frame": "HALF-OPEN.png",
               "_comment": "Décalage du regard par rapport à l'anchor"
           },
 	  "mouth": {
@@ -85,6 +91,7 @@
           {
             "frame": "TRANSITION-1.png",
             "eyes":  { "anchor": { "x": 386, "y": 251 }, "rotation": 0, "flip_x": false },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
             "mouth": { "anchor": { "x": 379, "y": 390 }, "rotation": 0, "flip_x": false }
           }
         ]
@@ -106,6 +113,8 @@
               "anchor": { "x": 18, "y": 24 },
 	      "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
               "offset": { "x": 0,  "y": 0  },
+	      "mask": "HALF-OPEN_mask.png",
+              "mask_eye_frame": "HALF-OPEN.png",
               "_comment": "Décalage du regard par rapport à l'anchor"
           },
           "mouth": {
@@ -120,21 +129,25 @@
           {
             "frame": "MOVE-1.png",
             "eyes":  { "anchor": { "x": 827, "y": 367 }, "rotation": 2 },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
             "mouth": { "anchor": { "x": 869, "y": 500 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-2.png",
             "eyes":  { "anchor": { "x": 817, "y": 309 }, "rotation": 2 },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
             "mouth": { "anchor": { "x": 859, "y": 442 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-3.png",
             "eyes":  { "anchor": { "x": 827, "y": 372 }, "rotation": 2 },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
             "mouth": { "anchor": { "x": 869, "y": 505 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-4.png",
             "eyes":  { "anchor": { "x": 827, "y": 347 }, "rotation": 2 },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
             "mouth": { "anchor": { "x": 869, "y": 475 }, "rotation": 0}
           }
         ]
