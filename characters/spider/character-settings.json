@@ -64,7 +64,7 @@
 	  "mouth": {
             "anchor":   { "x": 317, "y": 908 },
             "scale":    0.46,
-            "flip_x":   false,
+            "flip_x": false,
             "rotation": 0
           }
         },
@@ -110,6 +110,105 @@
             "frame": "MOVE-4.png",
             "eye_layers":  { "anchor": { "x": 418, "y": 226 }, "rotation": 108},
             "mouth": { "anchor": { "x": 372, "y": 251 }, "rotation": 108 }
+          }
+        ]
+      },
+
+      "blink": {
+        "_comment": "Paramètres de clignement partagés entre tous les états.",
+        "interval_seconds": 3.5,
+        "interval_jitter_seconds": 1.5,
+        "sequence": ["OPEN.png", "HALF-OPEN.png", "CLOSED.png", "HALF-OPEN.png", "OPEN.png"],
+        "frame_duration_seconds": 0.05
+      }
+    },
+  "2": {
+
+      "idle": {
+        "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 294, "y": 485 },
+            "scale":    1.0,
+            "flip_x":   true,
+            "rotation": 0
+          },
+	  "mouth": {
+            "anchor":   { "x": 340, "y": 595 },
+            "scale":    0.46,
+            "flip_x":   true,
+            "rotation": 0,
+            "idle_viseme": "CLOSED.png"
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "IDLE-2.png",
+            "_comment": "Exemple : légère translation vers le bas lors de l'expiration",
+            "eye_layers":  { "anchor": { "x": 296, "y": 483 } },
+            "mouth": { "anchor": { "x": 341, "y": 593 } }
+          },
+          {
+            "frame": "IDLE-3.png",
+            "eye_layers":  { "anchor": { "x": 295, "y": 485 } },
+            "mouth": { "anchor": { "x": 341, "y": 595 } }
+          }
+        ]
+      },
+
+      "transitions": {
+        "frames": ["TRANSITION-1.png"],
+        "fps": 3,
+        "flip_x": true,
+
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 319, "y": 492 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 0
+          },
+	  "mouth": {
+            "anchor":   { "x": 364, "y": 603 },
+            "scale":    0.46,
+            "flip_x":   false,
+            "rotation": 0
+          }
+        }
+      },
+
+      "moves": {
+        "frames": ["MOVE-1.png", "MOVE-2.png", "MOVE-3.png"],
+        "fps": 3,
+        "flip_x": true,
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 295, "y": 484 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 0
+          },
+          "mouth": {
+            "anchor":   { "x": 340, "y": 595 },
+            "scale":    0.46,
+            "flip_x":   false,
+            "rotation": 0
+          }
+        },
+        "frames_config": [
+          {
+            "frame": "MOVE-2.png",
+            "eye_layers":  { "anchor": { "x": 295, "y": 484 }},
+            "mouth": { "anchor": { "x": 340, "y": 595 }}
+          },
+          {
+            "frame": "MOVE-3.png",
+            "eye_layers":  { "anchor": { "x": 291, "y": 483 } },
+            "mouth": { "anchor": { "x": 337, "y": 595 } }
           }
         ]
       },
