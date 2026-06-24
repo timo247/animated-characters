@@ -38,6 +38,11 @@ PUPILS est positionne via pupils.anchor (relatif a eye_layers.anchor) + offset +
 Machine a etats :
     idle --> transition_out --> move --> transition_in --> idle
 
+Changement de position :
+    Ajouter "to_position_id": N dans un move pour que le personnage passe
+    a la position N apres la transition_in. Les assets (sprites, yeux, bouche)
+    et la configuration (blink, idle_viseme) sont rechargees automatiquement.
+
 Flip X par phase :
     flip_x peut etre un booleen (legacy) ou un dict :
       { "idle_before": bool, "move": bool, "idle_after": bool }
@@ -241,26 +246,68 @@ def build_gaze_sequence(gaze_cfg, gaze_timeline, total_frames, fps):
 # Machine a etats
 # ---------------------------------------------------------------------------
 
+def _normalize_segments(mv, current_position):
+    """
+    Normalise un move en liste de segments canoniques :
+      { "position", "from_x", "from_y", "to_x", "to_y", "duration_seconds" }
+
+    Supporte deux syntaxes :
+      - Nouvelle : mv["segments"] = [ { position, from, to, duration_seconds }, ... ]
+      - Legacy   : mv avec from_position / to_position / move_duration_seconds / to_position_id
+    """
+    if "segments" in mv:
+        result = []
+        for seg in mv["segments"]:
+            result.append({
+                "position":         seg["position"],
+                "from_x":           seg["from"]["x"],
+                "from_y":           seg["from"]["y"],
+                "to_x":             seg["to"]["x"],
+                "to_y":             seg["to"]["y"],
+                "duration_seconds": seg.get("duration_seconds", 1.0),
+                "flip_x":           seg.get("flip_x", None),  # None = herite du flip_cfg du personnage
+            })
+        return result
+    else:
+        # Syntaxe legacy
+        return [{
+            "position":         current_position,
+            "from_x":           mv["from_position"]["x"],
+            "from_y":           mv["from_position"]["y"],
+            "to_x":             mv["to_position"]["x"],
+            "to_y":             mv["to_position"]["y"],
+            "duration_seconds": mv.get("move_duration_seconds", 1.0),
+            "flip_x":           None,
+        }]
+
+
 def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
     """
     Retourne une liste de total_frames dicts :
-      { "state", "sprite", "x", "y", "flip_phase" }
+      { "state", "sprite", "x", "y", "flip_phase", "position", "_positioned" }
+
+    Supporte la syntaxe "segments" (nouvelle) et l'ancienne syntaxe
+    from_position/to_position/to_position_id (legacy).
+
+    Pour chaque segment :
+        transition_out (assets position du segment)
+        -> move (lerp from -> to)
+        -> transition_in (assets position du segment)
+        -> [segment suivant ou idle final]
 
     flip_phase : "idle_before" | "move" | "idle_after"
     """
-    pos_cfg       = char_settings["positions"][str(position)]
-    idle_frames   = pos_cfg["idle"]["frames"]
-    idle_fps_cfg  = pos_cfg["idle"].get("fps", 8)
-    trans_frames  = pos_cfg["transitions"]["frames"]
-    trans_fps_cfg = pos_cfg["transitions"].get("fps", 8)
-    move_frames   = pos_cfg["moves"]["frames"]
-    move_fps_cfg  = pos_cfg["moves"].get("fps", 10)
+    pos_cfg      = char_settings["positions"][str(position)]
+    idle_frames  = pos_cfg["idle"]["frames"]
+    idle_fps_cfg = pos_cfg["idle"].get("fps", 8)
 
     timeline = [
-        {"state": IDLE, "sprite": None, "x": 0, "y": 0, "flip_phase": "idle_before"}
+        {"state": IDLE, "sprite": None, "x": 0, "y": 0,
+         "flip_phase": "idle_before", "position": position, "_positioned": False}
         for _ in range(total_frames)
     ]
 
+    # Remplissage idle initial (position de depart)
     idle_hold      = max(1, round(fps / idle_fps_cfg))
     idle_ping_pong = idle_frames + idle_frames[-2:0:-1]
     idx, ctr = 0, 0
@@ -274,73 +321,149 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
     if not moves_cfg:
         return timeline
 
+    current_position = position
+
     for mv in sorted(moves_cfg, key=lambda m: m["at_second"]):
-        start_f = int(mv["at_second"] * fps)
-        from_x  = mv["from_position"]["x"]
-        from_y  = mv["from_position"]["y"]
-        to_x    = mv["to_position"]["x"]
-        to_y    = mv["to_position"]["y"]
-        t_fps   = mv.get("transition_fps", trans_fps_cfg)
-        m_fps   = mv.get("move_fps",       move_fps_cfg)
-        t_hold  = max(1, round(fps / t_fps))
-        m_hold  = max(1, round(fps / m_fps))
+        # FPS globaux au move
+        t_fps_global = mv.get("transition_fps", None)
+        m_fps_global = mv.get("move_fps",       None)
 
-        f = start_f
+        segments = _normalize_segments(mv, current_position)
+        f        = int(mv["at_second"] * fps)
 
-        for tf in trans_frames:
-            for _ in range(t_hold):
-                if f >= total_frames: break
-                timeline[f] = {"state": TRANSITION_OUT, "sprite": tf,
-                               "x": from_x, "y": from_y, "flip_phase": "move"}
-                f += 1
+        for seg_idx, seg in enumerate(segments):
+            seg_pos   = seg["position"]
+            from_x    = seg["from_x"]
+            from_y    = seg["from_y"]
+            to_x      = seg["to_x"]
+            to_y      = seg["to_y"]
+            dur_secs  = seg["duration_seconds"]
+            seg_flip_x = seg["flip_x"]  # None = herite du flip_cfg personnage
 
-        move_dur_f = int(mv.get("move_duration_seconds", 1.0) * fps)
-        move_pp    = move_frames + move_frames[-2:0:-1]
-        mi, mc = 0, 0
-        for mf in range(move_dur_f):
-            if f >= total_frames: break
-            t_lerp = mf / max(move_dur_f - 1, 1)
-            timeline[f] = {
-                "state":      MOVE,
-                "sprite":     move_pp[mi % len(move_pp)],
-                "x":          round(from_x + (to_x - from_x) * t_lerp),
-                "y":          round(from_y + (to_y - from_y) * t_lerp),
-                "flip_phase": "move",
-            }
-            mc += 1
-            if mc >= m_hold:
-                mc = 0
-                mi += 1
-            f += 1
+            pos_cfg_seg      = char_settings["positions"][str(seg_pos)]
+            trans_frames_seg = pos_cfg_seg["transitions"]["frames"]
+            move_frames_seg  = pos_cfg_seg["moves"]["frames"]
 
-        for tf in reversed(trans_frames):
-            for _ in range(t_hold):
-                if f >= total_frames: break
-                timeline[f] = {"state": TRANSITION_IN, "sprite": tf,
-                               "x": to_x, "y": to_y, "flip_phase": "move"}
-                f += 1
+            t_fps = t_fps_global if t_fps_global is not None else pos_cfg_seg["transitions"].get("fps", 8)
+            m_fps = m_fps_global if m_fps_global is not None else pos_cfg_seg["moves"].get("fps", 10)
+            t_hold = max(1, round(fps / t_fps))
+            m_hold = max(1, round(fps / m_fps))
 
+            # --- Transition out ---
+            for tf in trans_frames_seg:
+                for _ in range(t_hold):
+                    if f >= total_frames:
+                        break
+                    timeline[f] = {
+                        "state":       TRANSITION_OUT,
+                        "sprite":      tf,
+                        "x":           from_x,
+                        "y":           from_y,
+                        "flip_phase":  "move",
+                        "position":    seg_pos,
+                        "seg_flip_x":  seg_flip_x,
+                        "_positioned": True,
+                    }
+                    f += 1
+
+            # --- Move (lerp from -> to) ---
+            # Si duration == 0, on ne genere aucune frame de move
+            if dur_secs > 0:
+                move_dur_f = max(1, int(dur_secs * fps))
+                move_pp    = move_frames_seg + move_frames_seg[-2:0:-1]
+                mi, mc = 0, 0
+                for mf in range(move_dur_f):
+                    if f >= total_frames:
+                        break
+                    t_lerp = mf / max(move_dur_f - 1, 1)
+                    timeline[f] = {
+                        "state":       MOVE,
+                        "sprite":      move_pp[mi % len(move_pp)],
+                        "x":           round(from_x + (to_x - from_x) * t_lerp),
+                        "y":           round(from_y + (to_y - from_y) * t_lerp),
+                        "flip_phase":  "move",
+                        "position":    seg_pos,
+                        "seg_flip_x":  seg_flip_x,
+                        "_positioned": True,
+                    }
+                    mc += 1
+                    if mc >= m_hold:
+                        mc = 0
+                        mi += 1
+                    f += 1
+
+            # --- Transition in ---
+            for tf in reversed(trans_frames_seg):
+                for _ in range(t_hold):
+                    if f >= total_frames:
+                        break
+                    timeline[f] = {
+                        "state":       TRANSITION_IN,
+                        "sprite":      tf,
+                        "x":           to_x,
+                        "y":           to_y,
+                        "flip_phase":  "move",
+                        "position":    seg_pos,
+                        "seg_flip_x":  seg_flip_x,
+                        "_positioned": True,
+                    }
+                    f += 1
+
+            current_position = seg_pos
+
+        # --- Idle final apres tous les segments ---
+        last_seg      = segments[-1]
+        final_pos     = last_seg["position"]
+        final_x       = last_seg["to_x"]
+        final_y       = last_seg["to_y"]
+        pos_cfg_final = char_settings["positions"][str(final_pos)]
+        idle_frames_f = pos_cfg_final["idle"]["frames"]
+        idle_fps_f    = pos_cfg_final["idle"].get("fps", idle_fps_cfg)
+        idle_hold_f   = max(1, round(fps / idle_fps_f))
+        idle_pp_f     = idle_frames_f + idle_frames_f[-2:0:-1]
+        ii, ic = 0, 0
         for ff in range(f, total_frames):
             if timeline[ff]["state"] == IDLE:
-                timeline[ff]["x"]          = to_x
-                timeline[ff]["y"]          = to_y
-                timeline[ff]["flip_phase"] = "idle_after"
+                timeline[ff] = {
+                    "state":       IDLE,
+                    "sprite":      idle_pp_f[ii % len(idle_pp_f)],
+                    "x":           final_x,
+                    "y":           final_y,
+                    "flip_phase":  "idle_after",
+                    "position":    final_pos,
+                    "_positioned": True,
+                }
+                ic += 1
+                if ic >= idle_hold_f:
+                    ic = 0
+                    ii += 1
 
     return timeline
 
 
 def fill_idle_positions(timeline, default_x, default_y, moves_cfg, fps):
+    """
+    Remplit x/y des frames idle initiales (non encore positionnees).
+    Les frames marquees _positioned=True (ecrites par build_move_timeline)
+    sont ignorees.
+    """
     checkpoints = [(0, default_x, default_y)]
     for mv in sorted(moves_cfg, key=lambda m: m["at_second"]):
-        checkpoints.append((int(mv["at_second"] * fps),
-                            mv["to_position"]["x"], mv["to_position"]["y"]))
+        # Recupere la position finale du move (dernier segment ou syntaxe legacy)
+        if "segments" in mv:
+            last = mv["segments"][-1]
+            checkpoints.append((int(mv["at_second"] * fps),
+                                last["to"]["x"], last["to"]["y"]))
+        else:
+            checkpoints.append((int(mv["at_second"] * fps),
+                                mv["to_position"]["x"], mv["to_position"]["y"]))
     ti, cur_x, cur_y = 0, default_x, default_y
     for f, entry in enumerate(timeline):
         while ti + 1 < len(checkpoints) and f >= checkpoints[ti + 1][0]:
             ti   += 1
             cur_x = checkpoints[ti][1]
             cur_y = checkpoints[ti][2]
-        if entry["state"] == IDLE and entry["x"] == 0 and entry["y"] == 0:
+        if entry["state"] == IDLE and not entry.get("_positioned", False):
             entry["x"] = cur_x
             entry["y"] = cur_y
 
@@ -578,6 +701,11 @@ def render_frames(episode, frames_dir, visemes_data=None):
         eye_seq   = build_eye_sequence(blink_cfg, total_frames, fps)
         mouth_seq = build_mouth_sequence(idle_vis, total_frames, fps, viseme_timeline)
 
+        # Detecter les changements de position pour le log
+        positions_used = sorted({tl["position"] for tl in timeline})
+        if len(positions_used) > 1:
+            print(f"  [INFO] {character_id} -> changement de position : {positions_used}")
+
         char_data.append({
             "cfg":           char_cfg,
             "settings":      char_settings,
@@ -598,11 +726,21 @@ def render_frames(episode, frames_dir, visemes_data=None):
             char_cfg    = cd["cfg"]
             tl          = cd["timeline"][f]
             flip_phase  = tl.get("flip_phase", "idle_before")
-            global_flip = resolve_flip_x(cd["flip_cfg"], flip_phase)
+            seg_flip_x  = tl.get("seg_flip_x", None)
+
+            # seg_flip_x defini sur le segment => override total du flip_cfg personnage
+            # seg_flip_x absent (None) => comportement normal via flip_cfg + flip_phase
+            if seg_flip_x is not None:
+                global_flip = bool(seg_flip_x)
+            else:
+                global_flip = resolve_flip_x(cd["flip_cfg"], flip_phase)
+
+            # La position est resolue depuis la timeline (peut avoir change)
+            active_position = tl["position"]
 
             sprite = composite_character(
                 character_id  = char_cfg["character"],
-                position      = char_cfg["position"],
+                position      = active_position,
                 char_settings = cd["settings"],
                 state         = tl["state"],
                 eye_emotion   = char_cfg["emotions"]["eyes"],

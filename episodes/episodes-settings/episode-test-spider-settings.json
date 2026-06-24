@@ -1,0 +1,73 @@
+{
+  "episode_id": "ep001",
+  "output": {
+    "filename": "episode_001.mp4",
+    "duration_seconds": 10,
+    "fps": 24,
+    "resolution": [1920, 1080]
+  },
+  "background": {
+    "image": "episode-test-1.png"
+  },
+  "characters": [
+    {
+      "id": "spider",
+      "character": "spider",
+      "position": 1,
+
+      "screen_position": {
+        "x": 600,
+        "y": 50,
+        "_comment": "Position initiale — coin supérieur gauche du sprite, convention Figma."
+      },
+
+      "scale": 0.5,
+      "overlay_scale": 1.0,
+      "flip_x": false,
+
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+
+      "speaker": "SPEAKER_01",
+      "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
+      	"moves": [
+	  {
+	    "at_second": 2.0,
+	    "transition_fps": 8,
+	    "move_fps": 10,
+	    "segments": [
+	      {
+		"position": 1,
+		"from": { "x": 600, "y": 50 },
+		"to":   { "x": 600, "y": 10 },
+		"duration_seconds": 0.5
+	      },
+	      {
+		"position": 1,
+		"from": { "x": 600, "y": 10 },
+		"to":   { "x": 600, "y": 10 },
+		"duration_seconds": 1.5,
+		"flip_x": false
+	      },
+	      {
+                "position": 2,
+                "from": { "x": 600, "y": -335 },
+                "to":   { "x": 900, "y": -335 },
+                "duration_seconds": 2.0,
+                "flip_x": true
+              },
+	      {
+		"position": 1,
+		"from": { "x": 900, "y": 10 },
+		"to":   { "x": 900, "y": 10 },
+		"duration_seconds": 0.0
+	      }
+	    ]
+	  }
+	],
+      "dialogue": null
+    }
+  ]
+}
