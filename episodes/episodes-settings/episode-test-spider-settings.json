@@ -41,15 +41,7 @@
 	      {
 		"position": 1,
 		"from": { "x": 600, "y": 50 },
-		"to":   { "x": 600, "y": 10 },
-		"duration_seconds": 0.5
-	      },
-	      {
-		"position": 1,
-		"from": { "x": 600, "y": 10 },
-		"to":   { "x": 600, "y": 10 },
-		"duration_seconds": 1.5,
-		"flip_x": false
+		"to":   { "x": 600, "y": 50 }
 	      },
 	      {
                 "position": 2,
@@ -61,8 +53,7 @@
 	      {
 		"position": 1,
 		"from": { "x": 900, "y": 10 },
-		"to":   { "x": 900, "y": 10 },
-		"duration_seconds": 0.0
+		"to":   { "x": 900, "y": 10 }
 	      }
 	    ]
 	  }

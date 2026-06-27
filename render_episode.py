@@ -249,7 +249,11 @@ def build_gaze_sequence(gaze_cfg, gaze_timeline, total_frames, fps):
 def _normalize_segments(mv, current_position):
     """
     Normalise un move en liste de segments canoniques :
-      { "position", "from_x", "from_y", "to_x", "to_y", "duration_seconds" }
+      { "position", "from_x", "from_y", "to_x", "to_y", "duration_seconds", "flip_x" }
+
+    "duration_seconds" vaut None si non defini — le calcul de la duree naturelle
+    (longueur de la sequence moves du character-settings / move_fps) est fait
+    dans build_move_timeline ou char_settings est disponible.
 
     Supporte deux syntaxes :
       - Nouvelle : mv["segments"] = [ { position, from, to, duration_seconds }, ... ]
@@ -264,21 +268,35 @@ def _normalize_segments(mv, current_position):
                 "from_y":           seg["from"]["y"],
                 "to_x":             seg["to"]["x"],
                 "to_y":             seg["to"]["y"],
-                "duration_seconds": seg.get("duration_seconds", 1.0),
-                "flip_x":           seg.get("flip_x", None),  # None = herite du flip_cfg du personnage
+                "duration_seconds": seg.get("duration_seconds", None),  # None = duree naturelle
+                "flip_x":           seg.get("flip_x", None),
             })
         return result
     else:
-        # Syntaxe legacy
+        # Syntaxe legacy — move_duration_seconds absent = duree naturelle
         return [{
             "position":         current_position,
             "from_x":           mv["from_position"]["x"],
             "from_y":           mv["from_position"]["y"],
             "to_x":             mv["to_position"]["x"],
             "to_y":             mv["to_position"]["y"],
-            "duration_seconds": mv.get("move_duration_seconds", 1.0),
+            "duration_seconds": mv.get("move_duration_seconds", None),
             "flip_x":           None,
         }]
+
+
+def _natural_move_duration(pos_cfg_seg, m_fps, video_fps):
+    """
+    Duree naturelle du move = exactement N frames moves x m_hold frames vidéo.
+    Calculee en frames vidéo pour eviter les erreurs d'arrondi float.
+
+    Exemple : 4 frames moves, m_fps=10, video_fps=24
+              m_hold = round(24/10) = 2
+              duree = 4 * 2 = 8 frames vidéo = 8/24 s
+    """
+    move_frames = pos_cfg_seg["moves"]["frames"]
+    m_hold = max(1, round(video_fps / m_fps))
+    return len(move_frames) * m_hold  # en frames vidéo entières
 
 
 def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
@@ -337,7 +355,6 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
             from_y    = seg["from_y"]
             to_x      = seg["to_x"]
             to_y      = seg["to_y"]
-            dur_secs  = seg["duration_seconds"]
             seg_flip_x = seg["flip_x"]  # None = herite du flip_cfg personnage
 
             pos_cfg_seg      = char_settings["positions"][str(seg_pos)]
@@ -348,6 +365,12 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
             m_fps = m_fps_global if m_fps_global is not None else pos_cfg_seg["moves"].get("fps", 10)
             t_hold = max(1, round(fps / t_fps))
             m_hold = max(1, round(fps / m_fps))
+
+            # Duree du move : explicite (secondes) ou naturelle (frames vidéo exactes)
+            if seg["duration_seconds"] is not None:
+                move_dur_f = max(1, int(seg["duration_seconds"] * fps))
+            else:
+                move_dur_f = _natural_move_duration(pos_cfg_seg, m_fps, fps)
 
             # --- Transition out ---
             for tf in trans_frames_seg:
@@ -368,9 +391,8 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
 
             # --- Move (lerp from -> to) ---
             # Si duration == 0, on ne genere aucune frame de move
-            if dur_secs > 0:
-                move_dur_f = max(1, int(dur_secs * fps))
-                move_pp    = move_frames_seg + move_frames_seg[-2:0:-1]
+            if move_dur_f > 0:
+                move_seq = move_frames_seg  # passe lineaire simple, pas de ping-pong
                 mi, mc = 0, 0
                 for mf in range(move_dur_f):
                     if f >= total_frames:
@@ -378,7 +400,7 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                     t_lerp = mf / max(move_dur_f - 1, 1)
                     timeline[f] = {
                         "state":       MOVE,
-                        "sprite":      move_pp[mi % len(move_pp)],
+                        "sprite":      move_seq[mi % len(move_seq)],
                         "x":           round(from_x + (to_x - from_x) * t_lerp),
                         "y":           round(from_y + (to_y - from_y) * t_lerp),
                         "flip_phase":  "move",
@@ -392,22 +414,24 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                         mi += 1
                     f += 1
 
-            # --- Transition in ---
-            for tf in reversed(trans_frames_seg):
-                for _ in range(t_hold):
-                    if f >= total_frames:
-                        break
-                    timeline[f] = {
-                        "state":       TRANSITION_IN,
-                        "sprite":      tf,
-                        "x":           to_x,
-                        "y":           to_y,
-                        "flip_phase":  "move",
-                        "position":    seg_pos,
-                        "seg_flip_x":  seg_flip_x,
-                        "_positioned": True,
-                    }
-                    f += 1
+            # --- Transition in (dernier segment uniquement) ---
+            is_last_seg = (seg_idx == len(segments) - 1)
+            if is_last_seg:
+                for tf in reversed(trans_frames_seg):
+                    for _ in range(t_hold):
+                        if f >= total_frames:
+                            break
+                        timeline[f] = {
+                            "state":       TRANSITION_IN,
+                            "sprite":      tf,
+                            "x":           to_x,
+                            "y":           to_y,
+                            "flip_phase":  "move",
+                            "position":    seg_pos,
+                            "seg_flip_x":  seg_flip_x,
+                            "_positioned": True,
+                        }
+                        f += 1
 
             current_position = seg_pos
 
