@@ -268,12 +268,13 @@ def _normalize_segments(mv, current_position):
                 "from_y":           seg["from"]["y"],
                 "to_x":             seg["to"]["x"],
                 "to_y":             seg["to"]["y"],
-                "duration_seconds": seg.get("duration_seconds", None),  # None = duree naturelle
+                "duration_seconds": seg.get("duration_seconds", None),
                 "flip_x":           seg.get("flip_x", None),
+                "reverse":          seg.get("reverse", False),
+                "skip_transition":  seg.get("skip_transition", False),
             })
         return result
     else:
-        # Syntaxe legacy — move_duration_seconds absent = duree naturelle
         return [{
             "position":         current_position,
             "from_x":           mv["from_position"]["x"],
@@ -282,6 +283,8 @@ def _normalize_segments(mv, current_position):
             "to_y":             mv["to_position"]["y"],
             "duration_seconds": mv.get("move_duration_seconds", None),
             "flip_x":           None,
+            "reverse":          False,
+            "skip_transition":  False,
         }]
 
 
@@ -355,11 +358,23 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
             from_y    = seg["from_y"]
             to_x      = seg["to_x"]
             to_y      = seg["to_y"]
-            seg_flip_x = seg["flip_x"]  # None = herite du flip_cfg personnage
+            seg_flip_x      = seg["flip_x"]
+            reverse         = seg.get("reverse", False)
+            skip_transition = seg.get("skip_transition", False)
 
             pos_cfg_seg      = char_settings["positions"][str(seg_pos)]
             trans_frames_seg = pos_cfg_seg["transitions"]["frames"]
             move_frames_seg  = pos_cfg_seg["moves"]["frames"]
+
+            # Inverser les sequences si reverse=True
+            if reverse:
+                trans_out_seq = list(reversed(trans_frames_seg))
+                move_seq_base = list(reversed(move_frames_seg))
+                trans_in_seq  = list(trans_frames_seg)
+            else:
+                trans_out_seq = list(trans_frames_seg)
+                move_seq_base = list(move_frames_seg)
+                trans_in_seq  = list(reversed(trans_frames_seg))
 
             t_fps = t_fps_global if t_fps_global is not None else pos_cfg_seg["transitions"].get("fps", 8)
             m_fps = m_fps_global if m_fps_global is not None else pos_cfg_seg["moves"].get("fps", 10)
@@ -373,26 +388,25 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                 move_dur_f = _natural_move_duration(pos_cfg_seg, m_fps, fps)
 
             # --- Transition out ---
-            for tf in trans_frames_seg:
-                for _ in range(t_hold):
-                    if f >= total_frames:
-                        break
-                    timeline[f] = {
-                        "state":       TRANSITION_OUT,
-                        "sprite":      tf,
-                        "x":           from_x,
-                        "y":           from_y,
-                        "flip_phase":  "move",
-                        "position":    seg_pos,
-                        "seg_flip_x":  seg_flip_x,
-                        "_positioned": True,
-                    }
-                    f += 1
+            if not skip_transition:
+                for tf in trans_out_seq:
+                    for _ in range(t_hold):
+                        if f >= total_frames:
+                            break
+                        timeline[f] = {
+                            "state":       TRANSITION_OUT,
+                            "sprite":      tf,
+                            "x":           from_x,
+                            "y":           from_y,
+                            "flip_phase":  "move",
+                            "position":    seg_pos,
+                            "seg_flip_x":  seg_flip_x,
+                            "_positioned": True,
+                        }
+                        f += 1
 
             # --- Move (lerp from -> to) ---
-            # Si duration == 0, on ne genere aucune frame de move
             if move_dur_f > 0:
-                move_seq = move_frames_seg  # passe lineaire simple, pas de ping-pong
                 mi, mc = 0, 0
                 for mf in range(move_dur_f):
                     if f >= total_frames:
@@ -400,7 +414,7 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                     t_lerp = mf / max(move_dur_f - 1, 1)
                     timeline[f] = {
                         "state":       MOVE,
-                        "sprite":      move_seq[mi % len(move_seq)],
+                        "sprite":      move_seq_base[mi % len(move_seq_base)],
                         "x":           round(from_x + (to_x - from_x) * t_lerp),
                         "y":           round(from_y + (to_y - from_y) * t_lerp),
                         "flip_phase":  "move",
@@ -416,8 +430,8 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
 
             # --- Transition in (dernier segment uniquement) ---
             is_last_seg = (seg_idx == len(segments) - 1)
-            if is_last_seg:
-                for tf in reversed(trans_frames_seg):
+            if is_last_seg and not skip_transition:
+                for tf in trans_in_seq:
                     for _ in range(t_hold):
                         if f >= total_frames:
                             break
@@ -440,11 +454,14 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
         final_pos     = last_seg["position"]
         final_x       = last_seg["to_x"]
         final_y       = last_seg["to_y"]
+        final_reverse = last_seg.get("reverse", False)
         pos_cfg_final = char_settings["positions"][str(final_pos)]
         idle_frames_f = pos_cfg_final["idle"]["frames"]
         idle_fps_f    = pos_cfg_final["idle"].get("fps", idle_fps_cfg)
         idle_hold_f   = max(1, round(fps / idle_fps_f))
-        idle_pp_f     = idle_frames_f + idle_frames_f[-2:0:-1]
+        # Idle en ping-pong normal, ou inversé si dernier segment reverse
+        idle_base     = list(reversed(idle_frames_f)) if final_reverse else list(idle_frames_f)
+        idle_pp_f     = idle_base + idle_base[-2:0:-1]
         ii, ic = 0, 0
         for ff in range(f, total_frames):
             if timeline[ff]["state"] == IDLE:

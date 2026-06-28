@@ -53,7 +53,9 @@
 	      {
 		"position": 1,
 		"from": { "x": 900, "y": 10 },
-		"to":   { "x": 900, "y": 10 }
+		"to":   { "x": 900, "y": 10 },
+		"skip_transition": true,
+		"reverse": true
 	      }
 	    ]
 	  }

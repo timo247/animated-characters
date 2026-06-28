@@ -28,7 +28,8 @@ python3 render_episode.py \
   --visemes  episodes/visemes-timeline/episode-001.json
 
 TO DO
-Demander à un nouveau claude cou enregistrer half-open_maks.png selon le nouveau composite_character.py
+Ajouter la possibilité de jouer les frames dans l'ordre inverse via une prop sur une position de episode settings
+Faire en sorte de pouvoir différencier l'orientation du regard de l'orientation du personnage
 Configurer un regard variable pour l'antilope
 Ajouter une fonction pour pouvoir définir l'orientation du personnage (flip_x) au début et à la fin.
 mettre 
