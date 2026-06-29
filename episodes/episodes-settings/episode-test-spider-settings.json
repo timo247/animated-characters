@@ -17,7 +17,7 @@
 
       "screen_position": {
         "x": 600,
-        "y": 50,
+        "y": 150,
         "_comment": "Position initiale — coin supérieur gauche du sprite, convention Figma."
       },
 
@@ -32,34 +32,38 @@
 
       "speaker": "SPEAKER_01",
       "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
-      	"moves": [
-	  {
-	    "at_second": 2.0,
-	    "transition_fps": 8,
-	    "move_fps": 10,
-	    "segments": [
-	      {
-		"position": 1,
-		"from": { "x": 600, "y": 50 },
-		"to":   { "x": 600, "y": 50 }
-	      },
-	      {
-                "position": 2,
-                "from": { "x": 600, "y": -335 },
-                "to":   { "x": 900, "y": -335 },
-                "duration_seconds": 2.0,
-                "flip_x": true
-              },
-	      {
-		"position": 1,
-		"from": { "x": 900, "y": 10 },
-		"to":   { "x": 900, "y": 10 },
-		"skip_transition": true,
-		"reverse": true
-	      }
-	    ]
-	  }
-	],
+
+      "gaze": { "x": -10, "y": 0 },
+      "moves": [
+        {
+          "at_second": 2.0,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": 1,
+              "from": { "x": 600, "y": 150 },
+              "to":   { "x": 600, "y": 150 }
+            },
+            {
+              "position": 2,
+              "from": { "x": 600, "y": -235 },
+              "to":   { "x": 900, "y": -235 },
+              "duration_seconds": 2.0,
+              "flip_x": true,
+	      "gaze_invert_x": true,
+	      "gaze_invert_y": false
+            },
+            {
+              "position": 1,
+              "from": { "x": 900, "y": 110 },
+              "to":   { "x": 900, "y": 110 },
+              "skip_transition": true,
+              "reverse": true
+            }
+          ]
+        }
+      ],
       "dialogue": null
     }
   ]

@@ -272,6 +272,8 @@ def _normalize_segments(mv, current_position):
                 "flip_x":           seg.get("flip_x", None),
                 "reverse":          seg.get("reverse", False),
                 "skip_transition":  seg.get("skip_transition", False),
+                "gaze_invert_x":    seg.get("gaze_invert_x", None),
+                "gaze_invert_y":    seg.get("gaze_invert_y", None),
             })
         return result
     else:
@@ -285,6 +287,8 @@ def _normalize_segments(mv, current_position):
             "flip_x":           None,
             "reverse":          False,
             "skip_transition":  False,
+            "gaze_invert_x":    None,
+            "gaze_invert_y":    None,
         }]
 
 
@@ -361,6 +365,8 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
             seg_flip_x      = seg["flip_x"]
             reverse         = seg.get("reverse", False)
             skip_transition = seg.get("skip_transition", False)
+            seg_gaze_inv_x  = seg.get("gaze_invert_x", None)
+            seg_gaze_inv_y  = seg.get("gaze_invert_y", None)
 
             pos_cfg_seg      = char_settings["positions"][str(seg_pos)]
             trans_frames_seg = pos_cfg_seg["transitions"]["frames"]
@@ -394,14 +400,16 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                         if f >= total_frames:
                             break
                         timeline[f] = {
-                            "state":       TRANSITION_OUT,
-                            "sprite":      tf,
-                            "x":           from_x,
-                            "y":           from_y,
-                            "flip_phase":  "move",
-                            "position":    seg_pos,
-                            "seg_flip_x":  seg_flip_x,
-                            "_positioned": True,
+                            "state":          TRANSITION_OUT,
+                            "sprite":         tf,
+                            "x":              from_x,
+                            "y":              from_y,
+                            "flip_phase":     "move",
+                            "position":       seg_pos,
+                            "seg_flip_x":     seg_flip_x,
+                            "seg_gaze_inv_x": seg_gaze_inv_x,
+                            "seg_gaze_inv_y": seg_gaze_inv_y,
+                            "_positioned":    True,
                         }
                         f += 1
 
@@ -413,14 +421,16 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                         break
                     t_lerp = mf / max(move_dur_f - 1, 1)
                     timeline[f] = {
-                        "state":       MOVE,
-                        "sprite":      move_seq_base[mi % len(move_seq_base)],
-                        "x":           round(from_x + (to_x - from_x) * t_lerp),
-                        "y":           round(from_y + (to_y - from_y) * t_lerp),
-                        "flip_phase":  "move",
-                        "position":    seg_pos,
-                        "seg_flip_x":  seg_flip_x,
-                        "_positioned": True,
+                        "state":          MOVE,
+                        "sprite":         move_seq_base[mi % len(move_seq_base)],
+                        "x":              round(from_x + (to_x - from_x) * t_lerp),
+                        "y":              round(from_y + (to_y - from_y) * t_lerp),
+                        "flip_phase":     "move",
+                        "position":       seg_pos,
+                        "seg_flip_x":     seg_flip_x,
+                        "seg_gaze_inv_x": seg_gaze_inv_x,
+                        "seg_gaze_inv_y": seg_gaze_inv_y,
+                        "_positioned":    True,
                     }
                     mc += 1
                     if mc >= m_hold:
@@ -436,14 +446,16 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                         if f >= total_frames:
                             break
                         timeline[f] = {
-                            "state":       TRANSITION_IN,
-                            "sprite":      tf,
-                            "x":           to_x,
-                            "y":           to_y,
-                            "flip_phase":  "move",
-                            "position":    seg_pos,
-                            "seg_flip_x":  seg_flip_x,
-                            "_positioned": True,
+                            "state":          TRANSITION_IN,
+                            "sprite":         tf,
+                            "x":              to_x,
+                            "y":              to_y,
+                            "flip_phase":     "move",
+                            "position":       seg_pos,
+                            "seg_flip_x":     seg_flip_x,
+                            "seg_gaze_inv_x": seg_gaze_inv_x,
+                            "seg_gaze_inv_y": seg_gaze_inv_y,
+                            "_positioned":    True,
                         }
                         f += 1
 
@@ -564,6 +576,8 @@ def composite_character(
     base_file, eye_file, mouth_file,
     char_scale, overlay_scale, global_flip_x,
     gaze_offset=(0, 0),
+    ep_gaze_invert_x=None,
+    ep_gaze_invert_y=None,
 ):
     """
     Assemble les calques dans cet ordre :
@@ -585,6 +599,15 @@ def composite_character(
     anim_key = STATE_TO_ANIM_KEY[state]
     anim_cfg = pos_cfg[anim_key]
     base_dir = STATE_TO_BASE_DIR[state]
+
+    gaze_invert_x = pos_cfg.get("gaze_invert_x", False)
+    gaze_invert_y = pos_cfg.get("gaze_invert_y", False)
+
+    # Override depuis l'épisode si défini (priorité absolue sur character-settings)
+    if ep_gaze_invert_x is not None:
+        gaze_invert_x = bool(ep_gaze_invert_x)
+    if ep_gaze_invert_y is not None:
+        gaze_invert_y = bool(ep_gaze_invert_y)
 
     # --- Configs ---
     eye_layers_cfg = resolve_overlay_cfg(anim_cfg, base_file, "eye_layers")
@@ -619,23 +642,32 @@ def composite_character(
     # Fallback sur ["full", "pupils"] si eye_file inconnu.
     layers_to_draw = EYE_STATE_LAYERS.get(eye_file, ["full", "pupils"])
 
-    # Precalcul de la position commune des calques non-pupils
-    ex_raw = round(eye_anchor.get("x", 0) * char_scale)
-    ex = (base_w - ex_raw - 0) if base_flip else ex_raw  # largeur corrigee apres chargement
-    ey = round(eye_anchor.get("y", 0) * char_scale)
+    # Precalcul de la position commune des calques non-pupils (en pixels vidéo)
+    eye_anchor_x_raw = round(eye_anchor.get("x", 0) * char_scale)
+    eye_anchor_y_raw = round(eye_anchor.get("y", 0) * char_scale)
 
-    # Precalcul de la position pupils
-    gaze_x, gaze_y   = gaze_offset
-    effective_gaze_x  = (-gaze_x) if base_flip else gaze_x
+    # Precalcul de la position pupils — ancré sur eye_anchor_x_raw déjà arrondi
+    # pour éviter toute divergence d'arrondi entre FULL et PUPILS
+    gaze_x, gaze_y = gaze_offset
 
-    pupils_abs_x = (eye_anchor.get("x", 0)
-                    + pupils_anchor.get("x", 0)
-                    + pupils_offset.get("x", 0)
-                    + effective_gaze_x)
-    pupils_abs_y = (eye_anchor.get("y", 0)
-                    + pupils_anchor.get("y", 0)
-                    + pupils_offset.get("y", 0)
-                    + gaze_y)
+    if ep_gaze_invert_x is not None:
+        effective_gaze_x = (-gaze_x) if ep_gaze_invert_x else gaze_x
+    else:
+        effective_gaze_x = (-gaze_x) if (base_flip ^ gaze_invert_x) else gaze_x
+
+    if ep_gaze_invert_y is not None:
+        effective_gaze_y = (-gaze_y) if ep_gaze_invert_y else gaze_y
+    else:
+        effective_gaze_y = (-gaze_y) if gaze_invert_y else gaze_y
+
+    pupils_abs_x_raw = (eye_anchor_x_raw
+                        + round(pupils_anchor.get("x", 0) * char_scale)
+                        + round(pupils_offset.get("x",  0) * char_scale)
+                        + round(effective_gaze_x * char_scale))
+    pupils_abs_y_raw = (eye_anchor_y_raw
+                        + round(pupils_anchor.get("y", 0) * char_scale)
+                        + round(pupils_offset.get("y",  0) * char_scale)
+                        + round(effective_gaze_y * char_scale))
 
     for layer_key in layers_to_draw:
         layer_filename = EYE_LAYER_FILES[layer_key]
@@ -646,29 +678,24 @@ def composite_character(
             continue
 
         if layer_key == "pupils":
-            # Pupils : scale et position propres, mais rotation heritee de eye_layers
-            # (les pupils font partie du meme groupe oculaire rotatif)
             layer_img = transform_img(
                 Image.open(lp).convert("RGBA"),
                 char_scale * overlay_scale * pupils_scale,
                 pupils_flip,
                 eye_rot,
             )
-            px_raw = round(pupils_abs_x * char_scale)
-            px = (base_w - px_raw - layer_img.width) if base_flip else px_raw
-            py = round(pupils_abs_y * char_scale)
+            px = (base_w - pupils_abs_x_raw - layer_img.width) if base_flip else pupils_abs_x_raw
+            py = pupils_abs_y_raw
             base.paste(layer_img, (px, py), layer_img)
 
         else:
-            # FULL, UPPER-EYELID, LOWER-EYELID : scale et position communs (eye_layers)
             layer_img = transform_img(
                 Image.open(lp).convert("RGBA"),
                 char_scale * overlay_scale * eye_scale,
                 eye_flip, eye_rot,
             )
-            lx_raw = round(eye_anchor.get("x", 0) * char_scale)
-            lx = (base_w - lx_raw - layer_img.width) if base_flip else lx_raw
-            ly = round(eye_anchor.get("y", 0) * char_scale)
+            lx = (base_w - eye_anchor_x_raw - layer_img.width) if base_flip else eye_anchor_x_raw
+            ly = eye_anchor_y_raw
             base.paste(layer_img, (lx, ly), layer_img)
 
     # --- Mouth ---
@@ -736,6 +763,10 @@ def render_frames(episode, frames_dir, visemes_data=None):
             print(f"  [INFO] {character_id} -> gaze actif "
                   f"({'timeline' if gaze_timeline else 'statique'})")
 
+        # Inversion du regard depuis l'épisode — override total du character-settings
+        ep_gaze_invert_x = char_cfg.get("gaze_invert_x", None)
+        ep_gaze_invert_y = char_cfg.get("gaze_invert_y", None)
+
         timeline = build_move_timeline(moves_cfg, total_frames, fps, char_settings, position)
         fill_idle_positions(timeline, default_x, default_y, moves_cfg, fps)
 
@@ -748,15 +779,17 @@ def render_frames(episode, frames_dir, visemes_data=None):
             print(f"  [INFO] {character_id} -> changement de position : {positions_used}")
 
         char_data.append({
-            "cfg":           char_cfg,
-            "settings":      char_settings,
-            "timeline":      timeline,
-            "eye_seq":       eye_seq,
-            "mouth_seq":     mouth_seq,
-            "gaze_seq":      gaze_seq,
-            "char_scale":    char_scale,
-            "overlay_scale": over_scale,
-            "flip_cfg":      flip_cfg,
+            "cfg":              char_cfg,
+            "settings":         char_settings,
+            "timeline":         timeline,
+            "eye_seq":          eye_seq,
+            "mouth_seq":        mouth_seq,
+            "gaze_seq":         gaze_seq,
+            "char_scale":       char_scale,
+            "overlay_scale":    over_scale,
+            "flip_cfg":         flip_cfg,
+            "ep_gaze_invert_x": ep_gaze_invert_x,
+            "ep_gaze_invert_y": ep_gaze_invert_y,
         })
 
     pad = len(str(total_frames))
@@ -779,20 +812,30 @@ def render_frames(episode, frames_dir, visemes_data=None):
             # La position est resolue depuis la timeline (peut avoir change)
             active_position = tl["position"]
 
+            # Priorité : segment > épisode > character-settings
+            frame_gaze_inv_x = tl.get("seg_gaze_inv_x", None)
+            frame_gaze_inv_y = tl.get("seg_gaze_inv_y", None)
+            if frame_gaze_inv_x is None:
+                frame_gaze_inv_x = cd["ep_gaze_invert_x"]
+            if frame_gaze_inv_y is None:
+                frame_gaze_inv_y = cd["ep_gaze_invert_y"]
+
             sprite = composite_character(
-                character_id  = char_cfg["character"],
-                position      = active_position,
-                char_settings = cd["settings"],
-                state         = tl["state"],
-                eye_emotion   = char_cfg["emotions"]["eyes"],
-                mouth_emotion = char_cfg["emotions"]["mouth"],
-                base_file     = tl["sprite"],
-                eye_file      = cd["eye_seq"][f],
-                mouth_file    = cd["mouth_seq"][f],
-                char_scale    = cd["char_scale"],
-                overlay_scale = cd["overlay_scale"],
-                global_flip_x = global_flip,
-                gaze_offset   = cd["gaze_seq"][f],
+                character_id     = char_cfg["character"],
+                position         = active_position,
+                char_settings    = cd["settings"],
+                state            = tl["state"],
+                eye_emotion      = char_cfg["emotions"]["eyes"],
+                mouth_emotion    = char_cfg["emotions"]["mouth"],
+                base_file        = tl["sprite"],
+                eye_file         = cd["eye_seq"][f],
+                mouth_file       = cd["mouth_seq"][f],
+                char_scale       = cd["char_scale"],
+                overlay_scale    = cd["overlay_scale"],
+                global_flip_x    = global_flip,
+                gaze_offset      = cd["gaze_seq"][f],
+                ep_gaze_invert_x = frame_gaze_inv_x,
+                ep_gaze_invert_y = frame_gaze_inv_y,
             )
 
             frame.paste(sprite, (tl["x"], tl["y"]), sprite)
