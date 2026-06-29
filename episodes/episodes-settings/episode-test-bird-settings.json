@@ -33,6 +33,7 @@
       "speaker": "SPEAKER_01",
       "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
 
+      "gaze": { "x": -10, "y": 0 },
       "moves": [
         {
           "at_second": 2.0,
