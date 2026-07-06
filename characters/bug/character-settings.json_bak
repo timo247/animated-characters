@@ -1,0 +1,122 @@
+{
+  "character_id": "bug",
+  "label": "Bug",
+
+  "_notes": {
+    "coordinates":  "x, y = coin supérieur gauche de l'overlay dans l'image de base ORIGINALE (non scalée), pixels, convention Figma. Multipliés automatiquement par `scale` du personnage.",
+    "rotation":     "Rotation en degrés, sens horaire, autour du centre de l'overlay. Défaut : 0.",
+    "flip_x":       "Miroir horizontal de l'overlay. Défaut : false.",
+    "frames_config": "Optionnel. Surcharge frame par frame les valeurs du `default`. Seules les clés explicitement présentes dans une entrée de frames_config écrasent le défaut — les autres héritent.",
+    "frame_key":    "Dans frames_config, la clé 'frame' est le nom du fichier de sprite de base (ex: 'MOVE-1.png'), pas un index numérique."
+  },
+
+  "positions": {
+    "1": {
+
+      "idle": {
+        "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"],
+        "fps": 18,
+        "flip_x": false,
+
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 26, "y": 570 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 0
+          },
+	  "mouth": {
+            "anchor":   { "x": 43, "y": 675 },
+            "scale":    0.67,
+            "flip_x":   false,
+            "rotation": 0,
+            "idle_viseme": "CLOSED.png"
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "IDLE-2.png",
+            "_comment": "Exemple : légère translation vers le bas lors de l'expiration",
+            "eye_layers":  { "anchor": { "x": 24, "y": 567 } },
+            "mouth": { "anchor": { "x": 41, "y": 672 } }
+          },
+          {
+            "frame": "IDLE-3.png",
+            "eye_layers":  { "anchor": { "x": 24, "y": 570 } },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "mouth": { "anchor": { "x": 41, "y": 675 } }
+          }
+        ]
+      },
+
+      "transitions": {
+        "frames": ["TRANSITION-1.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 25, "y": 608 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 14
+          },
+	  "mouth": {
+            "anchor":   { "x": 42, "y": 714 },
+            "scale":    0.67,
+            "flip_x":   false,
+            "rotation": 0
+          }
+        }
+      },
+
+      "moves": {
+        "frames": ["MOVE-1.png", "MOVE-2.png", "MOVE-3.png", "MOVE-4.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 26, "y": 634 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 0 
+          },
+          "mouth": {
+            "anchor":   { "x": 43, "y": 739 },
+            "scale":    0.67,
+            "flip_x":   false,
+            "rotation": 0
+          }
+        },
+        "frames_config": [
+          {
+            "frame": "MOVE-2.png",
+            "eye_layers":  { "anchor": { "x": 26, "y": 633 } },
+            "mouth": { "anchor": { "x": 43, "y": 738 } }
+          },
+          {
+            "frame": "MOVE-3.png",
+            "eye_layers":  { "anchor": { "x": 25, "y": 628 } },
+            "mouth": { "anchor": { "x": 42, "y": 733 } }
+          },
+          {
+            "frame": "MOVE-4.png",
+            "eye_layers":  { "anchor": { "x": 25, "y": 644 } },
+            "mouth": { "anchor": { "x": 42, "y": 749 }}
+          }
+        ]
+      },
+
+      "blink": {
+        "_comment": "Paramètres de clignement partagés entre tous les états.",
+        "interval_seconds": 3.5,
+        "interval_jitter_seconds": 1.5,
+        "sequence": ["OPEN.png", "HALF-OPEN.png", "CLOSED.png", "HALF-OPEN.png", "OPEN.png"],
+        "frame_duration_seconds": 0.05
+      }
+
+    }
+  }
+}
