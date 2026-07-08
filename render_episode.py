@@ -284,7 +284,7 @@ def _normalize_segments(mv, current_position):
             "to_x":             mv["to_position"]["x"],
             "to_y":             mv["to_position"]["y"],
             "duration_seconds": mv.get("move_duration_seconds", None),
-            "flip_x":           None,
+            "flip_x":           mv.get("flip_x", None),
             "reverse":          False,
             "skip_transition":  False,
             "gaze_invert_x":    None,
@@ -900,15 +900,34 @@ def main():
     parser = argparse.ArgumentParser(description="Render an episode from a JSON settings file.")
     parser.add_argument("--settings",    required=True)
     parser.add_argument("--visemes",     default=None)
+    parser.add_argument(
+        "--output", default=None,
+        help=(
+            "Chemin ou nom du fichier video de sortie. Surcharge "
+            "episode['output']['filename']. Si un chemin relatif est fourni, "
+            "il est resolu depuis le dossier de sortie par defaut "
+            "(episodes/videos) ; si absolu, utilise tel quel."
+        ),
+    )
     parser.add_argument("--keep-frames", action="store_true")
     args = parser.parse_args()
 
     episode      = load_episode_settings(args.settings)
     visemes_data = load_visemes(args.visemes)
 
-    output_dir  = DEFAULT_OUTPUT_DIR
+    output_dir = DEFAULT_OUTPUT_DIR
+
+    if args.output:
+        out_arg = Path(args.output)
+        if out_arg.is_absolute():
+            output_path = out_arg
+            output_dir  = output_path.parent
+        else:
+            output_path = output_dir / out_arg
+    else:
+        output_path = output_dir / episode["output"]["filename"]
+
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / episode["output"]["filename"]
 
     speakers = [c.get("speaker", "-") for c in episode["characters"]]
     print(f"[render_episode] Episode   : {episode['episode_id']}")
