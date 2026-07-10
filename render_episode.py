@@ -274,6 +274,7 @@ def _normalize_segments(mv, current_position):
                 "skip_transition":  seg.get("skip_transition", False),
                 "gaze_invert_x":    seg.get("gaze_invert_x", None),
                 "gaze_invert_y":    seg.get("gaze_invert_y", None),
+                "gaze":             seg.get("gaze", None),
             })
         return result
     else:
@@ -289,6 +290,7 @@ def _normalize_segments(mv, current_position):
             "skip_transition":  False,
             "gaze_invert_x":    None,
             "gaze_invert_y":    None,
+            "gaze":             mv.get("gaze", None),
         }]
 
 
@@ -367,6 +369,7 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
             skip_transition = seg.get("skip_transition", False)
             seg_gaze_inv_x  = seg.get("gaze_invert_x", None)
             seg_gaze_inv_y  = seg.get("gaze_invert_y", None)
+            seg_gaze        = seg.get("gaze", None)
 
             pos_cfg_seg      = char_settings["positions"][str(seg_pos)]
             trans_frames_seg = pos_cfg_seg["transitions"]["frames"]
@@ -409,6 +412,7 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                             "seg_flip_x":     seg_flip_x,
                             "seg_gaze_inv_x": seg_gaze_inv_x,
                             "seg_gaze_inv_y": seg_gaze_inv_y,
+                            "seg_gaze":       seg_gaze,
                             "_positioned":    True,
                         }
                         f += 1
@@ -430,6 +434,7 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                         "seg_flip_x":     seg_flip_x,
                         "seg_gaze_inv_x": seg_gaze_inv_x,
                         "seg_gaze_inv_y": seg_gaze_inv_y,
+                        "seg_gaze":       seg_gaze,
                         "_positioned":    True,
                     }
                     mc += 1
@@ -455,6 +460,7 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                             "seg_flip_x":     seg_flip_x,
                             "seg_gaze_inv_x": seg_gaze_inv_x,
                             "seg_gaze_inv_y": seg_gaze_inv_y,
+                            "seg_gaze":       seg_gaze,
                             "_positioned":    True,
                         }
                         f += 1
@@ -462,11 +468,14 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
             current_position = seg_pos
 
         # --- Idle final apres tous les segments ---
-        last_seg      = segments[-1]
-        final_pos     = last_seg["position"]
-        final_x       = last_seg["to_x"]
-        final_y       = last_seg["to_y"]
-        final_reverse = last_seg.get("reverse", False)
+        last_seg        = segments[-1]
+        final_pos       = last_seg["position"]
+        final_x         = last_seg["to_x"]
+        final_y         = last_seg["to_y"]
+        final_reverse   = last_seg.get("reverse", False)
+        final_gaze      = last_seg.get("gaze", None)
+        final_gaze_inv_x = last_seg.get("gaze_invert_x", None)
+        final_gaze_inv_y = last_seg.get("gaze_invert_y", None)
         pos_cfg_final = char_settings["positions"][str(final_pos)]
         idle_frames_f = pos_cfg_final["idle"]["frames"]
         idle_fps_f    = pos_cfg_final["idle"].get("fps", idle_fps_cfg)
@@ -478,13 +487,16 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
         for ff in range(f, total_frames):
             if timeline[ff]["state"] == IDLE:
                 timeline[ff] = {
-                    "state":       IDLE,
-                    "sprite":      idle_pp_f[ii % len(idle_pp_f)],
-                    "x":           final_x,
-                    "y":           final_y,
-                    "flip_phase":  "idle_after",
-                    "position":    final_pos,
-                    "_positioned": True,
+                    "state":          IDLE,
+                    "sprite":         idle_pp_f[ii % len(idle_pp_f)],
+                    "x":              final_x,
+                    "y":              final_y,
+                    "flip_phase":     "idle_after",
+                    "position":       final_pos,
+                    "seg_gaze":       final_gaze,
+                    "seg_gaze_inv_x": final_gaze_inv_x,
+                    "seg_gaze_inv_y": final_gaze_inv_y,
+                    "_positioned":    True,
                 }
                 ic += 1
                 if ic >= idle_hold_f:
@@ -576,6 +588,7 @@ def composite_character(
     base_file, eye_file, mouth_file,
     char_scale, overlay_scale, global_flip_x,
     gaze_offset=(0, 0),
+    gaze_is_override=False,
     ep_gaze_invert_x=None,
     ep_gaze_invert_y=None,
 ):
@@ -600,7 +613,23 @@ def composite_character(
     anim_cfg = pos_cfg[anim_key]
     base_dir = STATE_TO_BASE_DIR[state]
 
-    gaze_invert_x = pos_cfg.get("gaze_invert_x", False)
+    # --- Configs ---
+    eye_layers_cfg = resolve_overlay_cfg(anim_cfg, base_file, "eye_layers")
+    pupils_cfg     = resolve_overlay_cfg(anim_cfg, base_file, "pupils")
+    mouth_cfg      = resolve_overlay_cfg(anim_cfg, base_file, "mouth")
+
+    # gaze_invert_x : si la position definit explicitement "gaze_invert_x" dans
+    # character-settings, cette valeur fait foi. Sinon, elle est deduite
+    # automatiquement du flip_x statique de l'etat IDLE de cette position
+    # (pas de l'etat d'animation courant : idle/transitions/moves peuvent avoir
+    # des flip_x differents pour des raisons d'assets, ce qui ferait "flapper"
+    # le regard pendant les transitions si on se basait sur l'etat courant).
+    if "gaze_invert_x" in pos_cfg:
+        gaze_invert_x = bool(pos_cfg["gaze_invert_x"])
+    else:
+        idle_eye_layers_cfg = pos_cfg.get("idle", {}).get("default", {}).get("eye_layers", {})
+        gaze_invert_x = bool(idle_eye_layers_cfg.get("flip_x", False))
+
     gaze_invert_y = pos_cfg.get("gaze_invert_y", False)
 
     # Override depuis l'épisode si défini (priorité absolue sur character-settings)
@@ -608,11 +637,6 @@ def composite_character(
         gaze_invert_x = bool(ep_gaze_invert_x)
     if ep_gaze_invert_y is not None:
         gaze_invert_y = bool(ep_gaze_invert_y)
-
-    # --- Configs ---
-    eye_layers_cfg = resolve_overlay_cfg(anim_cfg, base_file, "eye_layers")
-    pupils_cfg     = resolve_overlay_cfg(anim_cfg, base_file, "pupils")
-    mouth_cfg      = resolve_overlay_cfg(anim_cfg, base_file, "mouth")
 
     eye_anchor    = eye_layers_cfg.get("anchor", {})
     pupils_anchor = pupils_cfg.get("anchor", {})
@@ -627,8 +651,16 @@ def composite_character(
 
     base_flip    = global_flip_x ^ bool(anim_cfg.get("flip_x",          False))
     eye_flip     = global_flip_x ^ bool(eye_layers_cfg.get("flip_x",    False))
-    pupils_flip  = global_flip_x ^ bool(pupils_cfg.get("flip_x",        False))
     mouth_flip   = global_flip_x ^ bool(mouth_cfg.get("flip_x",         False))
+
+    # Par defaut, la pupille suit le meme flip que le blanc de l'oeil / paupieres
+    # (eye_flip), pour rester coherente visuellement avec son "contenant".
+    # Un "pupils.flip_x" explicite dans character-settings permet de la
+    # decoupler si necessaire.
+    if "flip_x" in pupils_cfg:
+        pupils_flip = global_flip_x ^ bool(pupils_cfg.get("flip_x", False))
+    else:
+        pupils_flip = eye_flip
 
     # --- Base ---
     base_path = pos_dir(character_id, position) / base_dir / base_file
@@ -650,15 +682,17 @@ def composite_character(
     # pour éviter toute divergence d'arrondi entre FULL et PUPILS
     gaze_x, gaze_y = gaze_offset
 
-    if ep_gaze_invert_x is not None:
-        effective_gaze_x = (-gaze_x) if ep_gaze_invert_x else gaze_x
+    if gaze_is_override:
+        # Le segment actif definit son propre "gaze" : utilise tel quel,
+        # aucune inversion automatique n'est appliquee.
+        effective_gaze_x = gaze_x
+        effective_gaze_y = gaze_y
     else:
-        effective_gaze_x = (-gaze_x) if (base_flip ^ gaze_invert_x) else gaze_x
-
-    if ep_gaze_invert_y is not None:
-        effective_gaze_y = (-gaze_y) if ep_gaze_invert_y else gaze_y
-    else:
-        effective_gaze_y = (-gaze_y) if gaze_invert_y else gaze_y
+        effective_gaze_x = (-gaze_x) if gaze_invert_x else gaze_x
+        if ep_gaze_invert_y is not None:
+            effective_gaze_y = (-gaze_y) if ep_gaze_invert_y else gaze_y
+        else:
+            effective_gaze_y = (-gaze_y) if gaze_invert_y else gaze_y
 
     pupils_abs_x_raw = (eye_anchor_x_raw
                         + round(pupils_anchor.get("x", 0) * char_scale)
@@ -820,6 +854,18 @@ def render_frames(episode, frames_dir, visemes_data=None):
             if frame_gaze_inv_y is None:
                 frame_gaze_inv_y = cd["ep_gaze_invert_y"]
 
+            # Gaze : si le segment actif definit son propre "gaze", il est
+            # utilise tel quel (aucune inversion appliquee). Sinon, on retombe
+            # sur le gaze global du personnage (gaze_seq), inverse automatiquement
+            # selon gaze_invert_x/y resolus dans composite_character.
+            seg_gaze = tl.get("seg_gaze", None)
+            if seg_gaze is not None:
+                frame_gaze_offset = (int(seg_gaze.get("x", 0)), int(seg_gaze.get("y", 0)))
+                gaze_is_override  = True
+            else:
+                frame_gaze_offset = cd["gaze_seq"][f]
+                gaze_is_override  = False
+
             sprite = composite_character(
                 character_id     = char_cfg["character"],
                 position         = active_position,
@@ -833,7 +879,8 @@ def render_frames(episode, frames_dir, visemes_data=None):
                 char_scale       = cd["char_scale"],
                 overlay_scale    = cd["overlay_scale"],
                 global_flip_x    = global_flip,
-                gaze_offset      = cd["gaze_seq"][f],
+                gaze_offset      = frame_gaze_offset,
+                gaze_is_override = gaze_is_override,
                 ep_gaze_invert_x = frame_gaze_inv_x,
                 ep_gaze_invert_y = frame_gaze_inv_y,
             )
