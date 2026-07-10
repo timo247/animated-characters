@@ -16,7 +16,7 @@
       "position": 1,
 
       "screen_position": {
-        "x": 900,
+        "x": 200,
         "y": 180,
         "_comment": "Position initiale — coin supérieur gauche du sprite, convention Figma."
       },
@@ -37,15 +37,26 @@
       "moves": [
         {
           "at_second": 2.0,
-          "to_position": { "x": 200, "y": 180 },
-          "from_position":   { "x": 900, "y": 180 },
-          "move_duration_seconds": 2.5,
           "transition_fps": 8,
           "move_fps": 10,
-	  "flip_x": true
+          "segments": [
+            {
+              "position": 1,
+              "from": { "x": 200, "y": 180 },
+              "to":   { "x": 900, "y": 180 },
+	      "duration_seconds": 2,
+	      "gaze": { "x": 10, "y": 0 }
+            },
+            {
+              "position": 2,
+              "from": { "x": 900, "y": 180 },
+              "to":   { "x": 900, "y": 180 },
+              "skip_transition": true,
+              "reverse": false
+            }
+          ]
         }
       ],
-
       "dialogue": null
     }
   ]
