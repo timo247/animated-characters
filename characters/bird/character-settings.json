@@ -25,12 +25,6 @@
             "flip_x":   false,
             "rotation": 0
           },
-          "pupils": {
-              "anchor": { "x": 0, "y": 0 },
-              "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
-              "offset": { "x": 0,  "y": 0  },
-              "_comment": "Décalage du regard par rapport à l'anchor"
-          },
 	  "mouth": {
             "anchor":   { "x": 81, "y": 389 },
             "scale":    1,
@@ -50,7 +44,6 @@
           {
             "frame": "IDLE-3.png",
             "eye_layers":  { "anchor": { "x": 62, "y": 330 } },
-	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
             "mouth": { "anchor": { "x": 81, "y": 386 } }
           }
         ]
@@ -67,14 +60,6 @@
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 14
-          },
-          "pupils": {
-              "anchor": { "x": 0, "y": 0 },
-              "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
-              "offset": { "x": 0,  "y": 0  },
-	      "mask": "HALF-OPEN_mask.png",
-	      "mask_eye_frame": "HALF-OPEN.png",
-              "_comment": "Décalage du regard par rapport à l'anchor"
           },
 	  "mouth": {
             "anchor":   { "x": 1, "y": 721 },
@@ -104,12 +89,6 @@
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 18
-          },
-	  "pupils": {
-              "anchor": { "x": 0, "y": 0 },
-	      "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
-              "offset": { "x": 0,  "y": 0  },
-              "_comment": "Décalage du regard par rapport à l'anchor"
           },
           "mouth": {
             "anchor":   { "x": 1, "y": 799 },

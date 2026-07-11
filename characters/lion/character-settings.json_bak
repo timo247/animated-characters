@@ -19,13 +19,13 @@
         "flip_x": false,
 
         "default": {
-          "eye_layers": {
+          "eyes": {
             "anchor":   { "x": 299, "y": 254 },
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 0
           },
-	  "mouth": {
+          "mouth": {
             "anchor":   { "x": 292, "y": 392 },
             "scale":    1,
             "flip_x":   false,
@@ -55,17 +55,25 @@
         "flip_x": false,
 
         "default": {
-          "eye_layers": {
-            "anchor":   { "x": 386, "y": 251 },
+          "eyes": {
+            "anchor":   { "x": 369, "y": 216 },
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 14
           },
-	  "mouth": {
-            "anchor":   { "x": 379, "y": 390 },
+          "mouth": {
+            "anchor":   { "x": 507, "y": 340 },
             "scale":    1,
-            "flip_x":   false,
+            "flip_x":   true,
             "rotation": 0
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "TRANSITION-1.png",
+            "eyes":  { "anchor": { "x": 386, "y": 251 }, "rotation": 0, "flip_x": false },
+            "mouth": { "anchor": { "x": 379, "y": 390 }, "rotation": 0, "flip_x": false }
           }
         ]
       },
@@ -76,14 +84,14 @@
         "flip_x": false,
 
         "default": {
-          "eye_layers": {
-            "anchor":   { "x": 827, "y": 368 },
+          "eyes": {
+            "anchor":   { "x": 242, "y": 217 },
             "scale":    1.0,
             "flip_x":   true,
-            "rotation": 2
+            "rotation": 0
           },
           "mouth": {
-            "anchor":   { "x": 869, "y": 500 },
+            "anchor":   { "x": 234, "y": 345 },
             "scale":    1,
             "flip_x":   true,
             "rotation": 0
@@ -92,18 +100,23 @@
 
         "frames_config": [
           {
+            "frame": "MOVE-1.png",
+            "eyes":  { "anchor": { "x": 827, "y": 367 }, "rotation": 2 },
+            "mouth": { "anchor": { "x": 869, "y": 500 }, "rotation": 0 }
+          },
+          {
             "frame": "MOVE-2.png",
-            "eye_layers":  { "anchor": { "x": 817, "y": 309 }, "rotation": 2 },
+            "eyes":  { "anchor": { "x": 817, "y": 309 }, "rotation": 2 },
             "mouth": { "anchor": { "x": 859, "y": 442 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-3.png",
-            "eye_layers":  { "anchor": { "x": 827, "y": 372 }, "rotation": 2 },
+            "eyes":  { "anchor": { "x": 827, "y": 372 }, "rotation": 2 },
             "mouth": { "anchor": { "x": 869, "y": 505 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-4.png",
-            "eye_layers":  { "anchor": { "x": 827, "y": 347 }, "rotation": 2 },
+            "eyes":  { "anchor": { "x": 827, "y": 347 }, "rotation": 2 },
             "mouth": { "anchor": { "x": 869, "y": 475 }, "rotation": 0}
           }
         ]

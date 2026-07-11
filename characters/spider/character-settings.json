@@ -85,7 +85,7 @@
           "eye_layers": {
             "anchor":   { "x": 209, "y": 388 },
             "scale":    1.0,
-            "flip_x":   false,
+            "flip_x":   true,
             "rotation": 0
           },
           "mouth": {

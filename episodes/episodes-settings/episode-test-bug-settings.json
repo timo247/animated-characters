@@ -11,17 +11,17 @@
   },
   "characters": [
     {
-      "id": "spider",
-      "character": "spider",
+      "id": "bug",
+      "character": "bug",
       "position": 1,
 
       "screen_position": {
-        "x": 600,
-        "y": 150,
+        "x": 900,
+        "y": 180,
         "_comment": "Position initiale — coin supérieur gauche du sprite, convention Figma."
       },
 
-      "scale": 0.5,
+      "scale": 1.0,
       "overlay_scale": 1.0,
       "flip_x": false,
 
@@ -32,37 +32,19 @@
 
       "speaker": "SPEAKER_01",
       "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
+
       "gaze": { "x": -10, "y": 0 },
       "moves": [
         {
           "at_second": 2.0,
+          "to_position": { "x": 200, "y": 180 },
+          "from_position":   { "x": 900, "y": 180 },
+          "move_duration_seconds": 2.5,
           "transition_fps": 8,
-          "move_fps": 10,
-          "segments": [
-            {
-              "position": 1,
-              "from": { "x": 600, "y": 150 },
-              "to":   { "x": 600, "y": 150 }
-            },
-            {
-              "position": 2,
-              "from": { "x": 600, "y": -235 },
-              "to":   { "x": 900, "y": -235 },
-              "duration_seconds": 2.0,
-              "flip_x": true,
-	      "gaze_invert_x": true,
-	      "gaze_invert_y": false
-            },
-            {
-              "position": 1,
-              "from": { "x": 900, "y": 110 },
-              "to":   { "x": 900, "y": 110 },
-              "skip_transition": true,
-              "reverse": true
-            }
-          ]
+          "move_fps": 10
         }
       ],
+
       "dialogue": null
     }
   ]

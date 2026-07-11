@@ -1,6 +1,6 @@
 {
-  "character_id": "lion",
-  "label": "Lion",
+  "character_id": "bird",
+  "label": "Bird",
 
   "_notes": {
     "coordinates":  "x, y = coin supérieur gauche de l'overlay dans l'image de base ORIGINALE (non scalée), pixels, convention Figma. Multipliés automatiquement par `scale` du personnage.",
@@ -20,13 +20,19 @@
 
         "default": {
           "eye_layers": {
-            "anchor":   { "x": 299, "y": 254 },
+            "anchor":   { "x": 61, "y": 333 },
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 0
           },
+          "pupils": {
+              "anchor": { "x": 0, "y": 0 },
+              "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+              "_comment": "Décalage du regard par rapport à l'anchor"
+          },
 	  "mouth": {
-            "anchor":   { "x": 292, "y": 392 },
+            "anchor":   { "x": 81, "y": 389 },
             "scale":    1,
             "flip_x":   false,
             "rotation": 0,
@@ -38,34 +44,51 @@
           {
             "frame": "IDLE-2.png",
             "_comment": "Exemple : légère translation vers le bas lors de l'expiration",
-            "eyes":  { "anchor": { "x": 297, "y": 252 } },
-            "mouth": { "anchor": { "x": 290, "y": 390 } }
+            "eye_layers":  { "anchor": { "x": 61, "y": 331 } },
+            "mouth": { "anchor": { "x": 81, "y": 389 } }
           },
           {
             "frame": "IDLE-3.png",
-            "eyes":  { "anchor": { "x": 298, "y": 253 } },
-            "mouth": { "anchor": { "x": 291, "y": 391 } }
+            "eye_layers":  { "anchor": { "x": 62, "y": 330 } },
+	    "pupils": { "mask": "HALF-OPEN_mask.png", "mask_eye_frame": "HALF-OPEN.png"  },
+            "mouth": { "anchor": { "x": 81, "y": 386 } }
           }
         ]
       },
 
       "transitions": {
-        "frames": ["TRANSITION-1.png"],
+        "frames": ["TRANSITION-1.png", "TRANSITION-2.png"],
         "fps": 3,
         "flip_x": false,
 
         "default": {
           "eye_layers": {
-            "anchor":   { "x": 386, "y": 251 },
+            "anchor":   { "x": 57, "y": 679 },
             "scale":    1.0,
             "flip_x":   false,
             "rotation": 14
           },
+          "pupils": {
+              "anchor": { "x": 0, "y": 0 },
+              "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+	      "mask": "HALF-OPEN_mask.png",
+	      "mask_eye_frame": "HALF-OPEN.png",
+              "_comment": "Décalage du regard par rapport à l'anchor"
+          },
 	  "mouth": {
-            "anchor":   { "x": 379, "y": 390 },
+            "anchor":   { "x": 1, "y": 721 },
             "scale":    1,
             "flip_x":   false,
-            "rotation": 0
+            "rotation": -3
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "TRANSITION-2.png",
+            "eye_layers":  { "anchor": { "x": 64, "y": 515 }, "rotation": 0, "flip_x": false },
+            "mouth": { "anchor": { "x": -3, "y": 538 }, "rotation": 16, "flip_x": false }
           }
         ]
       },
@@ -77,34 +100,39 @@
 
         "default": {
           "eye_layers": {
-            "anchor":   { "x": 827, "y": 368 },
+            "anchor":   { "x": 49, "y": 751 },
             "scale":    1.0,
-            "flip_x":   true,
-            "rotation": 2
+            "flip_x":   false,
+            "rotation": 18
+          },
+	  "pupils": {
+              "anchor": { "x": 0, "y": 0 },
+	      "_comment": "Coin centre-gauche du sprite des pupilles par rapport au centre gauche fu sprite des yeux.",
+              "offset": { "x": 0,  "y": 0  },
+              "_comment": "Décalage du regard par rapport à l'anchor"
           },
           "mouth": {
-            "anchor":   { "x": 869, "y": 500 },
+            "anchor":   { "x": 1, "y": 799 },
             "scale":    1,
-            "flip_x":   true,
-            "rotation": 0
+            "flip_x":   false,
+            "rotation": 3
           }
         },
-
         "frames_config": [
           {
             "frame": "MOVE-2.png",
-            "eye_layers":  { "anchor": { "x": 817, "y": 309 }, "rotation": 2 },
-            "mouth": { "anchor": { "x": 859, "y": 442 }, "rotation": 0 }
+            "eye_layers":  { "anchor": { "x": 45, "y": 722 }, "rotation": 20 },
+            "mouth": { "anchor": { "x": 1, "y": 768 }, "rotation": 6 }
           },
           {
             "frame": "MOVE-3.png",
-            "eye_layers":  { "anchor": { "x": 827, "y": 372 }, "rotation": 2 },
-            "mouth": { "anchor": { "x": 869, "y": 505 }, "rotation": 0 }
+            "eye_layers":  { "anchor": { "x": 47, "y": 722 }, "rotation": 19 },
+            "mouth": { "anchor": { "x": 1, "y": 768 }, "rotation": 5 }
           },
           {
             "frame": "MOVE-4.png",
-            "eye_layers":  { "anchor": { "x": 827, "y": 347 }, "rotation": 2 },
-            "mouth": { "anchor": { "x": 869, "y": 475 }, "rotation": 0}
+            "eye_layers":  { "anchor": { "x": 43, "y": 548 }, "rotation": 23 },
+            "mouth": { "anchor": { "x": 1, "y": 595 }, "rotation": 9}
           }
         ]
       },
