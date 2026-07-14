@@ -9,82 +9,115 @@
   "background": {
     "image": "episode-test-1.png"
   },
+  "audio": "episodes/audios/episode-test-2-characters.mp3",
+  "camera": {
+    "zoom": 1.0,
+    "x": 960, "y": 540,
+    "timeline": [
+      { "at_second": 0.0, "zoom": 1.0, "x": 960, "y": 540 },
+      { "at_second": 3.0, "zoom": 1.8, "x": 700, "y": 400 },
+      { "at_second": 7.0, "zoom": 1.0, "x": 960, "y": 540 }
+    ]
+  },
   "characters": [
     {
-      "id": "antilope_main",
+      "id": "antilope",
       "character": "antilope",
       "position": 1,
+
       "screen_position": {
         "x": 200,
         "y": 180,
         "_comment": "Position initiale — coin supérieur gauche du sprite, convention Figma."
       },
+
       "scale": 1.0,
       "overlay_scale": 1.0,
-      "flip_x": {
-        "_comment": "Orientation de l'antilope : regarde à droite au départ, idem pendant le move, idem à l'arrivée.",
-        "idle_before": true,
-        "move": false,
-        "idle_after": false
-      },
+      "flip_x": false,
+
       "emotions": {
         "eyes": "HAPPY",
         "mouth": "HAPPY"
       },
-      "gaze": {
-        "x": 0,
-        "y": 0,
-        "_comment": "Décalage des pupilles en pixels (avant scaling). 0,0 = regard centré. Peut être animé via gaze_timeline."
-      },
+
       "speaker": "SPEAKER_01",
       "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
+
+      "gaze": { "x": 10, "y": 0 },
       "moves": [
         {
           "at_second": 2.0,
-          "from_position": { "x": 200, "y": 180 },
-          "to_position":   { "x": 900, "y": 180 },
-          "move_duration_seconds": 2.5,
           "transition_fps": 8,
-          "move_fps": 10
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": 2,
+              "from": { "x": 200, "y": 180 },
+              "to":   { "x": 900, "y": 180 },
+	      "duration_seconds": 2,
+	      "skip_transition": true,
+	      "gaze": { "x": 10, "y": 0 }
+            },
+            {
+              "position": 1,
+              "from": { "x": 900, "y": 180 },
+              "to":   { "x": 900, "y": 180 },
+	      "gaze": { "x": -10, "y": 0 },
+              "reverse": false
+            }
+          ]
         }
       ],
       "dialogue": null
     },
     {
-      "id": "lion_main",
+      "id": "lion",
       "character": "lion",
       "position": 1,
+
       "screen_position": {
-        "x": 1200,
+        "x": 900,
         "y": 180,
         "_comment": "Position initiale — coin supérieur gauche du sprite, convention Figma."
       },
+
       "scale": 1.0,
       "overlay_scale": 1.0,
-      "flip_x": {
-        "_comment": "Le lion regarde à gauche (vers l'antilope) avant de bouger, garde cette orientation pendant le move, puis se retourne pour regarder à droite une fois arrivé à gauche.",
-        "idle_before": false,
-        "move": true,
-        "idle_after": true
-      },
+      "flip_x": true,
+
       "emotions": {
         "eyes": "HAPPY",
         "mouth": "HAPPY"
       },
-      "gaze": {
-        "x": 0,
-        "y": 0,
-        "_comment": "Décalage des pupilles en pixels (avant scaling). 0,0 = regard centré. Peut être animé via gaze_timeline."
-      },
-      "speaker": "SPEAKER_02",
+
+      "speaker": "SPEAKER_01",
+      "_speaker_comment": "Doit correspondre à une clé du fichier visèmes passé via --visemes. Optionnel : si absent ou si --visemes n'est pas fourni, la bouche reste en idle_viseme.",
+
+      "gaze": { "x":10, "y": 0 },
       "moves": [
         {
-          "at_second": 1.0,
-          "from_position": { "x": 1200, "y": 180 },
-          "to_position":   { "x": 200, "y": 180 },
-          "move_duration_seconds": 2.5,
+          "at_second": 2.0,
           "transition_fps": 8,
-          "move_fps": 10
+          "move_fps": 10,
+          "segments": [
+            { 
+	      "gaze": { "x":10, "y": 0 },
+              "position": 1,
+              "from": { "x": 900, "y": 180 },
+              "to":   { "x": 180, "y": 180 },
+	      "duration_seconds": 2,
+	      "flip_x": true
+            },
+            {
+              "position": 1,
+	      "gaze": { "x":-10, "y": 0 },
+              "from": { "x": 180, "y": 180 },
+              "to":   { "x": 180, "y": 180 },
+              "skip_transition": true,
+              "reverse": false,
+	      "flip_x": false
+            }
+          ]
         }
       ],
       "dialogue": null

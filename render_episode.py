@@ -46,6 +46,16 @@ Changement de position :
 Flip X par phase :
     flip_x peut etre un booleen (legacy) ou un dict :
       { "idle_before": bool, "move": bool, "idle_after": bool }
+
+Audio :
+    Le champ optionnel "audio" de l'episode permet de fournir une piste
+    audio a muxer avec la video rendue. Absent (ou --mute), l'episode est
+    rendu muet.
+
+Camera (zoom / pan) :
+    Le champ optionnel "camera" de l'episode permet d'animer un zoom et/ou
+    un deplacement du cadre au-dessus de la composition (fond + personnages).
+    Voir build_camera_sequence() / apply_camera() pour le format.
 """
 
 import argparse
@@ -61,6 +71,7 @@ from PIL import Image
 
 PROJECT_ROOT        = Path(__file__).parent.resolve()
 EPISODES_IMAGES_DIR = PROJECT_ROOT / "episodes" / "images"
+EPISODES_AUDIO_DIR  = PROJECT_ROOT / "episodes" / "audio"
 CHARACTERS_DIR      = PROJECT_ROOT / "characters"
 DEFAULT_OUTPUT_DIR  = PROJECT_ROOT / "episodes" / "videos"
 
@@ -120,6 +131,46 @@ def load_character_settings(character_id):
     if not path.exists():
         sys.exit(f"[ERREUR] character-settings.json introuvable : {path}")
     return load_json(path)
+
+
+# ---------------------------------------------------------------------------
+# Audio
+# ---------------------------------------------------------------------------
+
+def resolve_audio_path(audio_cfg):
+    """
+    Resout le chemin du fichier audio a partir du champ "audio" de l'episode.
+
+    Formats acceptes :
+        "audio": "episode-001.mp3"                -> resolu depuis episodes/audio/
+        "audio": "episodes/audio/episode-001.mp3"  -> chemin relatif au projet
+        "audio": "/abs/path/episode-001.mp3"       -> chemin absolu, utilise tel quel
+        "audio": { "file": "episode-001.mp3" }     -> equivalent a la forme string
+
+    Retourne None si audio_cfg est absent/vide (episode muet).
+    """
+    if not audio_cfg:
+        return None
+
+    if isinstance(audio_cfg, str):
+        filename = audio_cfg
+    elif isinstance(audio_cfg, dict):
+        filename = audio_cfg.get("file")
+    else:
+        filename = None
+
+    if not filename:
+        return None
+
+    path = Path(filename)
+    if not path.is_absolute():
+        candidate = EPISODES_AUDIO_DIR / filename
+        path = candidate if candidate.exists() else (PROJECT_ROOT / filename)
+
+    if not path.exists():
+        sys.exit(f"[ERREUR] Fichier audio introuvable : {path}")
+
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +291,117 @@ def build_gaze_sequence(gaze_cfg, gaze_timeline, total_frames, fps):
                 seq[f] = (x0, y0)
 
     return seq
+
+
+# ---------------------------------------------------------------------------
+# Camera (zoom / pan)
+# ---------------------------------------------------------------------------
+
+def build_camera_sequence(camera_cfg, total_frames, fps, world_w, world_h):
+    """
+    Retourne une liste de total_frames tuples (zoom, cx, cy).
+
+    Format episode["camera"] :
+        {
+          "zoom": 1.0,                 # optionnel, defaut statique
+          "x": <world_w/2>,            # optionnel, centre statique (coord. monde)
+          "y": <world_h/2>,
+          "timeline": [
+            { "at_second": 0.0, "zoom": 1.0, "x": 960, "y": 540 },
+            { "at_second": 3.0, "zoom": 1.8, "x": 700, "y": 400 },
+            ...
+          ]
+        }
+
+    - zoom=1.0 -> cadre normal (tout le canvas "monde" visible si world == output).
+    - zoom>1.0 -> zoom avant (cadre plus etroit, recadre + agrandi).
+    - zoom<1.0 -> zoom arriere (cadre plus large ; necessite un world_resolution
+      superieur a la resolution de sortie pour reveler du contenu supplementaire).
+    - (x, y) = centre du cadre camera, en coordonnees "monde" (mêmes coordonnees
+      que screen_position / moves des personnages).
+    - "timeline" absente -> valeurs statiques (zoom/x/y) tenues sur toute la duree.
+    - Avant la premiere keyframe -> tenu a la valeur de la premiere keyframe.
+    - Apres la derniere keyframe -> tenu a la valeur de la derniere keyframe.
+    """
+    default_zoom = float(camera_cfg.get("zoom", 1.0)) if camera_cfg else 1.0
+    default_x    = float(camera_cfg.get("x", world_w / 2)) if camera_cfg else world_w / 2
+    default_y    = float(camera_cfg.get("y", world_h / 2)) if camera_cfg else world_h / 2
+
+    timeline = camera_cfg.get("timeline") if camera_cfg else None
+    if not timeline:
+        return [(default_zoom, default_x, default_y)] * total_frames
+
+    seq = [(default_zoom, default_x, default_y)] * total_frames
+    kf  = sorted(timeline, key=lambda k: k["at_second"])
+
+    first   = kf[0]
+    f_first = int(first["at_second"] * fps)
+    z0 = float(first.get("zoom", default_zoom))
+    x0 = float(first.get("x",    default_x))
+    y0 = float(first.get("y",    default_y))
+    for f in range(0, min(f_first, total_frames)):
+        seq[f] = (z0, x0, y0)
+
+    for i, k in enumerate(kf):
+        f_start = int(k["at_second"] * fps)
+        z0 = float(k.get("zoom", default_zoom))
+        x0 = float(k.get("x",    default_x))
+        y0 = float(k.get("y",    default_y))
+        if i + 1 < len(kf):
+            nxt   = kf[i + 1]
+            f_end = int(nxt["at_second"] * fps)
+            z1 = float(nxt.get("zoom", default_zoom))
+            x1 = float(nxt.get("x",    default_x))
+            y1 = float(nxt.get("y",    default_y))
+            for f in range(f_start, min(f_end, total_frames)):
+                t = (f - f_start) / max(f_end - f_start - 1, 1)
+                seq[f] = (
+                    z0 + (z1 - z0) * t,
+                    x0 + (x1 - x0) * t,
+                    y0 + (y1 - y0) * t,
+                )
+        else:
+            for f in range(f_start, total_frames):
+                seq[f] = (z0, x0, y0)
+
+    return seq
+
+
+def apply_camera(frame, zoom, cx, cy, world_w, world_h, out_w, out_h):
+    """
+    Recadre `frame` (canvas "monde", deja compose : fond + personnages) selon
+    le zoom/centre camera, puis redimensionne a la resolution de sortie.
+
+    zoom<=0 est protege (clamp a une valeur minuscule) pour eviter une division
+    par zero / un cadre inverse.
+
+    Le cadre est ensuite clampe pour ne jamais depasser les bords du canvas
+    monde tant que la fenetre demandee (crop_w x crop_h) tient dedans ; si elle
+    est plus grande que le canvas (dezoom au-dela du monde disponible), elle
+    est centree et les zones hors-canvas restent transparentes/noires.
+    """
+    zoom = max(zoom, 0.01)
+    crop_w = world_w / zoom
+    crop_h = world_h / zoom
+
+    left = cx - crop_w / 2
+    top  = cy - crop_h / 2
+
+    if crop_w <= world_w:
+        left = max(0, min(left, world_w - crop_w))
+    else:
+        left = -(crop_w - world_w) / 2
+
+    if crop_h <= world_h:
+        top = max(0, min(top, world_h - crop_h))
+    else:
+        top = -(crop_h - world_h) / 2
+
+    right  = left + crop_w
+    bottom = top + crop_h
+
+    cropped = frame.crop((round(left), round(top), round(right), round(bottom)))
+    return cropped.resize((out_w, out_h), Image.LANCZOS)
 
 
 # ---------------------------------------------------------------------------
@@ -758,10 +920,22 @@ def render_frames(episode, frames_dir, visemes_data=None):
     total_frames  = fps * duration
     width, height = episode["output"]["resolution"]
 
+    # Resolution "monde" du canvas de composition. Par defaut = resolution de
+    # sortie (comportement identique a avant si aucune camera n'est utilisee).
+    # La definir plus grande que la resolution de sortie donne de la marge
+    # pour dezoomer (zoom < 1.0) sans montrer de bords vides.
+    world_w, world_h = episode["output"].get("world_resolution", [width, height])
+
     bg_path = EPISODES_IMAGES_DIR / episode["background"]["image"]
     if not bg_path.exists():
         sys.exit(f"[ERREUR] Background introuvable : {bg_path}")
-    background = Image.open(bg_path).convert("RGBA").resize((width, height))
+    background = Image.open(bg_path).convert("RGBA").resize((world_w, world_h))
+
+    camera_cfg = episode.get("camera")
+    camera_seq = build_camera_sequence(camera_cfg, total_frames, fps, world_w, world_h)
+    if camera_cfg:
+        print(f"  [INFO] Camera active "
+              f"({'timeline' if camera_cfg.get('timeline') else 'statique'})")
 
     char_data = []
     for char_cfg in episode["characters"]:
@@ -887,6 +1061,13 @@ def render_frames(episode, frames_dir, visemes_data=None):
 
             frame.paste(sprite, (tl["x"], tl["y"]), sprite)
 
+        # --- Camera (zoom / pan) : applique en dernier, sur la composition finale ---
+        zoom, cx, cy = camera_seq[f]
+        if zoom != 1.0 or cx != world_w / 2 or cy != world_h / 2 or (world_w, world_h) != (width, height):
+            frame = apply_camera(frame, zoom, cx, cy, world_w, world_h, width, height)
+        elif (width, height) != (world_w, world_h):
+            frame = frame.resize((width, height), Image.LANCZOS)
+
         out_path = frames_dir / f"frame_{str(f).zfill(pad)}.png"
         frame.convert("RGB").save(out_path)
 
@@ -901,7 +1082,15 @@ def render_frames(episode, frames_dir, visemes_data=None):
 # FFmpeg
 # ---------------------------------------------------------------------------
 
-def assemble_video(frames_dir, output_path, fps, width, height):
+def assemble_video(frames_dir, output_path, fps, width, height, audio_path=None):
+    """
+    Assemble les frames PNG en video via ffmpeg.
+
+    Si audio_path est fourni, la piste audio est muxee avec la video
+    (re-encodee en AAC, calee sur la plus courte des deux pistes).
+    Si audio_path est None, la video est generee sans piste audio
+    (episode muet).
+    """
     png_count = len([p for p in frames_dir.iterdir() if p.suffix == ".png"])
     pad       = len(str(png_count))
     pattern   = str(frames_dir / f"frame_%0{pad}d.png")
@@ -910,15 +1099,32 @@ def assemble_video(frames_dir, output_path, fps, width, height):
         "ffmpeg", "-y",
         "-framerate", str(fps),
         "-i", pattern,
+    ]
+
+    if audio_path:
+        cmd += ["-i", str(audio_path)]
+
+    cmd += [
         "-vf", f"scale={width}:{height}",
         "-c:v", "libx264",
         "-pix_fmt", "yuv420p",
         "-preset", "fast",
         "-crf", "18",
-        str(output_path),
     ]
 
-    print(f"\n[FFMPEG] Assemblage -> {output_path}")
+    if audio_path:
+        cmd += [
+            "-map", "0:v:0",
+            "-map", "1:a:0",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-shortest",
+        ]
+
+    cmd += [str(output_path)]
+
+    audio_note = f" (audio: {audio_path.name})" if audio_path else " (muet)"
+    print(f"\n[FFMPEG] Assemblage -> {output_path}{audio_note}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print("[FFMPEG STDERR]", result.stderr)
@@ -956,11 +1162,23 @@ def main():
             "(episodes/videos) ; si absolu, utilise tel quel."
         ),
     )
+    parser.add_argument(
+        "--mute", action="store_true",
+        help=(
+            "Force un rendu sans audio, meme si le champ 'audio' est defini "
+            "dans l'episode."
+        ),
+    )
     parser.add_argument("--keep-frames", action="store_true")
     args = parser.parse_args()
 
     episode      = load_episode_settings(args.settings)
     visemes_data = load_visemes(args.visemes)
+
+    if args.mute:
+        audio_path = None
+    else:
+        audio_path = resolve_audio_path(episode.get("audio"))
 
     output_dir = DEFAULT_OUTPUT_DIR
 
@@ -986,6 +1204,7 @@ def main():
     print(f"  Speakers    : {speakers}")
     if visemes_data:
         print(f"  Visemes     : {args.visemes}")
+    print(f"  Audio       : {audio_path if audio_path else '(aucun - episode muet)'}")
 
     with tempfile.TemporaryDirectory() as tmp:
         frames_dir = Path(tmp) / "frames"
@@ -995,7 +1214,10 @@ def main():
         width, height = render_frames(episode, frames_dir, visemes_data)
 
         print("\n[2/2] Assemblage ffmpeg...")
-        assemble_video(frames_dir, output_path, episode["output"]["fps"], width, height)
+        assemble_video(
+            frames_dir, output_path, episode["output"]["fps"], width, height,
+            audio_path=audio_path,
+        )
 
         if args.keep_frames:
             kept = output_dir / "frames_debug"

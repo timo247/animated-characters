@@ -67,7 +67,7 @@
             "flip_x":   false,
             "rotation": 0
           }
-        ]
+	}
       },
 
       "moves": {
