@@ -638,6 +638,7 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
         final_gaze      = last_seg.get("gaze", None)
         final_gaze_inv_x = last_seg.get("gaze_invert_x", None)
         final_gaze_inv_y = last_seg.get("gaze_invert_y", None)
+        final_flip_x    = last_seg.get("flip_x", None)
         pos_cfg_final = char_settings["positions"][str(final_pos)]
         idle_frames_f = pos_cfg_final["idle"]["frames"]
         idle_fps_f    = pos_cfg_final["idle"].get("fps", idle_fps_cfg)
@@ -655,6 +656,7 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                     "y":              final_y,
                     "flip_phase":     "idle_after",
                     "position":       final_pos,
+                    "seg_flip_x":     final_flip_x,
                     "seg_gaze":       final_gaze,
                     "seg_gaze_inv_x": final_gaze_inv_x,
                     "seg_gaze_inv_y": final_gaze_inv_y,
@@ -768,7 +770,12 @@ def composite_character(
 
     PUPILS est positionne via :
         pupils.anchor (relatif a eye_layers.anchor) + pupils.offset + gaze_offset
-    L'offset x du gaze est inverse automatiquement quand base_flip est actif.
+    L'offset x du gaze est inverse automatiquement quand base_flip est actif —
+    sauf si gaze_is_override est True (cas normal desormais : gaze fourni par
+    le segment actif de l'episode, ou par le gaze statique / gaze_timeline de
+    l'episode en l'absence de segment) : dans ce cas le decalage est applique
+    tel quel, en dernier, dans l'espace ecran final, prioritaire sur toute
+    inversion (gaze_invert_x/y) et insensible au flip du personnage.
     """
     pos_cfg  = char_settings["positions"][str(position)]
     anim_key = STATE_TO_ANIM_KEY[state]
@@ -844,11 +851,29 @@ def composite_character(
     # pour éviter toute divergence d'arrondi entre FULL et PUPILS
     gaze_x, gaze_y = gaze_offset
 
+    # gaze_px_delta / gaze_py_delta : decalage applique APRES le mirroring du
+    # flip, donc dans l'espace ecran final. Reste a 0 hors override (le gaze
+    # "normal" continue d'etre gere via effective_gaze_x/y, injecte avant le
+    # mirroring, corrige par gaze_invert_x/y).
+    gaze_px_delta = 0
+    gaze_py_delta = 0
+
     if gaze_is_override:
-        # Le segment actif definit son propre "gaze" : utilise tel quel,
-        # aucune inversion automatique n'est appliquee.
-        effective_gaze_x = gaze_x
-        effective_gaze_y = gaze_y
+        # Le segment actif definit explicitement son propre "gaze" : cette
+        # valeur est absolue et prioritaire sur TOUTE propriete predefinie
+        # pour l'orientation du regard (gaze_invert_x/y, deduits ou
+        # explicites, character-settings ou episode). Elle est appliquee
+        # telle quelle, dans l'espace ecran final, apres le mirroring lie au
+        # flip du personnage — donc la meme valeur produit toujours la meme
+        # direction visuelle, flip ou non.
+        pupils_abs_x_raw = (eye_anchor_x_raw
+                            + round(pupils_anchor.get("x", 0) * char_scale)
+                            + round(pupils_offset.get("x",  0) * char_scale))
+        pupils_abs_y_raw = (eye_anchor_y_raw
+                            + round(pupils_anchor.get("y", 0) * char_scale)
+                            + round(pupils_offset.get("y",  0) * char_scale))
+        gaze_px_delta = round(gaze_x * char_scale)
+        gaze_py_delta = round(gaze_y * char_scale)
     else:
         effective_gaze_x = (-gaze_x) if gaze_invert_x else gaze_x
         if ep_gaze_invert_y is not None:
@@ -856,14 +881,14 @@ def composite_character(
         else:
             effective_gaze_y = (-gaze_y) if gaze_invert_y else gaze_y
 
-    pupils_abs_x_raw = (eye_anchor_x_raw
-                        + round(pupils_anchor.get("x", 0) * char_scale)
-                        + round(pupils_offset.get("x",  0) * char_scale)
-                        + round(effective_gaze_x * char_scale))
-    pupils_abs_y_raw = (eye_anchor_y_raw
-                        + round(pupils_anchor.get("y", 0) * char_scale)
-                        + round(pupils_offset.get("y",  0) * char_scale)
-                        + round(effective_gaze_y * char_scale))
+        pupils_abs_x_raw = (eye_anchor_x_raw
+                            + round(pupils_anchor.get("x", 0) * char_scale)
+                            + round(pupils_offset.get("x",  0) * char_scale)
+                            + round(effective_gaze_x * char_scale))
+        pupils_abs_y_raw = (eye_anchor_y_raw
+                            + round(pupils_anchor.get("y", 0) * char_scale)
+                            + round(pupils_offset.get("y",  0) * char_scale)
+                            + round(effective_gaze_y * char_scale))
 
     for layer_key in layers_to_draw:
         layer_filename = EYE_LAYER_FILES[layer_key]
@@ -881,7 +906,8 @@ def composite_character(
                 eye_rot,
             )
             px = (base_w - pupils_abs_x_raw - layer_img.width) if base_flip else pupils_abs_x_raw
-            py = pupils_abs_y_raw
+            px += gaze_px_delta
+            py = pupils_abs_y_raw + gaze_py_delta
             base.paste(layer_img, (px, py), layer_img)
 
         else:
@@ -1029,16 +1055,18 @@ def render_frames(episode, frames_dir, visemes_data=None):
                 frame_gaze_inv_y = cd["ep_gaze_invert_y"]
 
             # Gaze : si le segment actif definit son propre "gaze", il est
-            # utilise tel quel (aucune inversion appliquee). Sinon, on retombe
-            # sur le gaze global du personnage (gaze_seq), inverse automatiquement
-            # selon gaze_invert_x/y resolus dans composite_character.
+            # utilise tel quel. Sinon, on retombe sur le gaze global du
+            # personnage (gaze_seq, statique ou gaze_timeline de l'episode),
+            # egalement utilise tel quel — aucune des deux sources n'est
+            # inversee automatiquement (gaze_invert_x/y, deduit ou explicite,
+            # est ignore dans les deux cas). C'est a l'auteur de l'episode de
+            # fournir des coordonnees deja dans le bon sens ecran.
             seg_gaze = tl.get("seg_gaze", None)
             if seg_gaze is not None:
                 frame_gaze_offset = (int(seg_gaze.get("x", 0)), int(seg_gaze.get("y", 0)))
-                gaze_is_override  = True
             else:
                 frame_gaze_offset = cd["gaze_seq"][f]
-                gaze_is_override  = False
+            gaze_is_override = True
 
             sprite = composite_character(
                 character_id     = char_cfg["character"],
