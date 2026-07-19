@@ -125,6 +125,8 @@
 
   <div id="topbar">
     <span class="brand">EPISODE BUILDER</span>
+    <button id="btnImport">📂 Importer un episode-settings.json</button>
+    <input type="file" id="importFileInput" accept=".json,application/json" class="hidden">
     <label class="tb-field"><span>episode_id</span>
       <input id="f_episode_id" placeholder="episode-xxx" style="width:170px"></label>
     <label class="tb-field"><span>output filename</span>
@@ -275,6 +277,107 @@ async function getCharacterData(name) {
   return data;
 }
 
+/* ============================== IMPORT D'UN EPISODE-SETTINGS.JSON EXISTANT ============================== */
+
+function normalizeSegment(seg) {
+  const out = {
+    position: String(seg.position ?? "1"),
+    from: { x: Number(seg.from?.x ?? 0), y: Number(seg.from?.y ?? 0) },
+    to: { x: Number(seg.to?.x ?? 0), y: Number(seg.to?.y ?? 0) },
+    duration_seconds: Number(seg.duration_seconds ?? 1.5),
+    skip_transition: !!seg.skip_transition,
+    reverse: !!seg.reverse,
+    flip_x: !!seg.flip_x,
+  };
+  // gaze est un champ conditionnel : on ne le porte que s'il était présent
+  if (seg.gaze && typeof seg.gaze === "object") {
+    out.gaze = { x: Number(seg.gaze.x ?? 0), y: Number(seg.gaze.y ?? 0) };
+  }
+  return out;
+}
+
+function normalizeCharacter(c) {
+  return {
+    id: c.id || (c.character || "char"),
+    character: c.character || "",
+    position: String(c.position ?? "1"),
+    screen_position: { x: Number(c.screen_position?.x ?? 0), y: Number(c.screen_position?.y ?? 0) },
+    scale: Number(c.scale ?? 1.0),
+    overlay_scale: Number(c.overlay_scale ?? 1.0),
+    flip_x: !!c.flip_x,
+    emotions: { eyes: c.emotions?.eyes || "HAPPY", mouth: c.emotions?.mouth || "HAPPY" },
+    speaker: c.speaker || "",
+    gaze: { x: Number(c.gaze?.x ?? 0), y: Number(c.gaze?.y ?? 0) },
+    moves: (c.moves || []).map(mv => ({
+      at_second: Number(mv.at_second ?? 0),
+      transition_fps: Number(mv.transition_fps ?? 8),
+      move_fps: Number(mv.move_fps ?? 10),
+      segments: (mv.segments || []).map(normalizeSegment)
+    })),
+    dialogue: c.dialogue ?? null
+  };
+}
+
+async function importEpisodeSettings(json) {
+  if (!json || typeof json !== "object") throw new Error("JSON invalide");
+
+  const resolution = Array.isArray(json.output?.resolution) && json.output.resolution.length === 2
+    ? json.output.resolution.map(Number) : [1920, 1080];
+
+  state.episode_id = json.episode_id || "";
+  state.output = {
+    filename: json.output?.filename || "",
+    duration_seconds: Number(json.output?.duration_seconds ?? 10),
+    fps: Number(json.output?.fps ?? 24),
+    resolution
+  };
+  RES = resolution;
+  state.background = { image: json.background?.image || "" };
+  state.audio = json.audio || "";
+
+  const camSrc = json.camera || {};
+  let timeline = Array.isArray(camSrc.timeline) ? camSrc.timeline.map(kf => ({
+    at_second: Number(kf.at_second ?? 0), zoom: Number(kf.zoom ?? 1),
+    x: Number(kf.x ?? RES[0] / 2), y: Number(kf.y ?? RES[1] / 2)
+  })) : [];
+  if (timeline.length === 0) {
+    timeline = [{ at_second: 0, zoom: Number(camSrc.zoom ?? 1), x: Number(camSrc.x ?? RES[0] / 2), y: Number(camSrc.y ?? RES[1] / 2) }];
+  }
+  state.camera = { zoom: Number(camSrc.zoom ?? 1), x: Number(camSrc.x ?? RES[0] / 2), y: Number(camSrc.y ?? RES[1] / 2), timeline };
+
+  state.characters = (json.characters || []).map(normalizeCharacter);
+
+  // précharge les character-settings.json des personnages utilisés (aperçus sprites)
+  const names = [...new Set(state.characters.map(c => c.character).filter(Boolean))];
+  await Promise.all(names.map(n => getCharacterData(n).catch(() => null)));
+
+  selection = { type: "camera", index: null };
+  cameraKeyIndex = 0;
+  draftSegment = null;
+
+  rebuildStageSize();
+  refreshTopbarFields();
+  renderAll();
+}
+
+document.getElementById("btnImport").addEventListener("click", () => {
+  document.getElementById("importFileInput").click();
+});
+document.getElementById("importFileInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ""; // permet de réimporter le même fichier plus tard
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    await importEpisodeSettings(json);
+    setStatus("Importé : " + file.name);
+  } catch (err) {
+    setStatus("Erreur d'import : " + err.message);
+    alert("Impossible d'importer ce fichier : " + err.message);
+  }
+});
+
 /* ============================== TOPBAR BINDING ============================== */
 
 function bindTopbar() {
@@ -315,6 +418,29 @@ function rebuildStageSize() {
   const stage = document.getElementById("stage");
   stage.style.width = STAGE_W + "px";
   stage.style.height = (RES[1] * scaleFactor) + "px";
+}
+
+function ensureOption(selectEl, value) {
+  if (!value) return;
+  const exists = Array.from(selectEl.options).some(o => o.value === value);
+  if (!exists) selectEl.appendChild(el("option", { value }, value + " (introuvable)"));
+}
+
+function refreshTopbarFields() {
+  document.getElementById("f_episode_id").value = state.episode_id || "";
+  document.getElementById("f_output_filename").value = state.output.filename || "";
+  document.getElementById("f_duration").value = state.output.duration_seconds;
+  document.getElementById("f_fps").value = state.output.fps;
+  document.getElementById("f_res_w").value = RES[0];
+  document.getElementById("f_res_h").value = RES[1];
+
+  const bgSel = document.getElementById("f_background");
+  ensureOption(bgSel, state.background.image);
+  bgSel.value = state.background.image || "";
+
+  const audSel = document.getElementById("f_audio");
+  ensureOption(audSel, state.audio);
+  audSel.value = state.audio || "";
 }
 
 /* ============================== LISTE DES ÉLÉMENTS (sidebar gauche) ============================== */
@@ -702,6 +828,7 @@ function buildMoveBlock(c, mv, mi) {
     const row = el("div", { class: "seg-row" + (isEditing ? " active" : "") });
     row.appendChild(el("div", { class: "lbl" },
       `#${si + 1} pos ${seg.position} → (${Math.round(seg.to.x)},${Math.round(seg.to.y)})` +
+      (seg.gaze ? ` · gaze(${seg.gaze.x},${seg.gaze.y})` : "") +
       (seg.skip_transition ? " · skip_transition" : "") + (seg.reverse ? " · reverse" : "")));
     row.appendChild(el("button", { onclick: () => startEditSegment(c, mv, si) }, "éditer"));
     row.appendChild(el("button", {
@@ -739,6 +866,7 @@ function startNewSegment(c, mv) {
     skip_transition: false,
     reverse: false,
     flip_x: c.flip_x,
+    hasGaze: false,
     gaze: { x: 0, y: 0 }
   };
   renderAll();
@@ -746,6 +874,7 @@ function startNewSegment(c, mv) {
 
 function startEditSegment(c, mv, si) {
   const seg = mv.segments[si];
+  const hasGaze = !!(seg.gaze && typeof seg.gaze === "object");
   draftSegment = {
     __move: mv, __index: si, __isNew: false,
     position: seg.position,
@@ -754,7 +883,8 @@ function startEditSegment(c, mv, si) {
     skip_transition: !!seg.skip_transition,
     reverse: !!seg.reverse,
     flip_x: !!seg.flip_x,
-    gaze: { ...(seg.gaze || { x: 0, y: 0 }) }
+    hasGaze,
+    gaze: { ...(hasGaze ? seg.gaze : { x: 0, y: 0 }) }
   };
   renderAll();
 }
@@ -777,10 +907,17 @@ function buildSegmentEditor(c, mv) {
 
   box.appendChild(numberField("duration_seconds", d.duration_seconds, v => d.duration_seconds = v, 0.1));
 
-  const rowGaze = el("div", { class: "row2" });
-  rowGaze.appendChild(numberField("gaze.x", d.gaze.x, v => d.gaze.x = v, 1));
-  rowGaze.appendChild(numberField("gaze.y", d.gaze.y, v => d.gaze.y = v, 1));
-  box.appendChild(rowGaze);
+  box.appendChild(el("div", { class: "check-row" }, [
+    checkField("définir gaze", d.hasGaze, v => { d.hasGaze = v; refreshInspector(); })
+  ]));
+  if (d.hasGaze) {
+    const rowGaze = el("div", { class: "row2" });
+    rowGaze.appendChild(numberField("gaze.x", d.gaze.x, v => d.gaze.x = v, 1));
+    rowGaze.appendChild(numberField("gaze.y", d.gaze.y, v => d.gaze.y = v, 1));
+    box.appendChild(rowGaze);
+  } else {
+    box.appendChild(el("div", { class: "hint" }, "gaze non défini pour ce segment (clé absente à l'export)."));
+  }
 
   box.appendChild(el("div", { class: "check-row" }, [
     checkField("flip_x", d.flip_x, v => { d.flip_x = v; renderStage(); }),
@@ -795,8 +932,9 @@ function buildSegmentEditor(c, mv) {
         const payload = {
           position: d.position, from: { ...d.from }, to: { ...d.to },
           duration_seconds: d.duration_seconds, skip_transition: d.skip_transition,
-          reverse: d.reverse, flip_x: d.flip_x, gaze: { ...d.gaze }
+          reverse: d.reverse, flip_x: d.flip_x
         };
+        if (d.hasGaze) payload.gaze = { ...d.gaze };
         if (d.__isNew) mv.segments.push(payload);
         else mv.segments[d.__index] = payload;
         draftSegment = null;
@@ -886,892 +1024,4 @@ bindTopbar();
 loadInitialData();
 </script>
 </body>
-</html<!doctype html>
-<html lang="fr">
-	<head>
-		<meta charset="utf-8">
-		<title>Episode Builder</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  :root{
-	      --bg:#15161a;
-	          --panel:#1c1e24;
-		      --panel-2:#22242b;
-		          --border:#2e313a;
-			      --text:#e7e6e2;
-			          --text-dim:#8b8d96;
-				      --accent:#e8a33d;
-				          --accent-dim:#8a662c;
-					      --cam:#5aa9e6;
-					          --danger:#d3564a;
-						      --ok:#5fb383;
-						          --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-							    }
-    *{box-sizing:border-box;}
-      html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
-	          font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:13px;}
-		    button{font-family:inherit;font-size:12px;cursor:pointer;border:1px solid var(--border);
-			        background:var(--panel-2);color:var(--text);border-radius:4px;padding:6px 10px;}
-	      button:hover{border-color:var(--accent-dim);}
-	        button.primary{background:var(--accent);color:#1a1408;border-color:var(--accent);font-weight:600;}
-		  button.primary:hover{filter:brightness(1.08);}
-		    button.danger{color:var(--danger);}
-		      button:disabled{opacity:.4;cursor:not-allowed;}
-		        input,select{font-family:inherit;font-size:12px;background:var(--panel-2);color:var(--text);
-				    border:1px solid var(--border);border-radius:4px;padding:5px 7px;width:100%;}
-		  input[type=checkbox]{width:auto;}
-		    label.field{display:block;margin:8px 0;}
-		      label.field span{display:block;color:var(--text-dim);font-size:11px;margin-bottom:3px;
-			          text-transform:uppercase;letter-spacing:.04em;}
-	        .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-		  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-		    h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);
-			        margin:16px 0 8px;font-weight:600;}
-	      h3:first-child{margin-top:0;}
-
-	        #app{display:grid;grid-template-columns:250px 1fr 320px;grid-template-rows:1fr auto;
-			    height:100vh;gap:1px;background:var(--border);}
-	  #topbar{grid-column:1/4;background:var(--panel);padding:10px 14px;display:flex;
-		      align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
-    #topbar .brand{font-weight:700;color:var(--accent);letter-spacing:.02em;margin-right:6px;}
-      #topbar .tb-field{display:flex;align-items:center;gap:6px;}
-        #topbar .tb-field span{color:var(--text-dim);font-size:11px;}
-	  #topbar input,#topbar select{width:auto;min-width:90px;}
-
-	    #sidebar{background:var(--panel);overflow-y:auto;padding:10px;}
-	      #elementList{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
-	        .el-item{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:5px;
-			    border:1px solid transparent;background:var(--panel-2);cursor:pointer;}
-	  .el-item:hover{border-color:var(--border);}
-	    .el-item.active{border-color:var(--accent);background:#2a2313;}
-	      .el-item .dot{width:8px;height:8px;border-radius:50%;flex:none;}
-	        .el-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-		  .el-item .del{opacity:.5;font-size:11px;}
-		    .el-item .del:hover{opacity:1;color:var(--danger);}
-
-		      #canvasWrap{position:relative;overflow:auto;background:
-			          repeating-conic-gradient(#1a1b1f 0% 25%, #17181c 0% 50%) 50% / 22px 22px;
-		          display:flex;align-items:center;justify-content:center;}
-	        #stage{position:relative;background:#000;overflow:hidden;box-shadow:0 0 0 1px var(--border);}
-		  #stageBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9;}
-		    #stageBg.empty{display:flex;align-items:center;justify-content:center;color:var(--text-dim);}
-
-		      .cam-rect{position:absolute;border:2px solid var(--cam);background:rgba(90,169,230,.08);
-			          cursor:move;}
-	        .cam-rect::after{content:'';position:absolute;right:-5px;bottom:-5px;width:12px;height:12px;
-			    background:var(--cam);border-radius:2px;cursor:nwse-resize;}
-
-	  .sprite-drag{position:absolute;cursor:move;border:2px solid var(--accent);
-		      box-shadow:0 0 0 1px rgba(0,0,0,.4);}
-    .sprite-drag img{display:block;width:100%;height:100%;object-fit:contain;
-	        background:rgba(232,163,61,.08);}
-		  .sprite-drag .tag{position:absolute;top:-20px;left:-2px;background:var(--accent);
-			      color:#1a1408;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px 3px 0 0;
-			          white-space:nowrap;}
-	    .sprite-ghost{position:absolute;border:1px dashed var(--text-dim);opacity:.5;pointer-events:none;}
-
-	      #inspector{background:var(--panel);overflow-y:auto;padding:12px;}
-	        .placeholder{color:var(--text-dim);font-size:12px;padding:20px 4px;line-height:1.6;}
-		  .segList{display:flex;flex-direction:column;gap:6px;margin:6px 0 12px;}
-		    .seg-row{display:flex;align-items:center;gap:6px;background:var(--panel-2);
-			        border:1px solid var(--border);border-radius:5px;padding:6px 8px;}
-	      .seg-row.active{border-color:var(--accent);}
-	        .seg-row .lbl{flex:1;font-family:var(--mono);font-size:11px;color:var(--text-dim);}
-		  .seg-row button{padding:2px 7px;font-size:11px;}
-		    .move-block{border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:10px;
-			        background:var(--panel-2);}
-	      .move-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-	        .move-head b{font-size:11px;color:var(--accent);}
-		  .segment-editor{border:1px solid var(--accent-dim);border-radius:6px;padding:10px;
-			      margin-top:8px;background:#211c10;}
-	    .segment-editor h4{margin:0 0 8px;font-size:11px;color:var(--accent);
-		        text-transform:uppercase;letter-spacing:.05em;}
-      .check-row{display:flex;gap:14px;margin:8px 0;flex-wrap:wrap;}
-        .check-row label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-dim);}
-	  .hint{font-size:11px;color:var(--text-dim);line-height:1.5;margin:4px 0 10px;}
-	    .btnbar{display:flex;gap:6px;margin-top:8px;}
-	      .coord-readout{font-family:var(--mono);font-size:12px;background:var(--panel-2);
-		          border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin:6px 0;}
-
-        #bottombar{grid-column:1/4;background:var(--panel);border-top:1px solid var(--border);
-		    padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
-  #bottombar .status{font-size:11px;color:var(--text-dim);font-family:var(--mono);}
-
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;
-	        align-items:center;justify-content:center;z-index:50;}
-		  .modal{background:var(--panel);border:1px solid var(--border);border-radius:8px;
-			      padding:20px;width:360px;}
-	    .modal h3{margin-top:0;}
-	      .modal .btnbar{justify-content:flex-end;margin-top:16px;}
-	        .hidden{display:none !important;}
-		  ::-webkit-scrollbar{width:10px;height:10px;}
-		    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
-</style>
-	</head>
-	<body>
-		<div id="app">
-
-			  <div id="topbar">
-				      <span class="brand">EPISODE BUILDER</span>
-				          <label class="tb-field"><span>episode_id</span>
-						        <input id="f_episode_id" placeholder="episode-xxx" style="width:170px"></label>
-					      <label class="tb-field"><span>output filename</span>
-						            <input id="f_output_filename" placeholder="episode-xxx.mp4" style="width:170px"></label>
-					          <label class="tb-field"><span>durée (s)</span>
-							        <input id="f_duration" type="number" step="0.5" style="width:70px"></label>
-						      <label class="tb-field"><span>fps</span>
-							            <input id="f_fps" type="number" style="width:55px"></label>
-						          <label class="tb-field"><span>résolution</span>
-								        <input id="f_res_w" type="number" style="width:70px">
-									      <span>×</span>
-									            <input id="f_res_h" type="number" style="width:70px"></label>
-							      <label class="tb-field"><span>background</span>
-								            <select id="f_background" style="width:170px"></select></label>
-							          <label class="tb-field"><span>audio</span>
-									        <select id="f_audio" style="width:190px"></select></label>
-								    </div>
-
-								      <div id="sidebar">
-									          <h3>Éléments</h3>
-										      <div id="elementList"></div>
-										          <button id="btnAddCharacter" style="width:100%">+ Ajouter un personnage</button>
-											    </div>
-
-											      <div id="canvasWrap">
-												          <div id="stage">
-														        <div id="stageBg" class="empty"></div>
-															      <!-- overlays injected here -->
-															          </div>
-																    </div>
-
-																      <div id="inspector">
-																	          <div id="inspectorContent">
-																			        <div class="placeholder">Sélectionne la caméra ou un personnage dans la liste à gauche
-																					        pour éditer ses segments.</div>
-																				    </div>
-																				      </div>
-
-																				        <div id="bottombar">
-																						    <span class="status" id="statusLine">Prêt.</span>
-																						        <button class="primary" id="btnGenerate">Générer episode-settings.json</button>
-																							  </div>
-
-		</div>
-
-		<div id="saveModal" class="modal-backdrop hidden">
-			  <div class="modal">
-				      <h3>Enregistrer l'episode</h3>
-				          <label class="field"><span>Nom du fichier (dans episodes/episodes-settings/)</span>
-						        <input id="saveFilename" placeholder="episode-xxx-settings.json"></label>
-					      <div class="btnbar">
-						            <button id="saveCancel">Annuler</button>
-							          <button class="primary" id="saveConfirm">Enregistrer</button>
-								      </div>
-								        </div>
-		</div>
-
-		<script>
-			"use strict";
-
-			/* ============================== ÉTAT GLOBAL ============================== */
-
-			const STAGE_W = 900; // largeur d'affichage du stage à l'écran (px CSS)
-			let RES = [1920, 1080];
-			let scaleFactor = STAGE_W / RES[0];
-
-			const state = {
-				  episode_id: "",
-				  output: { filename: "", duration_seconds: 10, fps: 24, resolution: [1920, 1080] },
-				  background: { image: "" },
-				  audio: "",
-				  camera: {
-					      zoom: 1.0, x: RES[0] / 2, y: RES[1] / 2,
-					      timeline: [{ at_second: 0.0, zoom: 1.0, x: RES[0] / 2, y: RES[1] / 2 }]
-					    },
-				  characters: []
-			};
-
-			let selection = { type: null, index: null };      // {type:'camera'} | {type:'character', index}
-			let cameraKeyIndex = 0;                             // keyframe caméra en cours d'édition
-			let characterCache = {};                            // nom -> data /api/character/<name>
-			let charactersAvailable = [];
-			let draftSegment = null;                            // segment en cours d'édition (avant "Enregistrer")
-
-			/* ============================== UTILS ============================== */
-
-			function el(tag, attrs = {}, children = []) {
-				  const e = document.createElement(tag);
-				  for (const k in attrs) {
-					      if (k === "class") e.className = attrs[k];
-					      else if (k === "html") e.innerHTML = attrs[k];
-					      else if (k.startsWith("on")) e.addEventListener(k.slice(2), attrs[k]);
-					      else e.setAttribute(k, attrs[k]);
-					    }
-					  for (const c of [].concat(children)) { if (c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); }
-					  return e;
-			}
-			function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-			function setStatus(msg) { document.getElementById("statusLine").textContent = msg; }
-			async function api(path, opts) {
-				  const res = await fetch(path, opts);
-				  const data = await res.json().catch(() => ({}));
-				  if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
-				  return data;
-			}
-
-			function newCharacterId(charName) {
-				  let n = 1;
-				  let id = charName;
-				  const used = new Set(state.characters.map(c => c.id));
-				  while (used.has(id)) { n += 1; id = charName + "-" + n; }
-					  return id;
-			}
-
-				/* ============================== CHARGEMENT INITIAL ============================== */
-
-			async function loadInitialData() {
-				  try {
-					      const chars = await api("/api/characters");
-					      charactersAvailable = chars.characters;
-					    } catch (e) { setStatus("Erreur /api/characters: " + e.message); }
-
-					  try {
-						      const bgs = await api("/api/backgrounds");
-						      const sel = document.getElementById("f_background");
-						      sel.innerHTML = "<option value=''>—</option>" +
-							        bgs.backgrounds.map(b => `<option value="${b}">${b}</option>`).join("");
-						    } catch (e) { setStatus("Erreur /api/backgrounds: " + e.message); }
-
-					  try {
-						      const auds = await api("/api/episodes-audio");
-						      const sel = document.getElementById("f_audio");
-						      sel.innerHTML = "<option value=''>—</option>" +
-							        auds.audios.map(a => `<option value="${a}">${a}</option>`).join("");
-						    } catch (e) { setStatus("Erreur /api/episodes-audio: " + e.message); }
-
-					  // Personnage par défaut si la liste est vide
-					  if (state.characters.length === 0 && charactersAvailable.length > 0) {
-						      await addCharacter(charactersAvailable[0]);
-						    }
-					  renderAll();
-			}
-
-			async function getCharacterData(name) {
-				  if (characterCache[name]) return characterCache[name];
-				  const data = await api("/api/character/" + encodeURIComponent(name));
-				  characterCache[name] = data;
-				  return data;
-			}
-
-				/* ============================== TOPBAR BINDING ============================== */
-
-			function bindTopbar() {
-				  const map = [
-					      ["f_episode_id", () => state.episode_id, v => state.episode_id = v],
-					      ["f_output_filename", () => state.output.filename, v => state.output.filename = v],
-					      ["f_duration", () => state.output.duration_seconds, v => state.output.duration_seconds = parseFloat(v) || 0],
-					      ["f_fps", () => state.output.fps, v => state.output.fps = parseInt(v) || 24],
-					    ];
-				  for (const [id, getter, setter] of map) {
-					      const inp = document.getElementById(id);
-					      inp.value = getter();
-					      inp.addEventListener("input", () => setter(inp.value));
-					    }
-					  document.getElementById("f_res_w").value = RES[0];
-				  document.getElementById("f_res_h").value = RES[1];
-				  document.getElementById("f_res_w").addEventListener("input", (e) => {
-					      RES[0] = parseInt(e.target.value) || RES[0];
-					      state.output.resolution = [RES[0], RES[1]];
-					      rebuildStageSize(); renderStage();
-					    });
-				  document.getElementById("f_res_h").addEventListener("input", (e) => {
-					      RES[1] = parseInt(e.target.value) || RES[1];
-					      state.output.resolution = [RES[0], RES[1]];
-					      rebuildStageSize(); renderStage();
-					    });
-				  document.getElementById("f_background").addEventListener("change", (e) => {
-					      state.background.image = e.target.value;
-					      renderStage();
-					    });
-				  document.getElementById("f_audio").addEventListener("change", (e) => {
-					      state.audio = e.target.value;
-					    });
-			}
-
-			function rebuildStageSize() {
-				  scaleFactor = STAGE_W / RES[0];
-				  const stage = document.getElementById("stage");
-				  stage.style.width = STAGE_W + "px";
-				  stage.style.height = (RES[1] * scaleFactor) + "px";
-			}
-
-				/* ============================== LISTE DES ÉLÉMENTS (sidebar gauche) ============================== */
-
-			function renderElementList() {
-				  const list = document.getElementById("elementList");
-				  list.innerHTML = "";
-
-				  const camItem = el("div", {
-					      class: "el-item" + (selection.type === "camera" ? " active" : ""),
-					      onclick: () => selectElement("camera", null)
-					    }, [
-						        el("div", { class: "dot", style: "background:var(--cam)" }),
-						        el("div", { class: "name" }, "🎥 Caméra")
-						      ]);
-				  list.appendChild(camItem);
-
-				  state.characters.forEach((c, i) => {
-					      const item = el("div", {
-						            class: "el-item" + (selection.type === "character" && selection.index === i ? " active" : ""),
-						            onclick: () => selectElement("character", i)
-						          }, [
-								        el("div", { class: "dot", style: "background:var(--accent)" }),
-								        el("div", { class: "name" }, `${c.character || "?"} (${c.id})`),
-								        el("div", {
-										        class: "del", html: "✕", onclick: (ev) => { ev.stopPropagation(); removeCharacter(i); }
-										      })
-								      ]);
-					      list.appendChild(item);
-					    });
-			}
-
-			function selectElement(type, index) {
-				  selection = { type, index };
-				  draftSegment = null;
-				  cameraKeyIndex = state.camera.timeline.length ? 0 : -1;
-				  renderAll();
-			}
-
-			async function addCharacter(name) {
-				  name = name || charactersAvailable[0];
-				  if (!name) { setStatus("Aucun personnage disponible dans characters/"); return; }
-					  let data;
-				  try { data = await getCharacterData(name); }
-					  catch (e) { setStatus("Erreur chargement personnage: " + e.message); return; }
-
-					  const positions = Object.keys(data.positions);
-				  const firstPos = positions[0] || "1";
-
-				  const c = {
-					      id: newCharacterId(name),
-					      character: name,
-					      position: firstPos,
-					      screen_position: { x: 200, y: 180 },
-					      scale: 1.0,
-					      overlay_scale: 1.0,
-					      flip_x: false,
-					      emotions: { eyes: "HAPPY", mouth: "HAPPY" },
-					      speaker: "",
-					      gaze: { x: 0, y: 0 },
-					      moves: [],
-					      dialogue: null
-					    };
-				  state.characters.push(c);
-				  selection = { type: "character", index: state.characters.length - 1 };
-				  renderAll();
-			}
-
-			function removeCharacter(i) {
-				  state.characters.splice(i, 1);
-				  if (selection.type === "character") {
-					      if (state.characters.length === 0) selection = { type: "camera", index: null };
-					      else selection.index = clamp(selection.index, 0, state.characters.length - 1);
-					    }
-					  renderAll();
-			}
-
-			document.getElementById("btnAddCharacter").addEventListener("click", () => addCharacter());
-
-			/* ============================== STAGE (canvas central) ============================== */
-
-			function renderStage() {
-				  const bgEl = document.getElementById("stageBg");
-				  if (state.background.image) {
-					      bgEl.className = "";
-					      bgEl.style.backgroundImage = `url(/api/file?path=${encodeURIComponent("episodes/images/" + state.background.image)})`;
-					      bgEl.style.backgroundSize = "cover";
-					      bgEl.style.backgroundPosition = "center";
-					      bgEl.textContent = "";
-					    } else {
-						        bgEl.className = "empty";
-						        bgEl.style.backgroundImage = "";
-						        bgEl.textContent = "Choisis une background image en haut →";
-						      }
-
-					  // nettoie les overlays précédents
-					  document.querySelectorAll(".cam-rect,.sprite-drag,.sprite-ghost").forEach(n => n.remove());
-
-				  if (selection.type === "camera") renderCameraOverlay();
-				  else if (selection.type === "character") renderCharacterOverlay();
-			}
-
-			function px(v) { return (v * scaleFactor) + "px"; }
-
-			function renderCameraOverlay() {
-				  const kf = state.camera.timeline[cameraKeyIndex];
-				  if (!kf) return;
-				  const stage = document.getElementById("stage");
-				  // taille du rectangle = fenêtre visible à ce zoom (résolution / zoom), centrée sur x,y
-				  const rectW = RES[0] / kf.zoom;
-				  const rectH = RES[1] / kf.zoom;
-				  const left = kf.x - rectW / 2;
-				  const top = kf.y - rectH / 2;
-
-				  const rect = el("div", { class: "cam-rect" });
-				  rect.style.left = px(left); rect.style.top = px(top);
-				  rect.style.width = px(rectW); rect.style.height = px(rectH);
-				  stage.appendChild(rect);
-
-				  makeDraggable(rect, {
-					      onMove: (dxPx, dyPx) => {
-						            kf.x = clamp(kf.x + dxPx / scaleFactor, 0, RES[0]);
-						            kf.y = clamp(kf.y + dyPx / scaleFactor, 0, RES[1]);
-						            const w = RES[0] / kf.zoom, h = RES[1] / kf.zoom;
-						            rect.style.left = px(kf.x - w / 2); rect.style.top = px(kf.y - h / 2);
-						            refreshInspector();
-						          },
-					      onResize: (dxPx, dyPx) => {
-						            const curW = RES[0] / kf.zoom;
-						            const newW = clamp(curW + dxPx / scaleFactor, 40, RES[0] * 2);
-						            kf.zoom = clamp(RES[0] / newW, 0.2, 6);
-						            const w = RES[0] / kf.zoom, h = RES[1] / kf.zoom;
-						            rect.style.left = px(kf.x - w / 2); rect.style.top = px(kf.y - h / 2);
-						            rect.style.width = px(w); rect.style.height = px(h);
-						            refreshInspector();
-						          }
-					    });
-			}
-
-			function renderCharacterOverlay() {
-				  const c = state.characters[selection.index];
-				  if (!c) return;
-				  // Segment en édition prioritaire ; sinon état initial du personnage
-				  if (draftSegment) {
-					      renderDraggableSprite(c, draftSegment.position, draftSegment.to, draftSegment.flip_x,
-						            (nx, ny) => { draftSegment.to.x = nx; draftSegment.to.y = ny; refreshInspector(); },
-						            "segment (to)");
-					    } else {
-						        renderDraggableSprite(c, c.position, c.screen_position, c.flip_x,
-								      (nx, ny) => { c.screen_position.x = nx; c.screen_position.y = ny; refreshInspector(); },
-								      "état initial");
-						      }
-			}
-
-			const spriteDimsCache = {}; // preview_url -> {w, h} en pixels natifs
-			function loadImageNaturalSize(url) {
-				  if (spriteDimsCache[url]) return Promise.resolve(spriteDimsCache[url]);
-				  return new Promise((resolve) => {
-					      const img = new Image();
-					      img.onload = () => {
-						            const dims = { w: img.naturalWidth, h: img.naturalHeight };
-						            spriteDimsCache[url] = dims;
-						            resolve(dims);
-						          };
-					      img.onerror = () => resolve({ w: 160, h: 240 }); // fallback si l'image ne charge pas
-					      img.src = url;
-					    });
-			}
-
-			async function renderDraggableSprite(c, position, posObj, flipX, onMove, tag) {
-				  const stage = document.getElementById("stage");
-				  let data;
-				  try { data = await getCharacterData(c.character); } catch (e) { return; }
-					  const posData = data.positions[position];
-				  const previewUrl = posData && posData.idle && posData.idle.preview_url;
-
-				  // Dimensions réelles du sprite (pixels natifs, non scalés) : la boîte doit
-				  // représenter l'empreinte exacte que produira le rendu final (image native × scale).
-				  const dims = previewUrl ? await loadImageNaturalSize(previewUrl) : { w: 160, h: 240 };
-
-				  // évite les doublons si l'utilisateur a changé de sélection entre-temps
-				  if (!(selection.type === "character" && state.characters[selection.index] === c)) return;
-				  document.querySelectorAll(".sprite-drag").forEach(n => n.remove());
-
-				  const w = dims.w * (c.scale || 1);
-				  const h = dims.h * (c.scale || 1);
-
-				  const box = el("div", { class: "sprite-drag" });
-				  box.style.left = px(posObj.x); box.style.top = px(posObj.y);
-				  box.style.width = px(w); box.style.height = px(h);
-				  if (flipX) box.style.transform = "scaleX(-1)";
-				  box.appendChild(el("div", { class: "tag" },
-					      `${c.character} · pos ${position} · ${tag} · ${Math.round(w)}×${Math.round(h)}px`));
-				  if (previewUrl) {
-					      box.appendChild(el("img", { src: previewUrl, draggable: "false" }));
-					    } else {
-						        box.appendChild(el("div", {
-								      style: "width:100%;height:100%;display:flex;align-items:center;justify-content:center;" +
-								             "color:var(--text-dim);font-size:11px;text-align:center;padding:6px;"
-								    }, "pas d'aperçu idle disponible pour cette position"));
-						      }
-					  stage.appendChild(box);
-
-				  makeDraggable(box, {
-					      onMove: (dxPx, dyPx) => {
-						            posObj.x = Math.round(clamp(posObj.x + dxPx / scaleFactor, -w, RES[0]));
-						            posObj.y = Math.round(clamp(posObj.y + dyPx / scaleFactor, -h, RES[1]));
-						            onMove(posObj.x, posObj.y);
-						            box.style.left = px(posObj.x); box.style.top = px(posObj.y);
-						          }
-					    });
-			}
-
-			function makeDraggable(node, { onMove, onResize }) {
-				  node.addEventListener("mousedown", (e) => {
-					      const rect = node.getBoundingClientRect();
-					      const resizing = !!onResize && (rect.right - e.clientX < 14) && (rect.bottom - e.clientY < 14);
-					      let lastX = e.clientX, lastY = e.clientY;
-					      e.preventDefault();
-
-					      function onMouseMove(ev) {
-						            const dx = ev.clientX - lastX, dy = ev.clientY - lastY;
-						            lastX = ev.clientX; lastY = ev.clientY;
-						            if (resizing) onResize(dx, dy); else onMove(dx, dy);
-						          }
-						      function onMouseUp() {
-							            window.removeEventListener("mousemove", onMouseMove);
-							            window.removeEventListener("mouseup", onMouseUp);
-							          }
-						      window.addEventListener("mousemove", onMouseMove);
-					      window.addEventListener("mouseup", onMouseUp);
-					    });
-			}
-
-				/* ============================== INSPECTEUR (panneau droit) ============================== */
-
-			function refreshInspector() { renderInspector(); }
-
-			function renderInspector() {
-				  const root = document.getElementById("inspectorContent");
-				  root.innerHTML = "";
-				  if (selection.type === "camera") root.appendChild(buildCameraInspector());
-				  else if (selection.type === "character") root.appendChild(buildCharacterInspector());
-				  else root.appendChild(el("div", { class: "placeholder" }, "Sélectionne un élément."));
-			}
-
-				/* ---- Caméra ---- */
-			function buildCameraInspector() {
-				  const wrap = document.createElement("div");
-				  wrap.appendChild(el("h3"," Keyframes caméra"));
-				  wrap.appendChild(el("div", { class: "hint" },
-					      "Chaque keyframe définit le cadrage (zoom/x/y) à un instant donné. " +
-					      "Fais glisser le rectangle sur le canvas pour le déplacer, ou tire son coin bas-droit pour zoomer."));
-
-				  const list = el("div", { class: "segList" });
-				  state.camera.timeline.forEach((kf, i) => {
-					      const row = el("div", { class: "seg-row" + (i === cameraKeyIndex ? " active" : "") });
-					      row.appendChild(el("div", { class: "lbl" },
-						            `t=${kf.at_second}s · zoom ${kf.zoom.toFixed(2)} · (${Math.round(kf.x)},${Math.round(kf.y)})`));
-					      row.appendChild(el("button", { onclick: () => { cameraKeyIndex = i; renderStage(); refreshInspector(); } }, "éditer"));
-					      if (state.camera.timeline.length > 1) {
-						            row.appendChild(el("button", {
-								            class: "danger", onclick: () => {
-										              state.camera.timeline.splice(i, 1);
-										              cameraKeyIndex = clamp(cameraKeyIndex, 0, state.camera.timeline.length - 1);
-										              renderAll();
-										            }
-								          }, "✕"));
-						          }
-						      list.appendChild(row);
-					    });
-				  wrap.appendChild(list);
-
-				  wrap.appendChild(el("button", {
-					      onclick: () => {
-						            const last = state.camera.timeline[state.camera.timeline.length - 1];
-						            state.camera.timeline.push({ at_second: (last ? last.at_second + 2 : 0), zoom: 1.0, x: RES[0] / 2, y: RES[1] / 2 });
-						            cameraKeyIndex = state.camera.timeline.length - 1;
-						            renderAll();
-						          }
-					    }, "+ Ajouter une keyframe"));
-
-				  const kf = state.camera.timeline[cameraKeyIndex];
-				  if (kf) {
-					      wrap.appendChild(el("h3", {}, "Keyframe sélectionnée"));
-					      wrap.appendChild(numberField("at_second (s)", kf.at_second, v => { kf.at_second = v; }, 0.1));
-					      wrap.appendChild(el("div", { class: "coord-readout" },
-						            `zoom ${kf.zoom.toFixed(3)}  ·  x ${Math.round(kf.x)}  ·  y ${Math.round(kf.y)}`));
-					      wrap.appendChild(el("div", { class: "hint" }, "zoom/x/y se règlent en manipulant le rectangle sur le canvas."));
-					    }
-
-					  return wrap;
-			}
-
-				/* ---- Personnage ---- */
-			function buildCharacterInspector() {
-				  const c = state.characters[selection.index];
-				  const wrap = document.createElement("div");
-
-				  wrap.appendChild(el("h3", {}, "Personnage"));
-				  const charSelect = el("select", {
-					      onchange: async (e) => {
-						            c.character = e.target.value;
-						            const data = await getCharacterData(c.character);
-						            c.position = Object.keys(data.positions)[0] || "1";
-						            renderAll();
-						          }
-					    }, charactersAvailable.map(n => el("option", { value: n, ...(n === c.character ? { selected: "selected" } : {}) }, n)));
-				  wrap.appendChild(labeled("character", charSelect));
-				  wrap.appendChild(labeled("id (identifiant unique)", textField(c.id, v => { c.id = v; renderElementList(); })));
-				  wrap.appendChild(labeled("speaker (clé du fichier visèmes)", textField(c.speaker, v => { c.speaker = v; })));
-
-				  wrap.appendChild(el("h3", {}, "État initial (avant tout mouvement)"));
-				  const posData = characterCache[c.character];
-				  const positions = posData ? Object.keys(posData.positions) : [c.position];
-				  const posSelect = el("select", {
-					      onchange: (e) => { c.position = e.target.value; renderStage(); }
-					    }, positions.map(p => el("option", { value: p, ...(p === c.position ? { selected: "selected" } : {}) }, "position " + p)));
-				  wrap.appendChild(labeled("position", posSelect));
-
-				  wrap.appendChild(el("div", { class: "coord-readout" },
-					      `x ${Math.round(c.screen_position.x)}  ·  y ${Math.round(c.screen_position.y)}` +
-					      `  (glisse le sprite sur le canvas)`));
-
-				  const row = el("div", { class: "row2" });
-				  row.appendChild(numberField("scale", c.scale, v => { c.scale = v; renderStage(); }, 0.05));
-				  row.appendChild(numberField("overlay_scale", c.overlay_scale, v => { c.overlay_scale = v; }, 0.05));
-				  wrap.appendChild(row);
-
-				  const rowEmo = el("div", { class: "row2" });
-				  rowEmo.appendChild(labeled("emotions.eyes", selectField(["HAPPY", "UNHAPPY"], c.emotions.eyes, v => c.emotions.eyes = v)));
-				  rowEmo.appendChild(labeled("emotions.mouth", selectField(["HAPPY", "UNHAPPY"], c.emotions.mouth, v => c.emotions.mouth = v)));
-				  wrap.appendChild(rowEmo);
-
-				  const rowGaze = el("div", { class: "row2" });
-				  rowGaze.appendChild(numberField("gaze.x", c.gaze.x, v => c.gaze.x = v, 1));
-				  rowGaze.appendChild(numberField("gaze.y", c.gaze.y, v => c.gaze.y = v, 1));
-				  wrap.appendChild(rowGaze);
-
-				  wrap.appendChild(el("div", { class: "check-row" }, [
-					      checkField("flip_x", c.flip_x, v => { c.flip_x = v; renderStage(); })
-					    ]));
-
-				  wrap.appendChild(buildMovesEditor(c));
-
-				  return wrap;
-			}
-
-			function buildMovesEditor(c) {
-				  const wrap = document.createElement("div");
-				  wrap.appendChild(el("h3", {}, "Mouvements (moves)"));
-				  wrap.appendChild(el("div", { class: "hint" },
-					      "Un mouvement se déclenche à un instant (at_second) et contient une séquence de segments " +
-					      "(changements de position). Le premier segment part de l'état courant du personnage."));
-
-				  c.moves.forEach((mv, mi) => wrap.appendChild(buildMoveBlock(c, mv, mi)));
-
-				  wrap.appendChild(el("button", {
-					      onclick: () => {
-						            c.moves.push({ at_second: 2.0, transition_fps: 8, move_fps: 10, segments: [] });
-						            renderAll();
-						          }
-					    }, "+ Ajouter un mouvement"));
-
-				  return wrap;
-			}
-
-			function buildMoveBlock(c, mv, mi) {
-				  const block = el("div", { class: "move-block" });
-				  const head = el("div", { class: "move-head" }, [
-					      el("b", {}, `Move #${mi + 1}`),
-					      el("button", { class: "danger", onclick: () => { c.moves.splice(mi, 1); draftSegment = null; renderAll(); } }, "supprimer")
-					    ]);
-				  block.appendChild(head);
-
-				  const row = el("div", { class: "row3" });
-				  row.appendChild(numberField("at_second", mv.at_second, v => mv.at_second = v, 0.1));
-				  row.appendChild(numberField("transition_fps", mv.transition_fps, v => mv.transition_fps = v, 1));
-				  row.appendChild(numberField("move_fps", mv.move_fps, v => mv.move_fps = v, 1));
-				  block.appendChild(row);
-
-				  const segList = el("div", { class: "segList" });
-				  mv.segments.forEach((seg, si) => {
-					      const isEditing = draftSegment && draftSegment.__move === mv && draftSegment.__index === si;
-					      const row = el("div", { class: "seg-row" + (isEditing ? " active" : "") });
-					      row.appendChild(el("div", { class: "lbl" },
-						            `#${si + 1} pos ${seg.position} → (${Math.round(seg.to.x)},${Math.round(seg.to.y)})` +
-						            (seg.skip_transition ? " · skip_transition" : "") + (seg.reverse ? " · reverse" : "")));
-					      row.appendChild(el("button", { onclick: () => startEditSegment(c, mv, si) }, "éditer"));
-					      row.appendChild(el("button", {
-						            class: "danger", onclick: () => { mv.segments.splice(si, 1); draftSegment = null; renderAll(); }
-						          }, "✕"));
-					      segList.appendChild(row);
-					    });
-				  block.appendChild(segList);
-
-				  block.appendChild(el("button", { onclick: () => startNewSegment(c, mv) }, "+ Ajouter un segment"));
-
-				  if (draftSegment && draftSegment.__move === mv) {
-					      block.appendChild(buildSegmentEditor(c, mv));
-					    }
-
-					  return block;
-			}
-
-			function previousToPoint(c, mv, beforeIndex) {
-				  if (beforeIndex > 0) return { ...mv.segments[beforeIndex - 1].to };
-				  return { ...c.screen_position };
-			}
-
-			function startNewSegment(c, mv) {
-				  const from = previousToPoint(c, mv, mv.segments.length);
-				  const posData = characterCache[c.character];
-				  const positions = posData ? Object.keys(posData.positions) : [c.position];
-				  draftSegment = {
-					      __move: mv, __index: mv.segments.length, // null tant que non enregistré (nouveau)
-					      __isNew: true,
-					      position: positions[0] || c.position,
-					      from: { x: from.x, y: from.y },
-					      to: { x: from.x, y: from.y },
-					      duration_seconds: 1.5,
-					      skip_transition: false,
-					      reverse: false,
-					      flip_x: c.flip_x,
-					      gaze: { x: 0, y: 0 }
-					    };
-				  renderAll();
-			}
-
-			function startEditSegment(c, mv, si) {
-				  const seg = mv.segments[si];
-				  draftSegment = {
-					      __move: mv, __index: si, __isNew: false,
-					      position: seg.position,
-					      from: { ...seg.from }, to: { ...seg.to },
-					      duration_seconds: seg.duration_seconds,
-					      skip_transition: !!seg.skip_transition,
-					      reverse: !!seg.reverse,
-					      flip_x: !!seg.flip_x,
-					      gaze: { ...(seg.gaze || { x: 0, y: 0 }) }
-					    };
-				  renderAll();
-			}
-
-			function buildSegmentEditor(c, mv) {
-				  const d = draftSegment;
-				  const box = el("div", { class: "segment-editor" });
-				  box.appendChild(el("h4", {}, d.__isNew ? "Nouveau segment" : `Modifier segment #${d.__index + 1}`));
-
-				  const posData = characterCache[c.character];
-				  const positions = posData ? Object.keys(posData.positions) : [c.position];
-				  const posSelect = el("select", {
-					      onchange: (e) => { d.position = e.target.value; renderStage(); }
-					    }, positions.map(p => el("option", { value: p, ...(p === d.position ? { selected: "selected" } : {}) }, "position " + p)));
-				  box.appendChild(labeled("position", posSelect));
-
-				  box.appendChild(el("div", { class: "coord-readout" },
-					      `from (${Math.round(d.from.x)}, ${Math.round(d.from.y)})  →  to (${Math.round(d.to.x)}, ${Math.round(d.to.y)})`));
-				  box.appendChild(el("div", { class: "hint" }, "Glisse le sprite sur le canvas pour définir le point d'arrivée (to)."));
-
-				  box.appendChild(numberField("duration_seconds", d.duration_seconds, v => d.duration_seconds = v, 0.1));
-
-				  const rowGaze = el("div", { class: "row2" });
-				  rowGaze.appendChild(numberField("gaze.x", d.gaze.x, v => d.gaze.x = v, 1));
-				  rowGaze.appendChild(numberField("gaze.y", d.gaze.y, v => d.gaze.y = v, 1));
-				  box.appendChild(rowGaze);
-
-				  box.appendChild(el("div", { class: "check-row" }, [
-					      checkField("flip_x", d.flip_x, v => { d.flip_x = v; renderStage(); }),
-					      checkField("reverse", d.reverse, v => d.reverse = v),
-					      checkField("skip_transition", d.skip_transition, v => d.skip_transition = v),
-					    ]));
-
-				  box.appendChild(el("div", { class: "btnbar" }, [
-					      el("button", { onclick: () => { draftSegment = null; renderAll(); } }, "Annuler"),
-					      el("button", {
-						            class: "primary", onclick: () => {
-								            const payload = {
-										              position: d.position, from: { ...d.from }, to: { ...d.to },
-										              duration_seconds: d.duration_seconds, skip_transition: d.skip_transition,
-										              reverse: d.reverse, flip_x: d.flip_x, gaze: { ...d.gaze }
-										            };
-								            if (d.__isNew) mv.segments.push(payload);
-								            else mv.segments[d.__index] = payload;
-								            draftSegment = null;
-								            renderAll();
-								          }
-						          }, "Enregistrer le segment")
-					    ]));
-
-				  return box;
-			}
-
-				/* ---- petits helpers de champ ---- */
-				function labeled(labelText, node) {
-					  const wrap = el("label", { class: "field" });
-					  wrap.appendChild(el("span", {}, labelText));
-					  wrap.appendChild(node);
-					  return wrap;
-				}
-			function numberField(labelText, value, onChange, step) {
-				  const inp = el("input", { type: "number", step: step || "any", value });
-				  inp.addEventListener("input", () => onChange(parseFloat(inp.value) || 0));
-				  return labeled(labelText, inp);
-			}
-			function textField(value, onChange) {
-				  const inp = el("input", { type: "text", value: value || "" });
-				  inp.addEventListener("input", () => onChange(inp.value));
-				  return inp;
-			}
-			function selectField(options, value, onChange) {
-				  const sel = el("select", {}, options.map(o => el("option", { value: o, ...(o === value ? { selected: "selected" } : {}) }, o)));
-				  sel.addEventListener("change", () => onChange(sel.value));
-				  return sel;
-			}
-			function checkField(labelText, checked, onChange) {
-				  const inp = el("input", { type: "checkbox" });
-				  inp.checked = !!checked;
-				  inp.addEventListener("change", () => onChange(inp.checked));
-				  const lbl = el("label", {}, [inp, document.createTextNode(" " + labelText)]);
-				  return lbl;
-			}
-
-				/* ============================== GÉNÉRATION / SAUVEGARDE ============================== */
-
-				function buildExportPayload() {
-					  // clone profond + nettoyage des clés internes utilisées par l'UI
-						  const out = JSON.parse(JSON.stringify(state));
-					  out.output.resolution = [RES[0], RES[1]];
-					  return out;
-				}
-
-			document.getElementById("btnGenerate").addEventListener("click", () => {
-				  const modal = document.getElementById("saveModal");
-				  const defaultName = (state.episode_id || "episode") + "-settings.json";
-				  document.getElementById("saveFilename").value = defaultName;
-				  modal.classList.remove("hidden");
-			});
-			document.getElementById("saveCancel").addEventListener("click", () => {
-				  document.getElementById("saveModal").classList.add("hidden");
-			});
-			document.getElementById("saveConfirm").addEventListener("click", async () => {
-				  const filename = document.getElementById("saveFilename").value.trim();
-				  if (!filename) return;
-				  try {
-					      const res = await api("/api/save", {
-						            method: "POST", headers: { "Content-Type": "application/json" },
-						            body: JSON.stringify({ filename, data: buildExportPayload() })
-						          });
-					      setStatus("Enregistré → " + res.path);
-					      document.getElementById("saveModal").classList.add("hidden");
-					    } catch (e) {
-						        setStatus("Erreur d'enregistrement: " + e.message);
-						      }
-			});
-
-			/* ============================== RENDER GLOBAL ============================== */
-
-				function renderAll() {
-					  renderElementList();
-					  renderStage();
-					  renderInspector();
-				}
-
-				/* ============================== INIT ============================== */
-
-				rebuildStageSize();
-			bindTopbar();
-			loadInitialData();
-		</script>
-	</body>
-</html>>
+</html>
