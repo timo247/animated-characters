@@ -1,6 +1,6 @@
 {
-  "character_id": "bird",
-  "label": "Bird",
+  "character_id": "spider",
+  "label": "Spider",
 
   "_notes": {
     "coordinates":  "x, y = coin supérieur gauche de l'overlay dans l'image de base ORIGINALE (non scalée), pixels, convention Figma. Multipliés automatiquement par `scale` du personnage.",
@@ -163,7 +163,7 @@
       "transitions": {
         "frames": ["TRANSITION-1.png"],
         "fps": 3,
-        "flip_x": true,
+        "flip_x": false,
 
         "default": {
           "eye_layers": {
@@ -184,7 +184,7 @@
       "moves": {
         "frames": ["MOVE-1.png", "MOVE-2.png", "MOVE-3.png"],
         "fps": 3,
-        "flip_x": true,
+        "flip_x": false,
         "default": {
           "eye_layers": {
             "anchor":   { "x": 295, "y": 484 },
