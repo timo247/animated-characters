@@ -1,0 +1,170 @@
+{
+  "episode_id": "episode-test-decors-2",
+  "output": {
+    "filename": "episode-test-decors-2.mp4",
+    "duration_seconds": 10,
+    "fps": 24,
+    "resolution": [
+      1920,
+      1080
+    ]
+  },
+  "background": {
+    "image": "test-background-2.png"
+  },
+  "audio": "",
+  "camera": {
+    "zoom": 1,
+    "x": 960,
+    "y": 540,
+    "timeline": [
+      {
+        "at_second": 0,
+        "zoom": 1,
+        "x": 960,
+        "y": 540
+      }
+    ]
+  },
+  "characters": [
+    {
+      "id": "spider",
+      "character": "spider",
+      "position": "2",
+      "screen_position": {
+        "x": 356,
+        "y": 482
+      },
+      "scale": 0.35,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": 10,
+        "y": 0
+      },
+      "moves": [
+        {
+          "at_second": 1,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "2",
+              "from": {
+                "x": 356,
+                "y": 482
+              },
+              "to": {
+                "x": 1056,
+                "y": 486
+              },
+              "duration_seconds": 2.5,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": false,
+              "gaze": {
+                "x": 10,
+                "y": 0
+              }
+            },
+            {
+              "position": "2",
+              "from": {
+                "x": 1056,
+                "y": 486
+              },
+              "to": {
+                "x": 1056,
+                "y": 486
+              },
+              "duration_seconds": 0,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    },
+    {
+      "id": "antilope-2",
+      "character": "bird",
+      "position": "1",
+      "screen_position": {
+        "x": 122,
+        "y": 494
+      },
+      "scale": 0.4,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "UNHAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": 10,
+        "y": 0
+      },
+      "moves": [
+        {
+          "at_second": 0.1,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "1",
+              "from": {
+                "x": 122,
+                "y": 494
+              },
+              "to": {
+                "x": 1166,
+                "y": 392
+              },
+              "duration_seconds": 2.5,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    }
+  ],
+  "decors": [
+  {
+    "id": "tree1",
+    "decor": "big-tree",
+    "color": "GREEN",
+    "screen_position": { "x": 294, "y": -18 },
+    "scale": 1.64,
+    "flip_x": false,
+    "layer": 20
+  },
+  {
+    "id": "grass1",
+    "decor": "grass-1",
+    "color": "GREEN",
+    "screen_position": { "x": 0, "y": 365 },
+    "scale": 2.27,
+    "flip_x": false,
+    "layer": 30
+  }
+]
+}

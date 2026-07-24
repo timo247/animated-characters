@@ -73,7 +73,16 @@ PROJECT_ROOT        = Path(__file__).parent.resolve()
 EPISODES_IMAGES_DIR = PROJECT_ROOT / "episodes" / "images"
 EPISODES_AUDIO_DIR  = PROJECT_ROOT / "episodes" / "audio"
 CHARACTERS_DIR      = PROJECT_ROOT / "characters"
+DECORS_DIR          = PROJECT_ROOT / "decors"
 DEFAULT_OUTPUT_DIR  = PROJECT_ROOT / "episodes" / "videos"
+
+# Layer par defaut (profondeur de composition) quand "layer" n'est pas
+# precise sur un personnage / decor dans l'episode. Plus la valeur est
+# haute, plus l'element est dessine tard, donc au premier plan. Les
+# personnages sont par defaut devant tous les decors ; deux elements de
+# meme layer sont dessines dans leur ordre d'apparition dans l'episode.
+DEFAULT_CHARACTER_LAYER = 100
+DEFAULT_DECOR_LAYER     = 0
 
 IDLE           = "idle"
 TRANSITION_OUT = "transition_out"
@@ -130,6 +139,12 @@ def load_character_settings(character_id):
     path = CHARACTERS_DIR / character_id / "character-settings.json"
     if not path.exists():
         sys.exit(f"[ERREUR] character-settings.json introuvable : {path}")
+    return load_json(path)
+
+def load_decor_settings(decor_id):
+    path = DECORS_DIR / decor_id / "decor-settings.json"
+    if not path.exists():
+        sys.exit(f"[ERREUR] decor-settings.json introuvable : {path}")
     return load_json(path)
 
 
@@ -195,6 +210,16 @@ def resolve_flip_x(flip_cfg, phase):
 
 def pos_dir(character_id, position):
     return CHARACTERS_DIR / character_id / "positions" / str(position)
+
+def decor_frame_path(decor_id, color, filename):
+    """
+    Chemin vers un sprite de décor.
+    decors/{decor_id}/idles/{COLOR}/{filename}
+
+    Un décor n'a ni positions ni transitions/moves — uniquement un idle,
+    et une variante par couleur (a la place de l'emotion des personnages).
+    """
+    return DECORS_DIR / decor_id / "idles" / color / filename
 
 def eye_layer_path(character_id, position, state, emotion, layer_filename):
     """
@@ -290,6 +315,26 @@ def build_gaze_sequence(gaze_cfg, gaze_timeline, total_frames, fps):
             for f in range(f_start, total_frames):
                 seq[f] = (x0, y0)
 
+    return seq
+
+
+def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps):
+    """
+    Sequence idle (ping-pong) frame par frame pour un décor.
+    Meme logique que le ping-pong idle des personnages (build_move_timeline),
+    mais un décor n'a qu'un seul etat : pas de transitions/moves, pas de
+    position, donc pas de machine a etats necessaire.
+    """
+    hold      = max(1, round(video_fps / fps_cfg))
+    ping_pong = frames + frames[-2:0:-1]
+    seq = []
+    idx, ctr = 0, 0
+    for _ in range(total_frames):
+        seq.append(ping_pong[idx % len(ping_pong)])
+        ctr += 1
+        if ctr >= hold:
+            ctr = 0
+            idx += 1
     return seq
 
 
@@ -936,6 +981,22 @@ def composite_character(
     return base
 
 
+def composite_decor(decor_id, color, sprite_file, scale, flip_x, rotation=0.0):
+    """
+    Charge et transforme le sprite idle d'un décor.
+
+    Contrairement a composite_character, il n'y a ici ni overlays (yeux /
+    bouche), ni position, ni gaze : un décor est un unique sprite de base
+    par frame idle, decline par couleur, transforme (scale/flip/rotation)
+    et colle tel quel sur la frame.
+    """
+    path = decor_frame_path(decor_id, color, sprite_file)
+    if not path.exists():
+        sys.exit(f"[ERREUR] Sprite décor introuvable : {path}")
+    img = Image.open(path).convert("RGBA")
+    return transform_img(img, scale, flip_x, rotation)
+
+
 # ---------------------------------------------------------------------------
 # Rendu
 # ---------------------------------------------------------------------------
@@ -1013,6 +1074,8 @@ def render_frames(episode, frames_dir, visemes_data=None):
             print(f"  [INFO] {character_id} -> changement de position : {positions_used}")
 
         char_data.append({
+            "kind":             "character",
+            "layer":            float(char_cfg.get("layer", DEFAULT_CHARACTER_LAYER)),
             "cfg":              char_cfg,
             "settings":         char_settings,
             "timeline":         timeline,
@@ -1026,11 +1089,62 @@ def render_frames(episode, frames_dir, visemes_data=None):
             "ep_gaze_invert_y": ep_gaze_invert_y,
         })
 
+    # Décors : élément statique (pas de position, pas de moves), un seul
+    # état idle, une variante par couleur (à la place de l'émotion).
+    # "layer" optionnel (comme pour les personnages) : profondeur de
+    # composition, cf. DEFAULT_CHARACTER_LAYER / DEFAULT_DECOR_LAYER.
+    decor_data = []
+    for decor_cfg in episode.get("decors", []):
+        decor_id       = decor_cfg["decor"]
+        decor_settings = load_decor_settings(decor_id)
+        idle_cfg       = decor_settings["idle"]
+        color          = decor_cfg["color"]
+
+        if color not in idle_cfg.get("colors", {}):
+            sys.exit(f"[ERREUR] Couleur '{color}' introuvable pour le décor '{decor_id}'.")
+
+        frames  = idle_cfg["colors"][color]["frames"]
+        fps_cfg = idle_cfg.get("fps", 8)
+
+        decor_data.append({
+            "kind":       "decor",
+            "layer":      float(decor_cfg.get("layer", DEFAULT_DECOR_LAYER)),
+            "cfg":        decor_cfg,
+            "sprite_seq": build_decor_idle_sequence(frames, fps_cfg, total_frames, fps),
+        })
+
+    if decor_data:
+        print(f"  [INFO] Décors : {[d['cfg']['decor'] for d in decor_data]}")
+
+    # Ordre de composition : tri stable par layer croissant (arrière-plan ->
+    # premier plan). A layer egal, l'ordre d'apparition dans char_data/
+    # decor_data est conserve (les personnages, ajoutes en premier, passent
+    # donc devant les decors de meme layer).
+    render_order = sorted(char_data + decor_data, key=lambda e: e["layer"])
+    if any(e["layer"] != DEFAULT_CHARACTER_LAYER for e in char_data) or \
+       any(e["layer"] != DEFAULT_DECOR_LAYER for e in decor_data):
+        print(f"  [INFO] Ordre de composition (layers) : "
+              f"{[(e['kind'], e['cfg'].get('character', e['cfg'].get('decor')), e['layer']) for e in render_order]}")
+
     pad = len(str(total_frames))
     for f in range(total_frames):
         frame = background.copy()
 
-        for cd in char_data:
+        for entry in render_order:
+            if entry["kind"] == "decor":
+                decor_cfg = entry["cfg"]
+                sprite = composite_decor(
+                    decor_id    = decor_cfg["decor"],
+                    color       = decor_cfg["color"],
+                    sprite_file = entry["sprite_seq"][f],
+                    scale       = float(decor_cfg.get("scale", 1.0)),
+                    flip_x      = bool(decor_cfg.get("flip_x", False)),
+                    rotation    = float(decor_cfg.get("rotation", 0.0)),
+                )
+                frame.paste(sprite, (decor_cfg["screen_position"]["x"], decor_cfg["screen_position"]["y"]), sprite)
+                continue
+
+            cd          = entry
             char_cfg    = cd["cfg"]
             tl          = cd["timeline"][f]
             flip_phase  = tl.get("flip_phase", "idle_before")
@@ -1229,6 +1343,8 @@ def main():
     print(f"  Duree       : {episode['output']['duration_seconds']}s")
     print(f"  Sortie      : {output_path}")
     print(f"  Personnages : {[c['character'] for c in episode['characters']]}")
+    if episode.get("decors"):
+        print(f"  Décors      : {[d['decor'] for d in episode['decors']]}")
     print(f"  Speakers    : {speakers}")
     if visemes_data:
         print(f"  Visemes     : {args.visemes}")

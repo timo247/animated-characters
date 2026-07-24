@@ -1,0 +1,12 @@
+{
+  "decor_id": "big-tree",
+  "label": "Big tree",
+  "idle": {
+    "fps": 3,
+    "colors": {
+      "GREEN":  { "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"] },
+      "DRY": { "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"] },
+      "NIGHT": { "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"] }
+    }
+  }
+}
