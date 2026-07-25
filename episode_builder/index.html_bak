@@ -125,6 +125,8 @@
 
   <div id="topbar">
     <span class="brand">EPISODE BUILDER</span>
+    <button id="btnImport">📂 Importer un episode-settings.json</button>
+    <input type="file" id="importFileInput" accept=".json,application/json" class="hidden">
     <label class="tb-field"><span>episode_id</span>
       <input id="f_episode_id" placeholder="episode-xxx" style="width:170px"></label>
     <label class="tb-field"><span>output filename</span>
@@ -275,6 +277,107 @@ async function getCharacterData(name) {
   return data;
 }
 
+/* ============================== IMPORT D'UN EPISODE-SETTINGS.JSON EXISTANT ============================== */
+
+function normalizeSegment(seg) {
+  const out = {
+    position: String(seg.position ?? "1"),
+    from: { x: Number(seg.from?.x ?? 0), y: Number(seg.from?.y ?? 0) },
+    to: { x: Number(seg.to?.x ?? 0), y: Number(seg.to?.y ?? 0) },
+    duration_seconds: Number(seg.duration_seconds ?? 1.5),
+    skip_transition: !!seg.skip_transition,
+    reverse: !!seg.reverse,
+    flip_x: !!seg.flip_x,
+  };
+  // gaze est un champ conditionnel : on ne le porte que s'il était présent
+  if (seg.gaze && typeof seg.gaze === "object") {
+    out.gaze = { x: Number(seg.gaze.x ?? 0), y: Number(seg.gaze.y ?? 0) };
+  }
+  return out;
+}
+
+function normalizeCharacter(c) {
+  return {
+    id: c.id || (c.character || "char"),
+    character: c.character || "",
+    position: String(c.position ?? "1"),
+    screen_position: { x: Number(c.screen_position?.x ?? 0), y: Number(c.screen_position?.y ?? 0) },
+    scale: Number(c.scale ?? 1.0),
+    overlay_scale: Number(c.overlay_scale ?? 1.0),
+    flip_x: !!c.flip_x,
+    emotions: { eyes: c.emotions?.eyes || "HAPPY", mouth: c.emotions?.mouth || "HAPPY" },
+    speaker: c.speaker || "",
+    gaze: { x: Number(c.gaze?.x ?? 0), y: Number(c.gaze?.y ?? 0) },
+    moves: (c.moves || []).map(mv => ({
+      at_second: Number(mv.at_second ?? 0),
+      transition_fps: Number(mv.transition_fps ?? 8),
+      move_fps: Number(mv.move_fps ?? 10),
+      segments: (mv.segments || []).map(normalizeSegment)
+    })),
+    dialogue: c.dialogue ?? null
+  };
+}
+
+async function importEpisodeSettings(json) {
+  if (!json || typeof json !== "object") throw new Error("JSON invalide");
+
+  const resolution = Array.isArray(json.output?.resolution) && json.output.resolution.length === 2
+    ? json.output.resolution.map(Number) : [1920, 1080];
+
+  state.episode_id = json.episode_id || "";
+  state.output = {
+    filename: json.output?.filename || "",
+    duration_seconds: Number(json.output?.duration_seconds ?? 10),
+    fps: Number(json.output?.fps ?? 24),
+    resolution
+  };
+  RES = resolution;
+  state.background = { image: json.background?.image || "" };
+  state.audio = json.audio || "";
+
+  const camSrc = json.camera || {};
+  let timeline = Array.isArray(camSrc.timeline) ? camSrc.timeline.map(kf => ({
+    at_second: Number(kf.at_second ?? 0), zoom: Number(kf.zoom ?? 1),
+    x: Number(kf.x ?? RES[0] / 2), y: Number(kf.y ?? RES[1] / 2)
+  })) : [];
+  if (timeline.length === 0) {
+    timeline = [{ at_second: 0, zoom: Number(camSrc.zoom ?? 1), x: Number(camSrc.x ?? RES[0] / 2), y: Number(camSrc.y ?? RES[1] / 2) }];
+  }
+  state.camera = { zoom: Number(camSrc.zoom ?? 1), x: Number(camSrc.x ?? RES[0] / 2), y: Number(camSrc.y ?? RES[1] / 2), timeline };
+
+  state.characters = (json.characters || []).map(normalizeCharacter);
+
+  // précharge les character-settings.json des personnages utilisés (aperçus sprites)
+  const names = [...new Set(state.characters.map(c => c.character).filter(Boolean))];
+  await Promise.all(names.map(n => getCharacterData(n).catch(() => null)));
+
+  selection = { type: "camera", index: null };
+  cameraKeyIndex = 0;
+  draftSegment = null;
+
+  rebuildStageSize();
+  refreshTopbarFields();
+  renderAll();
+}
+
+document.getElementById("btnImport").addEventListener("click", () => {
+  document.getElementById("importFileInput").click();
+});
+document.getElementById("importFileInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ""; // permet de réimporter le même fichier plus tard
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    await importEpisodeSettings(json);
+    setStatus("Importé : " + file.name);
+  } catch (err) {
+    setStatus("Erreur d'import : " + err.message);
+    alert("Impossible d'importer ce fichier : " + err.message);
+  }
+});
+
 /* ============================== TOPBAR BINDING ============================== */
 
 function bindTopbar() {
@@ -315,6 +418,29 @@ function rebuildStageSize() {
   const stage = document.getElementById("stage");
   stage.style.width = STAGE_W + "px";
   stage.style.height = (RES[1] * scaleFactor) + "px";
+}
+
+function ensureOption(selectEl, value) {
+  if (!value) return;
+  const exists = Array.from(selectEl.options).some(o => o.value === value);
+  if (!exists) selectEl.appendChild(el("option", { value }, value + " (introuvable)"));
+}
+
+function refreshTopbarFields() {
+  document.getElementById("f_episode_id").value = state.episode_id || "";
+  document.getElementById("f_output_filename").value = state.output.filename || "";
+  document.getElementById("f_duration").value = state.output.duration_seconds;
+  document.getElementById("f_fps").value = state.output.fps;
+  document.getElementById("f_res_w").value = RES[0];
+  document.getElementById("f_res_h").value = RES[1];
+
+  const bgSel = document.getElementById("f_background");
+  ensureOption(bgSel, state.background.image);
+  bgSel.value = state.background.image || "";
+
+  const audSel = document.getElementById("f_audio");
+  ensureOption(audSel, state.audio);
+  audSel.value = state.audio || "";
 }
 
 /* ============================== LISTE DES ÉLÉMENTS (sidebar gauche) ============================== */
@@ -469,6 +595,21 @@ function renderCharacterOverlay() {
   }
 }
 
+const spriteDimsCache = {}; // preview_url -> {w, h} en pixels natifs
+function loadImageNaturalSize(url) {
+  if (spriteDimsCache[url]) return Promise.resolve(spriteDimsCache[url]);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const dims = { w: img.naturalWidth, h: img.naturalHeight };
+      spriteDimsCache[url] = dims;
+      resolve(dims);
+    };
+    img.onerror = () => resolve({ w: 160, h: 240 }); // fallback si l'image ne charge pas
+    img.src = url;
+  });
+}
+
 async function renderDraggableSprite(c, position, posObj, flipX, onMove, tag) {
   const stage = document.getElementById("stage");
   let data;
@@ -476,19 +617,23 @@ async function renderDraggableSprite(c, position, posObj, flipX, onMove, tag) {
   const posData = data.positions[position];
   const previewUrl = posData && posData.idle && posData.idle.preview_url;
 
+  // Dimensions réelles du sprite (pixels natifs, non scalés) : la boîte doit
+  // représenter l'empreinte exacte que produira le rendu final (image native × scale).
+  const dims = previewUrl ? await loadImageNaturalSize(previewUrl) : { w: 160, h: 240 };
+
   // évite les doublons si l'utilisateur a changé de sélection entre-temps
   if (!(selection.type === "character" && state.characters[selection.index] === c)) return;
   document.querySelectorAll(".sprite-drag").forEach(n => n.remove());
 
-  const DEFAULT_W = 160, DEFAULT_H = 240; // taille d'affichage approx. si dimensions réelles inconnues
-  const w = DEFAULT_W * (c.scale || 1);
-  const h = DEFAULT_H * (c.scale || 1);
+  const w = dims.w * (c.scale || 1);
+  const h = dims.h * (c.scale || 1);
 
   const box = el("div", { class: "sprite-drag" });
   box.style.left = px(posObj.x); box.style.top = px(posObj.y);
   box.style.width = px(w); box.style.height = px(h);
   if (flipX) box.style.transform = "scaleX(-1)";
-  box.appendChild(el("div", { class: "tag" }, `${c.character} · pos ${position} · ${tag}`));
+  box.appendChild(el("div", { class: "tag" },
+    `${c.character} · pos ${position} · ${tag} · ${Math.round(w)}×${Math.round(h)}px`));
   if (previewUrl) {
     box.appendChild(el("img", { src: previewUrl, draggable: "false" }));
   } else {
@@ -683,6 +828,7 @@ function buildMoveBlock(c, mv, mi) {
     const row = el("div", { class: "seg-row" + (isEditing ? " active" : "") });
     row.appendChild(el("div", { class: "lbl" },
       `#${si + 1} pos ${seg.position} → (${Math.round(seg.to.x)},${Math.round(seg.to.y)})` +
+      (seg.gaze ? ` · gaze(${seg.gaze.x},${seg.gaze.y})` : "") +
       (seg.skip_transition ? " · skip_transition" : "") + (seg.reverse ? " · reverse" : "")));
     row.appendChild(el("button", { onclick: () => startEditSegment(c, mv, si) }, "éditer"));
     row.appendChild(el("button", {
@@ -720,6 +866,7 @@ function startNewSegment(c, mv) {
     skip_transition: false,
     reverse: false,
     flip_x: c.flip_x,
+    hasGaze: false,
     gaze: { x: 0, y: 0 }
   };
   renderAll();
@@ -727,6 +874,7 @@ function startNewSegment(c, mv) {
 
 function startEditSegment(c, mv, si) {
   const seg = mv.segments[si];
+  const hasGaze = !!(seg.gaze && typeof seg.gaze === "object");
   draftSegment = {
     __move: mv, __index: si, __isNew: false,
     position: seg.position,
@@ -735,7 +883,8 @@ function startEditSegment(c, mv, si) {
     skip_transition: !!seg.skip_transition,
     reverse: !!seg.reverse,
     flip_x: !!seg.flip_x,
-    gaze: { ...(seg.gaze || { x: 0, y: 0 }) }
+    hasGaze,
+    gaze: { ...(hasGaze ? seg.gaze : { x: 0, y: 0 }) }
   };
   renderAll();
 }
@@ -758,10 +907,17 @@ function buildSegmentEditor(c, mv) {
 
   box.appendChild(numberField("duration_seconds", d.duration_seconds, v => d.duration_seconds = v, 0.1));
 
-  const rowGaze = el("div", { class: "row2" });
-  rowGaze.appendChild(numberField("gaze.x", d.gaze.x, v => d.gaze.x = v, 1));
-  rowGaze.appendChild(numberField("gaze.y", d.gaze.y, v => d.gaze.y = v, 1));
-  box.appendChild(rowGaze);
+  box.appendChild(el("div", { class: "check-row" }, [
+    checkField("définir gaze", d.hasGaze, v => { d.hasGaze = v; refreshInspector(); })
+  ]));
+  if (d.hasGaze) {
+    const rowGaze = el("div", { class: "row2" });
+    rowGaze.appendChild(numberField("gaze.x", d.gaze.x, v => d.gaze.x = v, 1));
+    rowGaze.appendChild(numberField("gaze.y", d.gaze.y, v => d.gaze.y = v, 1));
+    box.appendChild(rowGaze);
+  } else {
+    box.appendChild(el("div", { class: "hint" }, "gaze non défini pour ce segment (clé absente à l'export)."));
+  }
 
   box.appendChild(el("div", { class: "check-row" }, [
     checkField("flip_x", d.flip_x, v => { d.flip_x = v; renderStage(); }),
@@ -776,8 +932,9 @@ function buildSegmentEditor(c, mv) {
         const payload = {
           position: d.position, from: { ...d.from }, to: { ...d.to },
           duration_seconds: d.duration_seconds, skip_transition: d.skip_transition,
-          reverse: d.reverse, flip_x: d.flip_x, gaze: { ...d.gaze }
+          reverse: d.reverse, flip_x: d.flip_x
         };
+        if (d.hasGaze) payload.gaze = { ...d.gaze };
         if (d.__isNew) mv.segments.push(payload);
         else mv.segments[d.__index] = payload;
         draftSegment = null;

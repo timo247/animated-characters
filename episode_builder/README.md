@@ -47,9 +47,19 @@ standard de Python 3.
      Ajoute des **mouvements** (bouton "+ Ajouter un mouvement"), puis dans
      chaque mouvement des **segments** ("+ Ajouter un segment") : choisis la
      position, fais glisser le sprite pour fixer le point d'arrivée, règle
-     la durée, `flip_x`, `reverse`, `skip_transition`, `gaze`, puis clique
+     la durée, `flip_x`, `reverse`, `skip_transition`, coche "définir gaze"
+     si besoin (champ optionnel — absent du JSON si non coché), puis clique
      "Enregistrer le segment".
-4. En bas : "Générer episode-settings.json" ouvre une fenêtre pour choisir
+   - **Décor** : choisis le décor (liste tirée de `decors/`), sa couleur de
+     variante (`GREEN`/`DRY`/`NIGHT`, découverte automatiquement depuis les
+     sous-dossiers `decors/<nom>/idles/<COULEUR>/`), fais glisser son sprite
+     pour le positionner. Un décor est un élément statique : pas de
+     position/émotion, pas de mouvements — juste `screen_position`, `scale`,
+     `flip_x` et `layer` (ordre d'empilement).
+4. Bouton **📂 Importer un episode-settings.json** en haut à gauche : charge
+   un fichier existant et pré-remplit tous les champs (caméra, personnages,
+   décors).
+5. En bas : "Générer episode-settings.json" ouvre une fenêtre pour choisir
    le nom du fichier. Il est enregistré dans `episodes/episodes-settings/`.
 
 ## Limites connues (MVP)

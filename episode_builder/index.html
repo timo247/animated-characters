@@ -149,6 +149,7 @@
     <h3>Éléments</h3>
     <div id="elementList"></div>
     <button id="btnAddCharacter" style="width:100%">+ Ajouter un personnage</button>
+    <button id="btnAddDecor" style="width:100%;margin-top:6px">+ Ajouter un décor</button>
   </div>
 
   <div id="canvasWrap">
@@ -202,13 +203,16 @@ const state = {
     zoom: 1.0, x: RES[0] / 2, y: RES[1] / 2,
     timeline: [{ at_second: 0.0, zoom: 1.0, x: RES[0] / 2, y: RES[1] / 2 }]
   },
-  characters: []
+  characters: [],
+  decors: []
 };
 
 let selection = { type: null, index: null };      // {type:'camera'} | {type:'character', index}
 let cameraKeyIndex = 0;                             // keyframe caméra en cours d'édition
 let characterCache = {};                            // nom -> data /api/character/<name>
 let charactersAvailable = [];
+let decorCache = {};                                // nom -> data /api/decor/<name>
+let decorsAvailable = [];
 let draftSegment = null;                            // segment en cours d'édition (avant "Enregistrer")
 
 /* ============================== UTILS ============================== */
@@ -241,6 +245,14 @@ function newCharacterId(charName) {
   return id;
 }
 
+function newDecorId(decorName) {
+  let n = 1;
+  let id = decorName;
+  const used = new Set(state.decors.map(d => d.id));
+  while (used.has(id)) { n += 1; id = decorName + "-" + n; }
+  return id;
+}
+
 /* ============================== CHARGEMENT INITIAL ============================== */
 
 async function loadInitialData() {
@@ -248,6 +260,11 @@ async function loadInitialData() {
     const chars = await api("/api/characters");
     charactersAvailable = chars.characters;
   } catch (e) { setStatus("Erreur /api/characters: " + e.message); }
+
+  try {
+    const decs = await api("/api/decors");
+    decorsAvailable = decs.decors;
+  } catch (e) { setStatus("Erreur /api/decors: " + e.message); }
 
   try {
     const bgs = await api("/api/backgrounds");
@@ -274,6 +291,13 @@ async function getCharacterData(name) {
   if (characterCache[name]) return characterCache[name];
   const data = await api("/api/character/" + encodeURIComponent(name));
   characterCache[name] = data;
+  return data;
+}
+
+async function getDecorData(name) {
+  if (decorCache[name]) return decorCache[name];
+  const data = await api("/api/decor/" + encodeURIComponent(name));
+  decorCache[name] = data;
   return data;
 }
 
@@ -318,6 +342,18 @@ function normalizeCharacter(c) {
   };
 }
 
+function normalizeDecor(d) {
+  return {
+    id: d.id || (d.decor || "decor"),
+    decor: d.decor || "",
+    color: d.color || "GREEN",
+    screen_position: { x: Number(d.screen_position?.x ?? 0), y: Number(d.screen_position?.y ?? 0) },
+    scale: Number(d.scale ?? 1.0),
+    flip_x: !!d.flip_x,
+    layer: Number(d.layer ?? 0)
+  };
+}
+
 async function importEpisodeSettings(json) {
   if (!json || typeof json !== "object") throw new Error("JSON invalide");
 
@@ -350,6 +386,10 @@ async function importEpisodeSettings(json) {
   // précharge les character-settings.json des personnages utilisés (aperçus sprites)
   const names = [...new Set(state.characters.map(c => c.character).filter(Boolean))];
   await Promise.all(names.map(n => getCharacterData(n).catch(() => null)));
+
+  state.decors = (json.decors || []).map(normalizeDecor);
+  const decorNames = [...new Set(state.decors.map(d => d.decor).filter(Boolean))];
+  await Promise.all(decorNames.map(n => getDecorData(n).catch(() => null)));
 
   selection = { type: "camera", index: null };
   cameraKeyIndex = 0;
@@ -471,6 +511,20 @@ function renderElementList() {
     ]);
     list.appendChild(item);
   });
+
+  state.decors.forEach((d, i) => {
+    const item = el("div", {
+      class: "el-item" + (selection.type === "decor" && selection.index === i ? " active" : ""),
+      onclick: () => selectElement("decor", i)
+    }, [
+      el("div", { class: "dot", style: "background:var(--ok)" }),
+      el("div", { class: "name" }, `🌳 ${d.decor || "?"} (${d.id})`),
+      el("div", {
+        class: "del", html: "✕", onclick: (ev) => { ev.stopPropagation(); removeDecor(i); }
+      })
+    ]);
+    list.appendChild(item);
+  });
 }
 
 function selectElement(type, index) {
@@ -520,6 +574,41 @@ function removeCharacter(i) {
 
 document.getElementById("btnAddCharacter").addEventListener("click", () => addCharacter());
 
+async function addDecor(name) {
+  name = name || decorsAvailable[0];
+  if (!name) { setStatus("Aucun décor disponible dans decors/"); return; }
+  let data;
+  try { data = await getDecorData(name); }
+  catch (e) { setStatus("Erreur chargement décor: " + e.message); return; }
+
+  const colors = Object.keys(data.colors);
+  const firstColor = colors[0] || "GREEN";
+
+  const d = {
+    id: newDecorId(name),
+    decor: name,
+    color: firstColor,
+    screen_position: { x: 0, y: 0 },
+    scale: 1.0,
+    flip_x: false,
+    layer: 0
+  };
+  state.decors.push(d);
+  selection = { type: "decor", index: state.decors.length - 1 };
+  renderAll();
+}
+
+function removeDecor(i) {
+  state.decors.splice(i, 1);
+  if (selection.type === "decor") {
+    if (state.decors.length === 0) selection = { type: "camera", index: null };
+    else selection.index = clamp(selection.index, 0, state.decors.length - 1);
+  }
+  renderAll();
+}
+
+document.getElementById("btnAddDecor").addEventListener("click", () => addDecor());
+
 /* ============================== STAGE (canvas central) ============================== */
 
 function renderStage() {
@@ -541,6 +630,7 @@ function renderStage() {
 
   if (selection.type === "camera") renderCameraOverlay();
   else if (selection.type === "character") renderCharacterOverlay();
+  else if (selection.type === "decor") renderDecorOverlay();
 }
 
 function px(v) { return (v * scaleFactor) + "px"; }
@@ -654,6 +744,51 @@ async function renderDraggableSprite(c, position, posObj, flipX, onMove, tag) {
   });
 }
 
+async function renderDecorOverlay() {
+  const d = state.decors[selection.index];
+  if (!d) return;
+  const stage = document.getElementById("stage");
+  let data;
+  try { data = await getDecorData(d.decor); } catch (e) { return; }
+  const colorData = data.colors[d.color];
+  const previewUrl = colorData && colorData.preview_url;
+
+  const dims = previewUrl ? await loadImageNaturalSize(previewUrl) : { w: 160, h: 160 };
+
+  // évite les doublons si l'utilisateur a changé de sélection entre-temps
+  if (!(selection.type === "decor" && state.decors[selection.index] === d)) return;
+  document.querySelectorAll(".sprite-drag").forEach(n => n.remove());
+
+  const w = dims.w * (d.scale || 1);
+  const h = dims.h * (d.scale || 1);
+
+  const box = el("div", { class: "sprite-drag" });
+  box.style.left = px(d.screen_position.x); box.style.top = px(d.screen_position.y);
+  box.style.width = px(w); box.style.height = px(h);
+  box.style.borderColor = "var(--ok)";
+  if (d.flip_x) box.style.transform = "scaleX(-1)";
+  box.appendChild(el("div", { class: "tag", style: "background:var(--ok);color:#0e1a12" },
+    `${d.decor} · ${d.color} · layer ${d.layer} · ${Math.round(w)}×${Math.round(h)}px`));
+  if (previewUrl) {
+    box.appendChild(el("img", { src: previewUrl, draggable: "false" }));
+  } else {
+    box.appendChild(el("div", {
+      style: "width:100%;height:100%;display:flex;align-items:center;justify-content:center;" +
+             "color:var(--text-dim);font-size:11px;text-align:center;padding:6px;"
+    }, "pas d'aperçu idle disponible pour cette couleur"));
+  }
+  stage.appendChild(box);
+
+  makeDraggable(box, {
+    onMove: (dxPx, dyPx) => {
+      d.screen_position.x = Math.round(clamp(d.screen_position.x + dxPx / scaleFactor, -w, RES[0]));
+      d.screen_position.y = Math.round(clamp(d.screen_position.y + dyPx / scaleFactor, -h, RES[1]));
+      box.style.left = px(d.screen_position.x); box.style.top = px(d.screen_position.y);
+      refreshInspector();
+    }
+  });
+}
+
 function makeDraggable(node, { onMove, onResize }) {
   node.addEventListener("mousedown", (e) => {
     const rect = node.getBoundingClientRect();
@@ -684,6 +819,7 @@ function renderInspector() {
   root.innerHTML = "";
   if (selection.type === "camera") root.appendChild(buildCameraInspector());
   else if (selection.type === "character") root.appendChild(buildCharacterInspector());
+  else if (selection.type === "decor") root.appendChild(buildDecorInspector());
   else root.appendChild(el("div", { class: "placeholder" }, "Sélectionne un élément."));
 }
 
@@ -785,6 +921,50 @@ function buildCharacterInspector() {
   ]));
 
   wrap.appendChild(buildMovesEditor(c));
+
+  return wrap;
+}
+
+/* ---- Décor ---- */
+function buildDecorInspector() {
+  const d = state.decors[selection.index];
+  const wrap = document.createElement("div");
+
+  wrap.appendChild(el("h3", {}, "Décor"));
+  const decorSelect = el("select", {
+    onchange: async (e) => {
+      d.decor = e.target.value;
+      const data = await getDecorData(d.decor);
+      d.color = Object.keys(data.colors)[0] || "GREEN";
+      renderAll();
+    }
+  }, decorsAvailable.map(n => el("option", { value: n, ...(n === d.decor ? { selected: "selected" } : {}) }, n)));
+  wrap.appendChild(labeled("decor", decorSelect));
+  wrap.appendChild(labeled("id (identifiant unique)", textField(d.id, v => { d.id = v; renderElementList(); })));
+
+  const decorData = decorCache[d.decor];
+  const colors = decorData ? Object.keys(decorData.colors) : [d.color];
+  const colorSelect = el("select", {
+    onchange: (e) => { d.color = e.target.value; renderStage(); }
+  }, colors.map(cl => el("option", { value: cl, ...(cl === d.color ? { selected: "selected" } : {}) }, cl)));
+  wrap.appendChild(labeled("color", colorSelect));
+
+  wrap.appendChild(el("div", { class: "coord-readout" },
+    `x ${Math.round(d.screen_position.x)}  ·  y ${Math.round(d.screen_position.y)}` +
+    `  (glisse le décor sur le canvas)`));
+
+  const row = el("div", { class: "row2" });
+  row.appendChild(numberField("scale", d.scale, v => { d.scale = v; renderStage(); }, 0.05));
+  row.appendChild(numberField("layer (ordre d'empilement)", d.layer, v => d.layer = v, 1));
+  wrap.appendChild(row);
+
+  wrap.appendChild(el("div", { class: "check-row" }, [
+    checkField("flip_x", d.flip_x, v => { d.flip_x = v; renderStage(); })
+  ]));
+
+  wrap.appendChild(el("div", { class: "hint" },
+    "Un décor est un élément de scène statique : pas de position/émotion, pas de mouvements — " +
+    "juste un placement, une couleur de variante et un ordre d'empilement (layer)."));
 
   return wrap;
 }

@@ -24,6 +24,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 
 CHARACTERS_DIR = os.path.join(ROOT, "characters")
+DECORS_DIR = os.path.join(ROOT, "decors")
 BACKGROUNDS_DIR = os.path.join(ROOT, "episodes", "images")
 SETTINGS_OUT_DIR = os.path.join(ROOT, "episodes", "episodes-settings")
 
@@ -85,6 +86,13 @@ class Handler(BaseHTTPRequestHandler):
             elif path.startswith("/api/character/"):
                 name = unquote(path[len("/api/character/"):])
                 self.handle_get_character(name)
+
+            elif path == "/api/decors":
+                self.handle_list_decors()
+
+            elif path.startswith("/api/decor/"):
+                name = unquote(path[len("/api/decor/"):])
+                self.handle_get_decor(name)
 
             elif path == "/api/backgrounds":
                 self.handle_list_backgrounds()
@@ -164,6 +172,52 @@ class Handler(BaseHTTPRequestHandler):
             "label": data.get("label", name),
             "positions": enriched,
         })
+
+    def handle_list_decors(self):
+        result = []
+        if os.path.isdir(DECORS_DIR):
+            for name in sorted(os.listdir(DECORS_DIR)):
+                ddir = os.path.join(DECORS_DIR, name)
+                settings_path = os.path.join(ddir, "decor-settings.json")
+                if os.path.isdir(ddir) and os.path.isfile(settings_path):
+                    result.append(name)
+        self.send_json({"decors": result})
+
+    def handle_get_decor(self, name):
+        if "/" in name or ".." in name:
+            raise ValueError("Nom de décor invalide")
+        decor_dir = safe_join(DECORS_DIR, name)
+        settings_path = os.path.join(decor_dir, "decor-settings.json")
+        if not os.path.isdir(decor_dir) or not os.path.isfile(settings_path):
+            self.send_error_json(404, f"Aucun decor-settings.json pour '{name}'")
+            return
+
+        label = name
+        try:
+            with open(settings_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            label = meta.get("label", name)
+        except Exception:  # noqa: BLE001 — le schéma exact de decor-settings.json n'est pas garanti
+            pass
+
+        # Les couleurs/frames sont découvertes par le système de fichiers
+        # (decors/<name>/idles/<COLOR>/IDLE-*.png), pas par le JSON, pour rester
+        # robuste indépendamment du schéma exact de decor-settings.json.
+        colors = {}
+        idles_dir = os.path.join(decor_dir, "idles")
+        if os.path.isdir(idles_dir):
+            for color in sorted(os.listdir(idles_dir)):
+                color_dir = os.path.join(idles_dir, color)
+                if not os.path.isdir(color_dir):
+                    continue
+                frames = sorted(f for f in os.listdir(color_dir) if f.lower().endswith(".png"))
+                preview_url = None
+                if frames:
+                    rel = os.path.join("decors", name, "idles", color, frames[0])
+                    preview_url = "/api/file?path=" + rel.replace(os.sep, "/")
+                colors[color] = {"frames": frames, "preview_url": preview_url}
+
+        self.send_json({"decor_id": name, "label": label, "colors": colors})
 
     def handle_list_backgrounds(self):
         result = []
