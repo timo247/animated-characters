@@ -318,23 +318,54 @@ def build_gaze_sequence(gaze_cfg, gaze_timeline, total_frames, fps):
     return seq
 
 
-def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps):
+def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps, pause_cfg=None):
     """
-    Sequence idle (ping-pong) frame par frame pour un décor.
-    Meme logique que le ping-pong idle des personnages (build_move_timeline),
-    mais un décor n'a qu'un seul etat : pas de transitions/moves, pas de
-    position, donc pas de machine a etats necessaire.
+    Sequence idle frame par frame pour un décor.
+
+    Sans pause_cfg (ou pause_cfg absent du decor-settings.json) : ping-pong
+    continu, comme avant — le décor est constamment en mouvement.
+
+    Avec pause_cfg = {"min": secondes, "max": secondes} : le décor reste
+    immobile sur sa premiere frame ("frames[0]") pendant une duree aleatoire
+    tiree entre min et max, puis joue une fois la sequence idle complete en
+    ping-pong (ce qui le ramene naturellement a sa frame de depart), avant
+    de repartir sur une nouvelle attente aleatoire. Se repete jusqu'a la fin
+    de l'episode.
     """
     hold      = max(1, round(video_fps / fps_cfg))
     ping_pong = frames + frames[-2:0:-1]
-    seq = []
-    idx, ctr = 0, 0
-    for _ in range(total_frames):
-        seq.append(ping_pong[idx % len(ping_pong)])
-        ctr += 1
-        if ctr >= hold:
-            ctr = 0
-            idx += 1
+
+    if not pause_cfg:
+        seq = []
+        idx, ctr = 0, 0
+        for _ in range(total_frames):
+            seq.append(ping_pong[idx % len(ping_pong)])
+            ctr += 1
+            if ctr >= hold:
+                ctr = 0
+                idx += 1
+        return seq
+
+    pause_min = float(pause_cfg.get("min", 3.0))
+    pause_max = float(pause_cfg.get("max", pause_min))
+
+    seq = [frames[0]] * total_frames
+    t = random.uniform(pause_min, pause_max)
+    while True:
+        start = int(t * video_fps)
+        if start >= total_frames:
+            break
+        idx, ctr, f = 0, 0, start
+        while idx < len(ping_pong) and f < total_frames:
+            seq[f] = ping_pong[idx]
+            ctr += 1
+            if ctr >= hold:
+                ctr = 0
+                idx += 1
+            f += 1
+        anim_duration_seconds = (len(ping_pong) * hold) / video_fps
+        t = (start / video_fps) + anim_duration_seconds + random.uniform(pause_min, pause_max)
+
     return seq
 
 
@@ -1105,12 +1136,13 @@ def render_frames(episode, frames_dir, visemes_data=None):
 
         frames  = idle_cfg["colors"][color]["frames"]
         fps_cfg = idle_cfg.get("fps", 8)
+        pause_cfg = idle_cfg.get("pause_seconds")
 
         decor_data.append({
             "kind":       "decor",
             "layer":      float(decor_cfg.get("layer", DEFAULT_DECOR_LAYER)),
             "cfg":        decor_cfg,
-            "sprite_seq": build_decor_idle_sequence(frames, fps_cfg, total_frames, fps),
+            "sprite_seq": build_decor_idle_sequence(frames, fps_cfg, total_frames, fps, pause_cfg),
         })
 
     if decor_data:

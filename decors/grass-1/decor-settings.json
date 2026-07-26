@@ -3,6 +3,7 @@
   "label": "Grass 1",
   "idle": {
     "fps": 3,
+    "pause_seconds": { "min": 2, "max": 5 },
     "colors": {
       "GREEN":  { "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"] },
       "DRY": { "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"] },
