@@ -1,0 +1,12 @@
+{
+  "decor_id": "river",
+  "label": "River",
+  "idle": {
+    "fps": 3,
+    "pause_seconds": { "min": 0.3, "max": 0.7 },
+    "colors": {
+      "DARK":  { "frames": ["IDLE-1.png", "IDLE-2.png"] },
+      "BRIGHT":  { "frames": ["IDLE-1.png", "IDLE-2.png"] }
+    }
+  }
+}
