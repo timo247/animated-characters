@@ -325,6 +325,7 @@ function normalizeCharacter(c) {
     id: c.id || (c.character || "char"),
     character: c.character || "",
     position: String(c.position ?? "1"),
+    layer: Number(c.layer ?? 0),
     screen_position: { x: Number(c.screen_position?.x ?? 0), y: Number(c.screen_position?.y ?? 0) },
     scale: Number(c.scale ?? 1.0),
     overlay_scale: Number(c.overlay_scale ?? 1.0),
@@ -548,6 +549,7 @@ async function addCharacter(name) {
     id: newCharacterId(name),
     character: name,
     position: firstPos,
+    layer: 0,
     screen_position: { x: 200, y: 180 },
     scale: 1.0,
     overlay_scale: 1.0,
@@ -888,6 +890,7 @@ function buildCharacterInspector() {
   wrap.appendChild(labeled("character", charSelect));
   wrap.appendChild(labeled("id (identifiant unique)", textField(c.id, v => { c.id = v; renderElementList(); })));
   wrap.appendChild(labeled("speaker (clé du fichier visèmes)", textField(c.speaker, v => { c.speaker = v; })));
+  wrap.appendChild(numberField("layer (ordre d'empilement)", c.layer, v => c.layer = v, 1));
 
   wrap.appendChild(el("h3", {}, "État initial (avant tout mouvement)"));
   const posData = characterCache[c.character];
