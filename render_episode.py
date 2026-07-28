@@ -78,11 +78,12 @@ DEFAULT_OUTPUT_DIR  = PROJECT_ROOT / "episodes" / "videos"
 
 # Layer par defaut (profondeur de composition) quand "layer" n'est pas
 # precise sur un personnage / decor dans l'episode. Plus la valeur est
-# haute, plus l'element est dessine tard, donc au premier plan. Les
+# BASSE, plus l'element est dessine tard, donc au premier plan (logique
+# inversee façon "distance a la camera" : 0 = tout devant). Les
 # personnages sont par defaut devant tous les decors ; deux elements de
 # meme layer sont dessines dans leur ordre d'apparition dans l'episode.
-DEFAULT_CHARACTER_LAYER = 100
-DEFAULT_DECOR_LAYER     = 0
+DEFAULT_CHARACTER_LAYER = 0
+DEFAULT_DECOR_LAYER     = 100
 
 IDLE           = "idle"
 TRANSITION_OUT = "transition_out"
@@ -1148,11 +1149,12 @@ def render_frames(episode, frames_dir, visemes_data=None):
     if decor_data:
         print(f"  [INFO] Décors : {[d['cfg']['decor'] for d in decor_data]}")
 
-    # Ordre de composition : tri stable par layer croissant (arrière-plan ->
-    # premier plan). A layer egal, l'ordre d'apparition dans char_data/
-    # decor_data est conserve (les personnages, ajoutes en premier, passent
-    # donc devant les decors de meme layer).
-    render_order = sorted(char_data + decor_data, key=lambda e: e["layer"])
+    # Ordre de composition : tri stable par layer DECROISSANT (arrière-plan ->
+    # premier plan) — layer bas = devant, layer haut = derriere. A layer
+    # egal, l'ordre d'apparition dans char_data/decor_data est conserve (les
+    # personnages, ajoutes en premier, sont donc dessines — et retrouves
+    # derriere — avant les decors de meme layer).
+    render_order = sorted(char_data + decor_data, key=lambda e: e["layer"], reverse=True)
     if any(e["layer"] != DEFAULT_CHARACTER_LAYER for e in char_data) or \
        any(e["layer"] != DEFAULT_DECOR_LAYER for e in decor_data):
         print(f"  [INFO] Ordre de composition (layers) : "
