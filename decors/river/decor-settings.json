@@ -3,7 +3,7 @@
   "label": "River",
   "idle": {
     "fps": 3,
-    "pause_seconds": { "min": 0.3, "max": 0.7 },
+    "pause_seconds": { "min": 0, "max": 0.1 },
     "colors": {
       "DARK":  { "frames": ["IDLE-1.png", "IDLE-2.png"] },
       "BRIGHT":  { "frames": ["IDLE-1.png", "IDLE-2.png"] }
