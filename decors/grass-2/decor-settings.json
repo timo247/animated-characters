@@ -1,0 +1,13 @@
+{
+  "decor_id": "grass-2",
+  "label": "Grass 2",
+  "idle": {
+    "fps": 3,
+    "pause_seconds": { "min": 2, "max": 5 },
+    "colors": {
+      "GREEN":  { "frames": ["IDLE-1.png", "IDLE-2.png"] },
+      "DRY": { "frames": ["IDLE-1.png", "IDLE-2.png"] },
+      "NIGHT": { "frames": ["IDLE-1.png", "IDLE-2.png"] }
+    }
+  }
+}
