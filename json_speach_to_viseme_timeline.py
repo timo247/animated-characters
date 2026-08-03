@@ -22,11 +22,11 @@ from typing import List, Dict, Tuple, Optional
 
 # ── Paramètres globaux ───────────────────────────────────────────────────────
 
-VISEME_OFFSET       = -0.04   # anticipation de l'animation
-MICRO_PAUSE         = 0.04    # fermeture en fin de mot
+VISEME_OFFSET       = -0.3   # anticipation de l'animation
+MICRO_PAUSE         = 0.5    # fermeture en fin de mot
 WORD_GAP_THRESHOLD  = 0.06    # silence inter-mots → CLOSED
 MIN_DURATION        = 0.04    # durée minimale d'un segment
-MIN_OPEN_DURATION   = 0.06    # durée minimale pour afficher O/A (sinon CLOSED)
+MIN_OPEN_DURATION   = 0.2    # durée minimale pour afficher O/A (sinon CLOSED)
 
 # Pourcentage de fermeture en FIN de chaque type de visème
 CLOSE_RATIO: Dict[str, float] = {
