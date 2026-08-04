@@ -1,0 +1,13 @@
+{
+  "decor_id": "steps",
+  "label": "Steps",
+  "idle": {
+    "fps": 1,
+    "pause_seconds": { "min": 0, "max": 0 },
+    "colors": {
+      "GREEN":  { "frames": ["IDLE-1.png"] },
+      "DRY": { "frames": ["IDLE-1.png"] },
+      "NIGHT": { "frames": ["IDLE-1.png"] }
+    }
+  }
+}
