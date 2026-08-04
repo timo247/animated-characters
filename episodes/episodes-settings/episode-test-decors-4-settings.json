@@ -1,0 +1,383 @@
+{
+  "episode_id": "episode-test-decors-4",
+  "output": {
+    "filename": "episode-test-decors-4.mp4",
+    "duration_seconds": 15,
+    "fps": 24,
+    "resolution": [
+      1920,
+      1080
+    ]
+  },
+  "background": {
+    "image": "test-background-2.png"
+  },
+  "audio": "",
+  "camera": {
+    "zoom": 1,
+    "x": 960,
+    "y": 540,
+    "timeline": [
+      {
+        "at_second": 0,
+        "zoom": 1,
+        "x": 960,
+        "y": 540
+      }
+    ]
+  },
+  "characters": [
+    {
+      "id": "lion",
+      "character": "lion",
+      "position": "1",
+      "layer": 2,
+      "screen_position": {
+        "x": 34,
+        "y": 366
+      },
+      "scale": 0.3,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": 10,
+        "y": 0
+      },
+      "moves": [
+        {
+          "at_second": 2,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "1",
+              "from": {
+                "x": 34,
+                "y": 366
+              },
+              "to": {
+                "x": 1578,
+                "y": 364
+              },
+              "duration_seconds": 4.5,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": false,
+              "gaze": {
+                "x": 10,
+                "y": 0
+              }
+            },
+            {
+              "position": "1",
+              "from": {
+                "x": 1578,
+                "y": 364
+              },
+              "to": {
+                "x": 1578,
+                "y": 364
+              },
+              "duration_seconds": 0,
+              "skip_transition": true,
+              "reverse": false,
+              "flip_x": false,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    },
+    {
+      "id": "spider",
+      "character": "spider",
+      "position": "2",
+      "layer": 1,
+      "screen_position": {
+        "x": 879,
+        "y": 381
+      },
+      "scale": 0.3,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": 10,
+        "y": 0
+      },
+      "moves": [],
+      "dialogue": null
+    },
+    {
+      "id": "antilope",
+      "character": "bug",
+      "position": "1",
+      "layer": 0,
+      "screen_position": {
+        "x": 1678,
+        "y": 99
+      },
+      "scale": 0.25,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": -10,
+        "y": -10
+      },
+      "moves": [
+        {
+          "at_second": 0,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "1",
+              "from": {
+                "x": 1678,
+                "y": 99
+              },
+              "to": {
+                "x": 1251,
+                "y": 95
+              },
+              "duration_seconds": 3,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": false,
+              "gaze": {
+                "x": -10,
+                "y": -10
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    },
+    {
+      "id": "antilope-2",
+      "character": "antilope",
+      "position": "2",
+      "layer": 0,
+      "screen_position": {
+        "x": 1583,
+        "y": 337
+      },
+      "scale": 0.35,
+      "overlay_scale": 1,
+      "flip_x": true,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": 10,
+        "y": 0
+      },
+      "moves": [
+        {
+          "at_second": 1,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "1",
+              "from": {
+                "x": 1583,
+                "y": 337
+              },
+              "to": {
+                "x": 245,
+                "y": 335
+              },
+              "duration_seconds": 6,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            },
+            {
+              "position": "1",
+              "from": {
+                "x": 245,
+                "y": 335
+              },
+              "to": {
+                "x": 245,
+                "y": 335
+              },
+              "duration_seconds": 0,
+              "skip_transition": true,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": 10,
+                "y": -3
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    },
+    {
+      "id": "antilope-3",
+      "character": "bird",
+      "position": "1",
+      "layer": 0,
+      "screen_position": {
+        "x": 31,
+        "y": -303
+      },
+      "scale": 0.35,
+      "overlay_scale": 1,
+      "flip_x": true,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": 10,
+        "y": -5
+      },
+      "moves": [
+        {
+          "at_second": 2,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "1",
+              "from": {
+                "x": -9,
+                "y": -322
+              },
+              "to": {
+                "x": 729,
+                "y": 143
+              },
+              "duration_seconds": 3,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": 10,
+                "y": -5
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    }
+  ],
+  "decors": [
+    {
+      "id": "big-tree",
+      "decor": "river",
+      "color": "BRIGHT",
+      "screen_position": {
+        "x": -192,
+        "y": 680
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": 10
+    },
+    {
+      "id": "big-tree-2",
+      "decor": "grass-2",
+      "color": "GREEN",
+      "screen_position": {
+        "x": -267,
+        "y": 401
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": 40
+    },
+    {
+      "id": "big-tree-3",
+      "decor": "grass-1",
+      "color": "GREEN",
+      "screen_position": {
+        "x": -176,
+        "y": 495
+      },
+      "scale": 1.45,
+      "flip_x": false,
+      "layer": 20
+    },
+    {
+      "id": "big-tree-4",
+      "decor": "grass-3",
+      "color": "GREEN",
+      "screen_position": {
+        "x": -574,
+        "y": 360
+      },
+      "scale": 2.15,
+      "flip_x": false,
+      "layer": 30
+    },
+    {
+      "id": "big-tree-5",
+      "decor": "rock",
+      "color": "GREEN",
+      "screen_position": {
+        "x": 46,
+        "y": 425
+      },
+      "scale": 1.15,
+      "flip_x": false,
+      "layer": 7
+    },
+    {
+      "id": "big-tree-6",
+      "decor": "rock",
+      "color": "DRY",
+      "screen_position": {
+        "x": 1216,
+        "y": 504
+      },
+      "scale": 0.65,
+      "flip_x": false,
+      "layer": 7
+    },
+    {
+      "id": "big-tree-7",
+      "decor": "big-tree",
+      "color": "GREEN",
+      "screen_position": {
+        "x": 481,
+        "y": 58
+      },
+      "scale": 1.5,
+      "flip_x": true,
+      "layer": 21
+    }
+  ]
+}
