@@ -1,0 +1,260 @@
+{
+  "episode_id": "episode-2",
+  "output": {
+    "filename": "episode-2.mp4",
+    "duration_seconds": 10,
+    "fps": 24,
+    "resolution": [
+      1920,
+      1080
+    ]
+  },
+  "background": {
+    "image": "background-night.png"
+  },
+  "audio": "",
+  "camera": {
+    "zoom": 1,
+    "x": 960,
+    "y": 540,
+    "timeline": [
+      {
+        "at_second": 0,
+        "zoom": 1,
+        "x": 960,
+        "y": 540
+      }
+    ]
+  },
+  "characters": [],
+  "decors": [
+    {
+      "id": "big-tree",
+      "decor": "grass-4",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": -174,
+        "y": 428
+      },
+      "scale": 0.3,
+      "flip_x": false,
+      "layer": 49
+    },
+    {
+      "id": "big-tree-2",
+      "decor": "grass-3",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": -28,
+        "y": 535
+      },
+      "scale": 0.4,
+      "flip_x": false,
+      "layer": 39
+    },
+    {
+      "id": "big-tree-3",
+      "decor": "big-tree",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": -4,
+        "y": 100
+      },
+      "scale": 0.45,
+      "flip_x": false,
+      "layer": 48
+    },
+    {
+      "id": "big-tree-4",
+      "decor": "rock",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 397,
+        "y": 468
+      },
+      "scale": 0.35,
+      "flip_x": false,
+      "layer": 47
+    },
+    {
+      "id": "big-tree-5",
+      "decor": "big-tree",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 1209,
+        "y": 213
+      },
+      "scale": 0.4,
+      "flip_x": false,
+      "layer": 46
+    },
+    {
+      "id": "big-tree-6",
+      "decor": "bush",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 1272,
+        "y": 508
+      },
+      "scale": 0.35,
+      "flip_x": false,
+      "layer": 45
+    },
+    {
+      "id": "big-tree-7",
+      "decor": "bush",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 469,
+        "y": 541
+      },
+      "scale": 0.4,
+      "flip_x": false,
+      "layer": 38
+    },
+    {
+      "id": "big-tree-8",
+      "decor": "tree-2",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 1351,
+        "y": -4
+      },
+      "scale": 0.27,
+      "flip_x": true,
+      "layer": 37
+    },
+    {
+      "id": "big-tree-9",
+      "decor": "grass-2",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": -340,
+        "y": 632
+      },
+      "scale": 0.4,
+      "flip_x": false,
+      "layer": 29
+    },
+    {
+      "id": "big-tree-10",
+      "decor": "grass-1",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": -25,
+        "y": 684
+      },
+      "scale": 0.45,
+      "flip_x": false,
+      "layer": 19
+    },
+    {
+      "id": "big-tree-11",
+      "decor": "steps",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": -59,
+        "y": 608
+      },
+      "scale": 0.4,
+      "flip_x": false,
+      "layer": 18
+    },
+    {
+      "id": "big-tree-12",
+      "decor": "river",
+      "color": "DARK",
+      "screen_position": {
+        "x": -434,
+        "y": 797
+      },
+      "scale": 0.4,
+      "flip_x": false,
+      "layer": 9
+    },
+    {
+      "id": "big-tree-13",
+      "decor": "rock",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 43,
+        "y": 927
+      },
+      "scale": 0.5,
+      "flip_x": false,
+      "layer": 8
+    },
+    {
+      "id": "big-tree-14",
+      "decor": "rock-2",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 567,
+        "y": 932
+      },
+      "scale": 0.85,
+      "flip_x": false,
+      "layer": 7
+    },
+    {
+      "id": "big-tree-15",
+      "decor": "rock-2",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 1288,
+        "y": 768
+      },
+      "scale": 1.15,
+      "flip_x": false,
+      "layer": 6
+    },
+    {
+      "id": "big-tree-16",
+      "decor": "rock",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 363,
+        "y": 857
+      },
+      "scale": 0.15,
+      "flip_x": false,
+      "layer": 6
+    },
+    {
+      "id": "big-tree-17",
+      "decor": "rock",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 1488,
+        "y": 793
+      },
+      "scale": 0.2,
+      "flip_x": false,
+      "layer": 5
+    },
+    {
+      "id": "big-tree-18",
+      "decor": "rock",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 1188,
+        "y": 817
+      },
+      "scale": 0.3,
+      "flip_x": false,
+      "layer": 3
+    },
+    {
+      "id": "big-tree-19",
+      "decor": "rock-2",
+      "color": "NIGHT",
+      "screen_position": {
+        "x": 1179,
+        "y": 786
+      },
+      "scale": 0.45,
+      "flip_x": false,
+      "layer": 4
+    }
+  ]
+}
