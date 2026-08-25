@@ -1,0 +1,48 @@
+# Speech Editor
+
+Petit outil local (aucune dépendance à installer — juste Python 3 stdlib)
+pour éditer les fichiers `episode-*.json` de speech/transcript.
+
+## Lancer
+
+```bash
+cd speech-editor
+python3 server.py ../episodes/json-speaches
+```
+
+Puis ouvre **http://127.0.0.1:8765** dans ton navigateur.
+
+Si tu ne donnes pas de dossier, il utilise le dossier courant.
+
+## Ce que ça fait
+
+- **Timeline horizontale multi-pistes** : une piste par personnage/speaker
+  (`SPEAKER_00`, `SPEAKER_01`, …), avec les segments positionnés dans le temps.
+- **Légende éditable** : renomme chaque `SPEAKER_XX` avec le vrai nom du
+  personnage et choisis sa couleur. Ce mapping est sauvegardé dans
+  `characters.json` à côté de tes fichiers et partagé entre tous les épisodes
+  du dossier.
+- **Curseur (playhead)** : clique sur la règle ou glisse pour te déplacer
+  dans le temps. La bande "À la position du curseur" affiche, pour chaque
+  personnage, la réplique en cours (ou le temps avant la prochaine).
+- **Édition d'un segment** : clique sur un bloc pour l'ouvrir dans le panneau
+  du bas — texte, début/fin, speaker assigné. Tu peux aussi glisser un bloc
+  pour le déplacer, ou ses bords pour ajuster début/fin directement sur la
+  timeline.
+- **Ajout / suppression / duplication** de segments.
+- **Régénération des mots** : si tu modifies le texte, le détail
+  mot-par-mot (`words`, utilisé pour le timing fin) ne suit pas automatiquement.
+  Un avertissement apparaît ; le bouton "Régénérer les mots" redistribue les
+  mots uniformément sur la durée du segment.
+- **Enregistrer** écrit le fichier JSON modifié (segments triés par `start`,
+  `word_segments` reconstruit automatiquement à partir des segments) et garde
+  une copie de sauvegarde `<fichier>.json.bak` avant d'écraser.
+
+## Limites à connaître
+
+- Seuls les fichiers `.json` **directement** dans le dossier passé au serveur
+  sont accessibles (pas de sous-dossiers, pas de remontée de chemin) —
+  sécurité minimale puisque c'est un serveur local.
+- La régénération des mots fait une répartition uniforme naïve — elle ne
+  refait pas un alignement audio réel. Si tu as besoin d'un timing mot-par-mot
+  précis après une réécriture importante, il faudra repasser par WhisperX.

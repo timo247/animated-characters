@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Speech Editor</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="logo">SPEECH<span class="logo-dim">EDITOR</span></span>
+    <span class="dirpath" id="dirPath">—</span>
+  </div>
+  <div class="topbar-center">
+    <select id="fileSelect" class="file-select">
+      <option value="">— choisir un fichier —</option>
+    </select>
+    <button id="reloadFilesBtn" class="btn btn-ghost" title="Rafraîchir la liste">⟳</button>
+  </div>
+  <div class="topbar-right">
+    <span id="statusDot" class="status-dot" title="Aucune modification"></span>
+    <span id="statusText" class="status-text">Aucun fichier chargé</span>
+    <button id="saveBtn" class="btn btn-primary" disabled>Enregistrer</button>
+  </div>
+</header>
+
+<section class="legend" id="legend"></section>
+
+<main class="workspace">
+
+  <div class="timeline-toolbar">
+    <div class="toolbar-group">
+      <button id="zoomOutBtn" class="btn btn-ghost" title="Dézoomer">−</button>
+      <button id="zoomInBtn" class="btn btn-ghost" title="Zoomer">+</button>
+      <button id="fitBtn" class="btn btn-ghost" title="Ajuster à la fenêtre">⤢</button>
+    </div>
+    <div class="toolbar-group">
+      <button id="prevSegBtn" class="btn btn-ghost" title="Segment précédent">◂ segment</button>
+      <span class="time-readout" id="playheadReadout">00:00.000</span>
+      <button id="nextSegBtn" class="btn btn-ghost" title="Segment suivant">segment ▸</button>
+    </div>
+    <div class="toolbar-group">
+      <input id="searchInput" class="search-input" type="text" placeholder="Filtrer le texte…" />
+    </div>
+  </div>
+
+  <div class="timeline-wrap">
+    <div class="lane-labels" id="laneLabels">
+      <div class="lane-labels-spacer"></div>
+    </div>
+    <div class="timeline-scroll" id="timelineScroll">
+      <div class="timeline-inner" id="timelineInner">
+        <div class="ruler" id="ruler"></div>
+        <div class="lanes" id="lanes"></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="now-strip" id="nowStrip">
+    <div class="now-strip-title">À la position du curseur</div>
+    <div class="now-strip-rows" id="nowStripRows"></div>
+  </section>
+
+  <section class="editor-panel" id="editorPanel">
+    <div class="editor-empty" id="editorEmpty">Sélectionnez un segment sur la timeline pour l'éditer, ou ajoutez-en un nouveau.</div>
+
+    <div class="editor-fields" id="editorFields" hidden>
+      <div class="editor-row">
+        <label>Personnage / speaker</label>
+        <div class="speaker-row">
+          <select id="segSpeakerSelect"></select>
+          <input id="newSpeakerInput" type="text" placeholder="nouvel id (ex: SPEAKER_04)" />
+          <button id="addSpeakerBtn" class="btn btn-ghost">+ ajouter</button>
+        </div>
+      </div>
+
+      <div class="editor-row time-row">
+        <label>Début (s)</label>
+        <input id="segStart" type="number" step="0.001" />
+        <label>Fin (s)</label>
+        <input id="segEnd" type="number" step="0.001" />
+        <span class="duration-readout" id="durationReadout"></span>
+      </div>
+
+      <div class="editor-row">
+        <label>Texte</label>
+        <textarea id="segText" rows="3" placeholder="Texte prononcé…"></textarea>
+      </div>
+
+      <div class="editor-row sync-row">
+        <span id="syncWarning" class="sync-warning" hidden>⚠ le texte a changé — les timings mot-par-mot ne correspondent plus</span>
+        <button id="resyncBtn" class="btn btn-ghost">Régénérer les mots (répartition uniforme)</button>
+      </div>
+
+      <div class="editor-row actions-row">
+        <button id="duplicateSegBtn" class="btn btn-ghost">Dupliquer</button>
+        <button id="deleteSegBtn" class="btn btn-danger">Supprimer ce segment</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="add-bar">
+    <button id="addSegBtn" class="btn btn-primary" disabled>+ Nouveau segment à la position du curseur</button>
+  </div>
+
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+<style>
+:root {
+  --bg: #121319;
+  --panel: #191b23;
+  --panel-2: #1e2029;
+  --border: #2a2d3a;
+  --text: #e7e8ee;
+  --muted: #8b8fa3;
+  --muted-2: #5f6478;
+  --accent: #ffb454;
+  --danger: #ff5d5d;
+  --playhead: #ff5d5d;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---------- topbar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.topbar-left, .topbar-center, .topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo {
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 13px;
+  color: var(--text);
+}
+.logo-dim { color: var(--muted); font-weight: 400; }
+.dirpath {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted-2);
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-select {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  min-width: 260px;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted-2);
+  display: inline-block;
+}
+.status-dot.dirty { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.status-dot.saved { background: #6fd68a; }
+.status-text { color: var(--muted); font-size: 12px; }
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  transition: background 0.12s, border-color 0.12s;
+}
+.btn:hover:not(:disabled) { border-color: var(--muted-2); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-ghost { background: transparent; }
+.btn-primary {
+  background: var(--accent);
+  color: #1a1408;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-danger {
+  background: transparent;
+  border-color: #5a2e2e;
+  color: var(--danger);
+}
+.btn-danger:hover { background: rgba(255, 93, 93, 0.1); }
+
+/* ---------- legend ---------- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.legend:empty { display: none; }
+.legend-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  font-size: 11px;
+}
+.legend-swatch { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.legend-chip input {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 11px;
+  width: 90px;
+  font-family: var(--sans);
+}
+.legend-chip input:focus { outline: none; border-bottom: 1px solid var(--muted-2); }
+.legend-chip .legend-id { color: var(--muted-2); font-family: var(--mono); font-size: 10px; }
+
+/* ---------- workspace ---------- */
+.workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 16px 16px;
+  gap: 10px;
+}
+
+.timeline-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.toolbar-group { display: flex; align-items: center; gap: 6px; }
+.time-readout {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  min-width: 90px;
+  text-align: center;
+}
+.search-input {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 10px;
+  width: 220px;
+}
+
+/* ---------- timeline ---------- */
+.timeline-wrap {
+  flex: 1;
+  min-height: 180px;
+  display: flex;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.lane-labels {
+  flex-shrink: 0;
+  width: 128px;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--panel);
+}
+.lane-labels-spacer {
+  height: 26px;
+  border-bottom: 1px solid var(--border);
+}
+.lane-label-row {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+}
+.lane-label-row .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.lane-label-row .lbl {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timeline-scroll {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+.timeline-inner {
+  position: relative;
+  min-width: 100%;
+}
+.ruler {
+  position: sticky;
+  top: 0;
+  height: 26px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  z-index: 3;
+}
+.ruler-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--border);
+}
+.ruler-tick.major { border-left-color: var(--muted-2); }
+.ruler-tick span {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.lanes {
+  position: relative;
+}
+.lane {
+  position: relative;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  background: repeating-linear-gradient(180deg, transparent, transparent 51px, var(--border) 52px);
+}
+.lane:nth-child(odd) { background-color: rgba(255,255,255,0.012); }
+.segment {
+  position: absolute;
+  top: 8px;
+  height: 36px;
+  border-radius: 5px;
+  border: 1px solid rgba(0,0,0,0.35);
+  padding: 4px 8px;
+  overflow: hidden;
+  cursor: grab;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #0e0f13;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.segment:hover { filter: brightness(1.08); }
+.segment.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  z-index: 4;
+}
+.segment.dim { opacity: 0.35; }
+.segment .handle {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+.segment .handle.left { left: 0; }
+.segment .handle.right { right: 0; }
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--playhead);
+  z-index: 5;
+  pointer-events: none;
+}
+.playhead::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -5px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid var(--playhead);
+}
+
+/* ---------- now strip ---------- */
+.now-strip {
+  flex-shrink: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.now-strip-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-2);
+  margin-bottom: 6px;
+}
+.now-strip-rows { display: flex; flex-direction: column; gap: 4px; }
+.now-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.now-row:hover { background: var(--panel-2); }
+.now-row .now-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.now-row .now-name { font-weight: 600; min-width: 90px; flex-shrink: 0; }
+.now-row .now-text { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-row.silent .now-text { font-style: italic; color: var(--muted-2); }
+
+/* ---------- editor panel ---------- */
+.editor-panel {
+  flex-shrink: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.editor-empty {
+  color: var(--muted-2);
+  font-size: 12px;
+  text-align: center;
+  padding: 10px 0;
+}
+.editor-fields { display: flex; flex-direction: column; gap: 10px; }
+.editor-row { display: flex; flex-direction: column; gap: 4px; }
+.editor-row label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-2);
+}
+.editor-row textarea, .editor-row input[type="text"], .editor-row select, .editor-row input[type="number"] {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: var(--sans);
+  font-size: 13px;
+}
+.editor-row textarea { resize: vertical; font-size: 14px; line-height: 1.5; }
+.speaker-row { display: flex; gap: 8px; align-items: center; }
+.speaker-row select { flex: 1; }
+.speaker-row input { width: 180px; }
+.time-row { flex-direction: row; align-items: center; gap: 8px; }
+.time-row label { margin-left: 4px; }
+.time-row input { width: 100px; }
+.duration-readout { margin-left: auto; font-family: var(--mono); color: var(--muted); font-size: 11px; }
+.sync-row { flex-direction: row; align-items: center; justify-content: space-between; }
+.sync-warning { color: var(--accent); font-size: 11px; }
+.actions-row { flex-direction: row; justify-content: flex-end; gap: 8px; }
+
+.add-bar { flex-shrink: 0; display: flex; justify-content: flex-end; }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  z-index: 50;
+}
+.toast.error { border-color: #5a2e2e; color: var(--danger); }
+</style>
+</html>
