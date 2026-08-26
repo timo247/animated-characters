@@ -4,114 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Speech Editor</title>
-<link rel="stylesheet" href="style.css" />
-</head>
-<body>
-
-<header class="topbar">
-  <div class="topbar-left">
-    <span class="logo">SPEECH<span class="logo-dim">EDITOR</span></span>
-    <span class="dirpath" id="dirPath">—</span>
-  </div>
-  <div class="topbar-center">
-    <select id="fileSelect" class="file-select">
-      <option value="">— choisir un fichier —</option>
-    </select>
-    <button id="reloadFilesBtn" class="btn btn-ghost" title="Rafraîchir la liste">⟳</button>
-  </div>
-  <div class="topbar-right">
-    <span id="statusDot" class="status-dot" title="Aucune modification"></span>
-    <span id="statusText" class="status-text">Aucun fichier chargé</span>
-    <button id="saveBtn" class="btn btn-primary" disabled>Enregistrer</button>
-  </div>
-</header>
-
-<section class="legend" id="legend"></section>
-
-<main class="workspace">
-
-  <div class="timeline-toolbar">
-    <div class="toolbar-group">
-      <button id="zoomOutBtn" class="btn btn-ghost" title="Dézoomer">−</button>
-      <button id="zoomInBtn" class="btn btn-ghost" title="Zoomer">+</button>
-      <button id="fitBtn" class="btn btn-ghost" title="Ajuster à la fenêtre">⤢</button>
-    </div>
-    <div class="toolbar-group">
-      <button id="prevSegBtn" class="btn btn-ghost" title="Segment précédent">◂ segment</button>
-      <span class="time-readout" id="playheadReadout">00:00.000</span>
-      <button id="nextSegBtn" class="btn btn-ghost" title="Segment suivant">segment ▸</button>
-    </div>
-    <div class="toolbar-group">
-      <input id="searchInput" class="search-input" type="text" placeholder="Filtrer le texte…" />
-    </div>
-  </div>
-
-  <div class="timeline-wrap">
-    <div class="lane-labels" id="laneLabels">
-      <div class="lane-labels-spacer"></div>
-    </div>
-    <div class="timeline-scroll" id="timelineScroll">
-      <div class="timeline-inner" id="timelineInner">
-        <div class="ruler" id="ruler"></div>
-        <div class="lanes" id="lanes"></div>
-        <div class="playhead" id="playhead"></div>
-      </div>
-    </div>
-  </div>
-
-  <section class="now-strip" id="nowStrip">
-    <div class="now-strip-title">À la position du curseur</div>
-    <div class="now-strip-rows" id="nowStripRows"></div>
-  </section>
-
-  <section class="editor-panel" id="editorPanel">
-    <div class="editor-empty" id="editorEmpty">Sélectionnez un segment sur la timeline pour l'éditer, ou ajoutez-en un nouveau.</div>
-
-    <div class="editor-fields" id="editorFields" hidden>
-      <div class="editor-row">
-        <label>Personnage / speaker</label>
-        <div class="speaker-row">
-          <select id="segSpeakerSelect"></select>
-          <input id="newSpeakerInput" type="text" placeholder="nouvel id (ex: SPEAKER_04)" />
-          <button id="addSpeakerBtn" class="btn btn-ghost">+ ajouter</button>
-        </div>
-      </div>
-
-      <div class="editor-row time-row">
-        <label>Début (s)</label>
-        <input id="segStart" type="number" step="0.001" />
-        <label>Fin (s)</label>
-        <input id="segEnd" type="number" step="0.001" />
-        <span class="duration-readout" id="durationReadout"></span>
-      </div>
-
-      <div class="editor-row">
-        <label>Texte</label>
-        <textarea id="segText" rows="3" placeholder="Texte prononcé…"></textarea>
-      </div>
-
-      <div class="editor-row sync-row">
-        <span id="syncWarning" class="sync-warning" hidden>⚠ le texte a changé — les timings mot-par-mot ne correspondent plus</span>
-        <button id="resyncBtn" class="btn btn-ghost">Régénérer les mots (répartition uniforme)</button>
-      </div>
-
-      <div class="editor-row actions-row">
-        <button id="duplicateSegBtn" class="btn btn-ghost">Dupliquer</button>
-        <button id="deleteSegBtn" class="btn btn-danger">Supprimer ce segment</button>
-      </div>
-    </div>
-  </section>
-
-  <div class="add-bar">
-    <button id="addSegBtn" class="btn btn-primary" disabled>+ Nouveau segment à la position du curseur</button>
-  </div>
-
-</main>
-
-<div class="toast" id="toast" hidden></div>
-
-<script src="app.js"></script>
-</body>
 <style>
 :root {
   --bg: #121319;
@@ -295,6 +187,20 @@ button {
   padding: 6px 10px;
   width: 220px;
 }
+
+.audio-group { gap: 8px; }
+.audio-select { min-width: 180px; padding: 5px 8px; }
+.btn-play {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-play.playing { background: var(--danger); border-color: var(--danger); color: #fff; }
+.time-readout.small { font-size: 11px; min-width: 70px; }
 
 /* ---------- timeline ---------- */
 .timeline-wrap {
@@ -526,5 +432,122 @@ button {
   z-index: 50;
 }
 .toast.error { border-color: #5a2e2e; color: var(--danger); }
+
 </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="logo">SPEECH<span class="logo-dim">EDITOR</span></span>
+    <span class="dirpath" id="dirPath">—</span>
+  </div>
+  <div class="topbar-center">
+    <select id="fileSelect" class="file-select">
+      <option value="">— choisir un fichier —</option>
+    </select>
+    <button id="reloadFilesBtn" class="btn btn-ghost" title="Rafraîchir la liste">⟳</button>
+  </div>
+  <div class="topbar-right">
+    <span id="statusDot" class="status-dot" title="Aucune modification"></span>
+    <span id="statusText" class="status-text">Aucun fichier chargé</span>
+    <button id="saveBtn" class="btn btn-primary" disabled>Enregistrer</button>
+  </div>
+</header>
+
+<section class="legend" id="legend"></section>
+
+<main class="workspace">
+
+  <div class="timeline-toolbar">
+    <div class="toolbar-group">
+      <button id="zoomOutBtn" class="btn btn-ghost" title="Dézoomer">−</button>
+      <button id="zoomInBtn" class="btn btn-ghost" title="Zoomer">+</button>
+      <button id="fitBtn" class="btn btn-ghost" title="Ajuster à la fenêtre">⤢</button>
+    </div>
+    <div class="toolbar-group">
+      <button id="prevSegBtn" class="btn btn-ghost" title="Segment précédent">◂ segment</button>
+      <span class="time-readout" id="playheadReadout">00:00.000</span>
+      <button id="nextSegBtn" class="btn btn-ghost" title="Segment suivant">segment ▸</button>
+    </div>
+    <div class="toolbar-group audio-group">
+      <select id="audioSelect" class="file-select audio-select">
+        <option value="">— aucun audio —</option>
+      </select>
+      <button id="playBtn" class="btn btn-primary btn-play" disabled title="Lecture / Pause (barre espace)">▶</button>
+      <span class="time-readout small" id="audioTimeReadout">—</span>
+    </div>
+    <div class="toolbar-group">
+      <input id="searchInput" class="search-input" type="text" placeholder="Filtrer le texte…" />
+    </div>
+  </div>
+
+  <audio id="audioEl" preload="metadata"></audio>
+
+  <div class="timeline-wrap">
+    <div class="lane-labels" id="laneLabels">
+      <div class="lane-labels-spacer"></div>
+    </div>
+    <div class="timeline-scroll" id="timelineScroll">
+      <div class="timeline-inner" id="timelineInner">
+        <div class="ruler" id="ruler"></div>
+        <div class="lanes" id="lanes"></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="now-strip" id="nowStrip">
+    <div class="now-strip-title">À la position du curseur</div>
+    <div class="now-strip-rows" id="nowStripRows"></div>
+  </section>
+
+  <section class="editor-panel" id="editorPanel">
+    <div class="editor-empty" id="editorEmpty">Sélectionnez un segment sur la timeline pour l'éditer, ou ajoutez-en un nouveau.</div>
+
+    <div class="editor-fields" id="editorFields" hidden>
+      <div class="editor-row">
+        <label>Personnage / speaker</label>
+        <div class="speaker-row">
+          <select id="segSpeakerSelect"></select>
+          <input id="newSpeakerInput" type="text" placeholder="nouvel id (ex: SPEAKER_04)" />
+          <button id="addSpeakerBtn" class="btn btn-ghost">+ ajouter</button>
+        </div>
+      </div>
+
+      <div class="editor-row time-row">
+        <label>Début (s)</label>
+        <input id="segStart" type="number" step="0.001" />
+        <label>Fin (s)</label>
+        <input id="segEnd" type="number" step="0.001" />
+        <span class="duration-readout" id="durationReadout"></span>
+      </div>
+
+      <div class="editor-row">
+        <label>Texte</label>
+        <textarea id="segText" rows="3" placeholder="Texte prononcé…"></textarea>
+      </div>
+
+      <div class="editor-row sync-row">
+        <span id="syncWarning" class="sync-warning" hidden>⚠ le texte a changé — les timings mot-par-mot ne correspondent plus</span>
+        <button id="resyncBtn" class="btn btn-ghost">Régénérer les mots (répartition uniforme)</button>
+      </div>
+
+      <div class="editor-row actions-row">
+        <button id="duplicateSegBtn" class="btn btn-ghost">Dupliquer</button>
+        <button id="deleteSegBtn" class="btn btn-danger">Supprimer ce segment</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="add-bar">
+    <button id="addSegBtn" class="btn btn-primary" disabled>+ Nouveau segment à la position du curseur</button>
+  </div>
+
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
 </html>

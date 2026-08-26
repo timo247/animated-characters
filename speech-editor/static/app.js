@@ -21,6 +21,10 @@
     nextSegBtn: el("nextSegBtn"),
     playheadReadout: el("playheadReadout"),
     searchInput: el("searchInput"),
+    audioSelect: el("audioSelect"),
+    playBtn: el("playBtn"),
+    audioTimeReadout: el("audioTimeReadout"),
+    audioEl: el("audioEl"),
     timelineScroll: el("timelineScroll"),
     timelineInner: el("timelineInner"),
     laneLabels: el("laneLabels"),
@@ -56,6 +60,9 @@
     pxPerSec: 60,
     dirty: false,
     searchTerm: "",
+    audioFile: "",
+    audioDuration: 0,
+    audioRAF: null,
   };
 
   // ---------------- utils ----------------
@@ -152,7 +159,10 @@
   async function refreshStatus() {
     const s = await api("/api/status");
     state.dir = s.dir;
-    dom.dirPath.textContent = s.dir;
+    state.audioDir = s.audio_dir;
+    dom.dirPath.textContent = (s.audio_dir && s.audio_dir !== s.dir)
+      ? `${s.dir}  (audio: ${s.audio_dir})`
+      : s.dir;
   }
 
   async function refreshFileList(selectName) {
@@ -220,6 +230,7 @@
     if (state.data && state.data.segments) {
       for (const seg of state.data.segments) max = Math.max(max, seg.end || 0);
     }
+    if (state.audioDuration) max = Math.max(max, state.audioDuration);
     return max + 3;
   }
   function timeToX(t) { return t * state.pxPerSec; }
@@ -459,10 +470,7 @@
   function setPlayheadFromClientX(clientX) {
     const rect = dom.timelineInner.getBoundingClientRect();
     const x = clientX - rect.left;
-    state.playhead = xToTime(x);
-    dom.playhead.style.left = timeToX(state.playhead) + "px";
-    dom.playheadReadout.textContent = fmtTime(state.playhead);
-    renderNowStrip();
+    movePlayheadTo(xToTime(x));
   }
 
   function onSegmentMouseDown(ev, seg, block) {
@@ -515,8 +523,126 @@
     }));
   }
 
-  // ---------------- events ----------------
+  // ---------------- audio ----------------
+  async function refreshAudioList(selectName) {
+    try {
+      const res = await api("/api/audio-files");
+      dom.audioSelect.innerHTML = '<option value="">— aucun audio —</option>';
+      for (const f of res.files) {
+        const opt = document.createElement("option");
+        opt.value = f;
+        opt.textContent = f;
+        dom.audioSelect.appendChild(opt);
+      }
+      if (selectName) dom.audioSelect.value = selectName;
+    } catch (e) {
+      // pas bloquant si l'endpoint échoue
+    }
+  }
+
+  function loadAudio(name) {
+    stopSyncLoop();
+    if (!name) {
+      state.audioFile = "";
+      state.audioDuration = 0;
+      dom.audioEl.removeAttribute("src");
+      dom.playBtn.disabled = true;
+      dom.playBtn.textContent = "▶";
+      dom.playBtn.classList.remove("playing");
+      dom.audioTimeReadout.textContent = "—";
+      return;
+    }
+    state.audioFile = name;
+    dom.audioEl.src = `/audio/${encodeURIComponent(name)}`;
+    dom.audioEl.load();
+    dom.playBtn.disabled = false;
+  }
+
+  function setAudioTimeReadout() {
+    if (!state.audioFile) { dom.audioTimeReadout.textContent = "—"; return; }
+    const dur = state.audioDuration ? fmtTime(state.audioDuration) : "…";
+    dom.audioTimeReadout.textContent = `${fmtTime(state.playhead)} / ${dur}`;
+  }
+
+  function seekAudioTo(t) {
+    if (state.audioFile && isFinite(dom.audioEl.duration)) {
+      dom.audioEl.currentTime = clamp(t, 0, dom.audioEl.duration);
+    }
+  }
+
+  function movePlayheadTo(t, opts = {}) {
+    state.playhead = Math.max(0, t);
+    dom.playhead.style.left = timeToX(state.playhead) + "px";
+    dom.playheadReadout.textContent = fmtTime(state.playhead);
+    setAudioTimeReadout();
+    if (!opts.skipNowStrip) renderNowStrip();
+    if (!opts.skipSeek) seekAudioTo(state.playhead);
+  }
+
+  function startSyncLoop() {
+    stopSyncLoop();
+    let lastNowStrip = 0;
+    function tick(ts) {
+      state.playhead = dom.audioEl.currentTime;
+      dom.playhead.style.left = timeToX(state.playhead) + "px";
+      dom.playheadReadout.textContent = fmtTime(state.playhead);
+      setAudioTimeReadout();
+      if (ts - lastNowStrip > 120) { renderNowStrip(); lastNowStrip = ts; }
+      state.audioRAF = requestAnimationFrame(tick);
+    }
+    state.audioRAF = requestAnimationFrame(tick);
+  }
+  function stopSyncLoop() {
+    if (state.audioRAF) cancelAnimationFrame(state.audioRAF);
+    state.audioRAF = null;
+  }
+
+  function togglePlay() {
+    if (!state.audioFile) return;
+    if (dom.audioEl.paused) dom.audioEl.play().catch((e) => toast("Lecture impossible : " + e.message, true));
+    else dom.audioEl.pause();
+  }
+
+  function wireAudioEvents() {
+    dom.audioSelect.addEventListener("change", () => loadAudio(dom.audioSelect.value));
+    dom.playBtn.addEventListener("click", togglePlay);
+
+    dom.audioEl.addEventListener("loadedmetadata", () => {
+      state.audioDuration = dom.audioEl.duration || 0;
+      renderTimeline();
+      setAudioTimeReadout();
+    });
+    dom.audioEl.addEventListener("play", () => {
+      dom.playBtn.textContent = "⏸";
+      dom.playBtn.classList.add("playing");
+      startSyncLoop();
+    });
+    dom.audioEl.addEventListener("pause", () => {
+      dom.playBtn.textContent = "▶";
+      dom.playBtn.classList.remove("playing");
+      stopSyncLoop();
+      renderNowStrip();
+    });
+    dom.audioEl.addEventListener("ended", () => {
+      dom.playBtn.textContent = "▶";
+      dom.playBtn.classList.remove("playing");
+      stopSyncLoop();
+    });
+    dom.audioEl.addEventListener("seeked", () => {
+      state.playhead = dom.audioEl.currentTime;
+      renderTimeline();
+      renderNowStrip();
+      setAudioTimeReadout();
+    });
+    dom.audioEl.addEventListener("error", () => {
+      if (state.audioFile) toast("Impossible de lire ce fichier audio.", true);
+    });
+  }
+
+
   function wireEvents() {
+    wireAudioEvents();
+
     dom.fileSelect.addEventListener("change", () => {
       const name = dom.fileSelect.value;
       if (state.dirty && !confirm("Des modifications non enregistrées seront perdues. Continuer ?")) {
@@ -526,7 +652,7 @@
       if (name) loadFile(name);
     });
 
-    dom.reloadFilesBtn.addEventListener("click", () => refreshFileList(state.fileName));
+    dom.reloadFilesBtn.addEventListener("click", () => { refreshFileList(state.fileName); refreshAudioList(state.audioFile); });
     dom.saveBtn.addEventListener("click", saveFile);
 
     dom.zoomInBtn.addEventListener("click", () => { state.pxPerSec = clamp(state.pxPerSec * 1.4, 4, 800); renderTimeline(); });
@@ -652,10 +778,11 @@
     document.addEventListener("keydown", (ev) => {
       const tag = (document.activeElement && document.activeElement.tagName) || "";
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if (ev.key === "ArrowLeft") { state.playhead = Math.max(0, state.playhead - (ev.shiftKey ? 1 : 0.1)); renderTimeline(); renderNowStrip(); }
-      else if (ev.key === "ArrowRight") { state.playhead = state.playhead + (ev.shiftKey ? 1 : 0.1); renderTimeline(); renderNowStrip(); }
+      if (ev.key === "ArrowLeft") { movePlayheadTo(Math.max(0, state.playhead - (ev.shiftKey ? 1 : 0.1))); renderTimeline(); }
+      else if (ev.key === "ArrowRight") { movePlayheadTo(state.playhead + (ev.shiftKey ? 1 : 0.1)); renderTimeline(); }
       else if (ev.key === "Delete" || ev.key === "Backspace") { if (state.selectedSegment) dom.deleteSegBtn.click(); }
       else if ((ev.key === "s" || ev.key === "S") && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); saveFile(); }
+      else if (ev.key === " ") { ev.preventDefault(); togglePlay(); }
     });
 
     window.addEventListener("beforeunload", (ev) => {
@@ -670,7 +797,7 @@
     if (dir > 0) target = all.find((s) => (s.start || 0) > state.playhead + 0.001);
     else target = all.slice().reverse().find((s) => (s.start || 0) < state.playhead - 0.001);
     if (target) {
-      state.playhead = target.start || 0;
+      movePlayheadTo(target.start || 0, { skipNowStrip: true });
       selectSegment(target);
       renderTimeline();
       renderNowStrip();
@@ -684,6 +811,7 @@
       await refreshStatus();
       await loadCharacters();
       await refreshFileList();
+      await refreshAudioList();
     } catch (e) {
       toast("Impossible de contacter le serveur local : " + e.message, true);
     }

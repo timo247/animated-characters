@@ -7,7 +7,7 @@ pour éditer les fichiers `episode-*.json` de speech/transcript.
 
 ```bash
 cd speech-editor
-python3 server.py ../episodes/json-speaches
+python3 server.py ../episodes/json-speaches ../episodes/audios
 ```
 
 Puis ouvre **http://127.0.0.1:8765** dans ton navigateur.
