@@ -29,6 +29,18 @@
   "characters": [],
   "decors": [
     {
+      "id": "title",
+      "decor": "Title",
+      "color": "1",
+      "screen_position": {
+        "x": 25,
+        "y": 875
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": 1
+    },
+    {
       "id": "big-tree",
       "decor": "big-tree",
       "color": "DRY",

@@ -1,0 +1,19 @@
+{
+  "decor_id": "title",
+  "label": "Title",
+  "idle": {
+    "fps": 1,
+    "colors": {
+      "1":  { "frames": ["TITLE-EPISODE-1.png"] },
+      "2": { "frames": ["TITLE-EPISODE-2.png"] },
+      "3": { "frames": ["TITLE-EPISODE-3.png"] },
+      "4":  { "frames": ["TITLE-EPISODE-4.png"] },
+      "5": { "frames": ["TITLE-EPISODE-5.png"] },
+      "6": { "frames": ["TITLE-EPISODE-6.png"] },$
+      "7":  { "frames": ["TITLE-EPISODE-7.png"] },
+      "8": { "frames": ["TITLE-EPISODE-8.png"] },
+      "9": { "frames": ["TITLE-EPISODE-9.png"] },
+      "10":  { "frames": ["TITLE-EPISODE-10.png"] }
+    }
+  }
+}
