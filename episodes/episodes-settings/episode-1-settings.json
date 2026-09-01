@@ -30,7 +30,7 @@
   "decors": [
     {
       "id": "title",
-      "decor": "Title",
+      "decor": "title",
       "color": "1",
       "screen_position": {
         "x": 25,

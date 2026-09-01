@@ -117,6 +117,107 @@
         "frame_duration_seconds": 0.05
       }
 
+    },
+    "2": {
+      "idle": {
+        "frames": ["IDLE-1.png", "IDLE-2.png", "IDLE-3.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 840, "y": 330 },
+            "scale":    1.0,
+            "flip_x":   true,
+            "rotation": 0
+          },
+	  "mouth": {
+            "anchor":   { "x": 869, "y": 475 },
+            "scale":    1,
+            "flip_x":   true,
+            "rotation": 0,
+            "idle_viseme": "CLOSED.png"
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "IDLE-2.png"
+          },
+          {
+            "frame": "IDLE-3.png"
+          }
+        ]
+      },
+
+      "transitions": {
+        "frames": ["TRANSITION-1.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 386, "y": 251 },
+            "scale":    1.0,
+            "flip_x":   false,
+            "rotation": 14
+          },
+	  "mouth": {
+            "anchor":   { "x": 379, "y": 390 },
+            "scale":    1,
+            "flip_x":   false,
+            "rotation": 0
+          }
+	}
+      },
+
+      "moves": {
+        "frames": ["MOVE-1.png", "MOVE-2.png", "MOVE-3.png", "MOVE-4.png"],
+        "fps": 3,
+        "flip_x": false,
+
+        "default": {
+          "eye_layers": {
+            "anchor":   { "x": 827, "y": 368 },
+            "scale":    1.0,
+            "flip_x":   true,
+            "rotation": 2
+          },
+          "mouth": {
+            "anchor":   { "x": 869, "y": 500 },
+            "scale":    1,
+            "flip_x":   true,
+            "rotation": 0
+          }
+        },
+
+        "frames_config": [
+          {
+            "frame": "MOVE-2.png",
+            "eye_layers":  { "anchor": { "x": 817, "y": 309 }, "rotation": 2 },
+            "mouth": { "anchor": { "x": 859, "y": 442 }, "rotation": 0 }
+          },
+          {
+            "frame": "MOVE-3.png",
+            "eye_layers":  { "anchor": { "x": 827, "y": 372 }, "rotation": 2 },
+            "mouth": { "anchor": { "x": 869, "y": 505 }, "rotation": 0 }
+          },
+          {
+            "frame": "MOVE-4.png",
+            "eye_layers":  { "anchor": { "x": 827, "y": 347 }, "rotation": 2 },
+            "mouth": { "anchor": { "x": 869, "y": 475 }, "rotation": 0}
+          }
+        ]
+      },
+
+      "blink": {
+        "_comment": "Paramètres de clignement partagés entre tous les états.",
+        "interval_seconds": 3.5,
+        "interval_jitter_seconds": 1.5,
+        "sequence": ["OPEN.png", "HALF-OPEN.png", "CLOSED.png", "HALF-OPEN.png", "OPEN.png"],
+        "frame_duration_seconds": 0.05
+      }
+
     }
   }
 }
