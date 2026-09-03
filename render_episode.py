@@ -56,6 +56,11 @@ Camera (zoom / pan) :
     Le champ optionnel "camera" de l'episode permet d'animer un zoom et/ou
     un deplacement du cadre au-dessus de la composition (fond + personnages).
     Voir build_camera_sequence() / apply_camera() pour le format.
+
+Emotion timeline :
+    Le champ optionnel "emotion_timeline" d'un personnage (dans episode
+    ["characters"][i]) permet de faire varier les emotions (yeux/bouche)
+    au cours de l'episode. Voir build_emotion_sequence() pour le format.
 """
 
 import argparse
@@ -315,6 +320,42 @@ def build_gaze_sequence(gaze_cfg, gaze_timeline, total_frames, fps):
         else:
             for f in range(f_start, total_frames):
                 seq[f] = (x0, y0)
+
+    return seq
+
+
+def build_emotion_sequence(default_eyes, default_mouth, emotion_timeline, total_frames, fps):
+    """
+    Retourne une liste de total_frames dicts { "eyes": <emotion>, "mouth": <emotion> }.
+
+    emotion_timeline : liste de keyframes { "at_second", "eyes"?, "mouth"? },
+    triees automatiquement par at_second. Chaque keyframe peut ne definir que
+    "eyes" OU "mouth" (le champ omis conserve sa derniere valeur active).
+
+    Contrairement a gaze/camera, il n'y a PAS d'interpolation : l'emotion
+    bascule net a "at_second" et reste tenue jusqu'a la keyframe suivante
+    (comportement "switch discret", comme viseme_timeline).
+
+    Avant la premiere keyframe -> emotions par defaut du personnage
+    (char_cfg["emotions"]["eyes"|"mouth"]).
+
+    emotion_timeline absent/vide -> emotions par defaut tenues sur toute la duree.
+    """
+    if not emotion_timeline:
+        return [{"eyes": default_eyes, "mouth": default_mouth}] * total_frames
+
+    seq = [None] * total_frames
+    kf  = sorted(emotion_timeline, key=lambda k: k["at_second"])
+
+    cur_eyes, cur_mouth = default_eyes, default_mouth
+    idx = 0
+    for f in range(total_frames):
+        t = f / fps
+        while idx < len(kf) and kf[idx]["at_second"] <= t:
+            cur_eyes  = kf[idx].get("eyes",  cur_eyes)
+            cur_mouth = kf[idx].get("mouth", cur_mouth)
+            idx += 1
+        seq[f] = {"eyes": cur_eyes, "mouth": cur_mouth}
 
     return seq
 
@@ -1090,6 +1131,19 @@ def render_frames(episode, frames_dir, visemes_data=None):
             print(f"  [INFO] {character_id} -> gaze actif "
                   f"({'timeline' if gaze_timeline else 'statique'})")
 
+        # Emotion timeline : bascule discrete de char_cfg["emotions"]["eyes"|"mouth"]
+        # au cours de l'episode, cf. build_emotion_sequence().
+        emotion_timeline = char_cfg.get("emotion_timeline")
+        emotion_seq = build_emotion_sequence(
+            char_cfg["emotions"]["eyes"],
+            char_cfg["emotions"]["mouth"],
+            emotion_timeline,
+            total_frames, fps,
+        )
+        if emotion_timeline:
+            print(f"  [INFO] {character_id} -> emotion_timeline actif "
+                  f"({len(emotion_timeline)} keyframes)")
+
         # Inversion du regard depuis l'épisode — override total du character-settings
         ep_gaze_invert_x = char_cfg.get("gaze_invert_x", None)
         ep_gaze_invert_y = char_cfg.get("gaze_invert_y", None)
@@ -1114,6 +1168,7 @@ def render_frames(episode, frames_dir, visemes_data=None):
             "eye_seq":          eye_seq,
             "mouth_seq":        mouth_seq,
             "gaze_seq":         gaze_seq,
+            "emotion_seq":      emotion_seq,
             "char_scale":       char_scale,
             "overlay_scale":    over_scale,
             "flip_cfg":         flip_cfg,
@@ -1221,8 +1276,8 @@ def render_frames(episode, frames_dir, visemes_data=None):
                 position         = active_position,
                 char_settings    = cd["settings"],
                 state            = tl["state"],
-                eye_emotion      = char_cfg["emotions"]["eyes"],
-                mouth_emotion    = char_cfg["emotions"]["mouth"],
+                eye_emotion      = cd["emotion_seq"][f]["eyes"],
+                mouth_emotion    = cd["emotion_seq"][f]["mouth"],
                 base_file        = tl["sprite"],
                 eye_file         = cd["eye_seq"][f],
                 mouth_file       = cd["mouth_seq"][f],
