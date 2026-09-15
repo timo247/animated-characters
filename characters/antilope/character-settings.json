@@ -91,13 +91,13 @@
 
         "default": {
           "eye_layers": {
-            "anchor":   { "x": 387, "y": 215 },
+            "anchor":   { "x": 499, "y": 237 },
             "scale":    1.0,
             "flip_x":   true,
             "rotation": 13
           },
           "mouth": {
-            "anchor":   { "x": 525, "y": 339 },
+            "anchor":   { "x": 637, "y": 361 },
             "scale":    0.37,
             "flip_x":   true,
             "rotation": 0
@@ -108,20 +108,20 @@
           {
             "frame": "MOVE-2.png",
             "_comment": "Foulée 1 : corps légèrement monté",
-            "eye_layers":  { "anchor": { "x": 410, "y": 216 }, "rotation": 14 },
-            "mouth": { "anchor": { "x": 548, "y": 340 }, "rotation": 0 }
+            "eye_layers":  { "anchor": { "x": 499, "y": 230 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 646, "y": 354 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-3.png",
             "_comment": "Foulée 2 : corps neutre",
-            "eye_layers":  { "anchor": { "x": 410, "y": 211 }, "rotation": 14 },
-            "mouth": { "anchor": { "x": 548, "y": 335 }, "rotation": 0 }
+            "eye_layers":  { "anchor": { "x": 499, "y": 218 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 637, "y": 242 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-4.png",
             "_comment": "Foulée 3 : corps descendu, légère rotation",
-            "eye_layers":  { "anchor": { "x": 401, "y": 203 }, "rotation": 14 },
-            "mouth": { "anchor": { "x": 539, "y": 327 }, "rotation": 0 }
+            "eye_layers":  { "anchor": { "x": 499, "y": 220 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 637, "y": 344 }, "rotation": 0 }
           }
         ]
       },
@@ -212,13 +212,13 @@
 
         "default": {
           "eye_layers": {
-            "anchor":   { "x": 387, "y": 215 },
+            "anchor":   { "x": 499, "y": 237 },
             "scale":    1.0,
             "flip_x":   true,
             "rotation": 13
           },
           "mouth": {
-            "anchor":   { "x": 525, "y": 339 },
+            "anchor":   { "x": 637, "y": 361 },
             "scale":    0.37,
             "flip_x":   true,
             "rotation": 0
@@ -229,20 +229,20 @@
           {
             "frame": "MOVE-2.png",
             "_comment": "Foulée 1 : corps légèrement monté",
-            "eye_layers":  { "anchor": { "x": 410, "y": 216 }, "rotation": 14 },
-            "mouth": { "anchor": { "x": 548, "y": 340 }, "rotation": 0 }
+            "eye_layers":  { "anchor": { "x": 499, "y": 230 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 646, "y": 354 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-3.png",
             "_comment": "Foulée 2 : corps neutre",
-            "eye_layers":  { "anchor": { "x": 410, "y": 211 }, "rotation": 14 },
-            "mouth": { "anchor": { "x": 548, "y": 335 }, "rotation": 0 }
+            "eye_layers":  { "anchor": { "x": 499, "y": 218 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 637, "y": 242 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-4.png",
             "_comment": "Foulée 3 : corps descendu, légère rotation",
-            "eye_layers":  { "anchor": { "x": 401, "y": 203 }, "rotation": 14 },
-            "mouth": { "anchor": { "x": 539, "y": 327 }, "rotation": 0 }
+            "eye_layers":  { "anchor": { "x": 499, "y": 220 }, "rotation": 14 },
+            "mouth": { "anchor": { "x": 637, "y": 344 }, "rotation": 0 }
           }
         ]
       },
