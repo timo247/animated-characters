@@ -1,0 +1,227 @@
+{
+  "episode_id": "tst-intro",
+  "output": {
+    "filename": "tst-intro.mp4",
+    "duration_seconds": 10,
+    "fps": 24,
+    "resolution": [
+      1920,
+      1080
+    ]
+  },
+  "background": {
+    "image": "episode-3.png"
+  },
+  "audio": "",
+  "camera": {
+    "zoom": 1,
+    "x": 960,
+    "y": 540,
+    "timeline": [
+      {
+        "at_second": 0,
+        "zoom": 1,
+        "x": 960,
+        "y": 540
+      }
+    ]
+  },
+  "characters": [
+    {
+      "id": "spider",
+      "character": "spider",
+      "position": "2",
+      "layer": 0,
+      "screen_position": {
+        "x": 356,
+        "y": 482
+      },
+      "scale": 0.35,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": 10,
+        "y": 0
+      },
+      "moves": [
+        {
+          "at_second": 1,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "2",
+              "from": {
+                "x": 356,
+                "y": 482
+              },
+              "to": {
+                "x": 1056,
+                "y": 486
+              },
+              "duration_seconds": 2.5,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": false,
+              "gaze": {
+                "x": 10,
+                "y": 0
+              }
+            },
+            {
+              "position": "2",
+              "from": {
+                "x": 1056,
+                "y": 486
+              },
+              "to": {
+                "x": 1056,
+                "y": 486
+              },
+              "duration_seconds": 0,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    },
+    {
+      "id": "antilope-2",
+      "character": "bird",
+      "position": "1",
+      "layer": 0,
+      "screen_position": {
+        "x": 122,
+        "y": 494
+      },
+      "scale": 0.4,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "UNHAPPY",
+        "mouth": "HAPPY"
+      },
+      "speaker": "",
+      "gaze": {
+        "x": 10,
+        "y": 0
+      },
+      "moves": [
+        {
+          "at_second": 0.1,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "1",
+              "from": {
+                "x": 122,
+                "y": 494
+              },
+              "to": {
+                "x": 1166,
+                "y": 392
+              },
+              "duration_seconds": 2.5,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    }
+  ],
+  "decors": [
+     {
+      "id": "intro-title",
+      "type": "text",
+      "text": "Chercher la paix",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 90,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "screen_position": {
+        "x": 0,
+        "y": 300
+      },
+      "align": "center",
+      "layer": -10,
+      "active_window": {
+        "start_second": 3,
+        "duration_seconds": 5
+      },
+      "effects": [
+        {
+          "type": "scale",
+          "duration_seconds": 4,
+          "from": 0.4,
+          "to": 1,
+          "easing": "ease_out_cubic"
+        },
+        {
+          "type": "fade",
+          "duration_seconds": 4,
+          "from": 0,
+          "to": 1
+        }
+      ]
+    },
+    {
+      "id": "intro-phrase",
+      "type": "text",
+      "text": "On peut se sortir des problèmes venant de l'extérieur.\nCeux dont on ne se sauve pas, ce sont ceux qu'on se crée soi-même.",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 38,
+        "color": [
+          230,
+          230,
+          230,
+          255
+        ]
+      },
+      "screen_position": {
+        "x": 0,
+        "y": 460
+      },
+      "align": "center",
+      "layer": -10,
+      "active_window": {
+        "start_second": 0,
+        "duration_seconds": 8
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "duration_seconds": 2,
+          "from": 0,
+          "to": 1
+        }
+      ]
+    }
+  ]
+}

@@ -61,6 +61,23 @@ Emotion timeline :
     Le champ optionnel "emotion_timeline" d'un personnage (dans episode
     ["characters"][i]) permet de faire varier les emotions (yeux/bouche)
     au cours de l'episode. Voir build_emotion_sequence() pour le format.
+
+Décors temporises et effets (intro, etc.) :
+    Chaque element de "decors" accepte deux champs optionnels :
+
+      "active_window": { "start_second": 0, "duration_seconds": 3 }
+        Limite l'affichage du décor a cette fenetre de temps (au lieu
+        d'etre visible sur toute la duree de l'episode). Voir
+        resolve_decor_window().
+
+      "effects": [ { "type": "scale"|"fade"|"slide", ... }, ... ]
+        Anime l'apparition/disparition du décor pendant sa fenetre
+        active (zoom, fondu, glissement). Voir build_decor_effect_sequence().
+
+    Un décor peut aussi etre du texte plutot qu'un sprite image, via
+    "type": "text" (defaut "image") — utile pour un titre/texte d'intro
+    qui reutilise le meme mecanisme de fenetre/effets. Voir
+    render_text_sprite().
 """
 
 import argparse
@@ -72,13 +89,14 @@ import sys
 import tempfile
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 PROJECT_ROOT        = Path(__file__).parent.resolve()
 EPISODES_IMAGES_DIR = PROJECT_ROOT / "episodes" / "images"
 EPISODES_AUDIO_DIR  = PROJECT_ROOT / "episodes" / "audio"
 CHARACTERS_DIR      = PROJECT_ROOT / "characters"
 DECORS_DIR          = PROJECT_ROOT / "decors"
+FONTS_DIR           = PROJECT_ROOT / "fonts"
 DEFAULT_OUTPUT_DIR  = PROJECT_ROOT / "episodes" / "videos"
 
 # Layer par defaut (profondeur de composition) quand "layer" n'est pas
@@ -89,6 +107,9 @@ DEFAULT_OUTPUT_DIR  = PROJECT_ROOT / "episodes" / "videos"
 # meme layer sont dessines dans leur ordre d'apparition dans l'episode.
 DEFAULT_CHARACTER_LAYER = 0
 DEFAULT_DECOR_LAYER     = 100
+# Un décor "text" (titre/texte d'intro, etc.) est par defaut devant TOUT
+# (personnages inclus), sauf "layer" explicite sur le décor.
+DEFAULT_TEXT_DECOR_LAYER = -10
 
 IDLE           = "idle"
 TRANSITION_OUT = "transition_out"
@@ -152,6 +173,197 @@ def load_decor_settings(decor_id):
     if not path.exists():
         sys.exit(f"[ERREUR] decor-settings.json introuvable : {path}")
     return load_json(path)
+
+
+def render_text_sprite(text_cfg):
+    """
+    Construit le sprite RGBA d'un décor "type": "text" a partir de son texte
+    et de sa config de police (text_cfg = l'element décor complet).
+
+    Le sprite est recadre au plus juste sur le texte (bounding box). Comme
+    pour un décor image, "screen_position" reste le coin superieur gauche
+    de ce sprite (convention Figma, cf. en-tete du fichier) — c'est
+    apply_decor_effects() qui en deduit ensuite le centre pour ancrer le
+    zoom/fondu/glissement.
+
+    text_cfg :
+        "text"  : contenu (peut contenir "\\n" pour plusieurs lignes)
+        "font"  : { "file": <ttf relatif a FONTS_DIR ou chemin absolu>,
+                    "size": <px, defaut 48>,
+                    "color": [r, g, b, a] (defaut blanc opaque) }
+    """
+    text     = text_cfg["text"]
+    font_cfg = text_cfg.get("font", {})
+    size     = int(font_cfg.get("size", 48))
+    color    = tuple(font_cfg.get("color", [255, 255, 255, 255]))
+    font_file = font_cfg.get("file")
+
+    if font_file:
+        font_path = Path(font_file)
+        if not font_path.is_absolute():
+            font_path = FONTS_DIR / font_file
+        if not font_path.exists():
+            sys.exit(f"[ERREUR] Police introuvable : {font_path}")
+        font = ImageFont.truetype(str(font_path), size)
+    else:
+        # Police par defaut Pillow (bitmap) : bof en qualite, mais evite de
+        # planter si aucune police n'est fournie. Prefer toujours "font.file".
+        try:
+            font = ImageFont.load_default(size=size)
+        except TypeError:
+            font = ImageFont.load_default()
+
+    pad = 4  # marge anti-clipping (jambages, antialiasing)
+    tmp  = Image.new("RGBA", (1, 1))
+    draw = ImageDraw.Draw(tmp)
+    bbox = draw.multiline_textbbox((0, 0), text, font=font, align="center")
+    w = int(round((bbox[2] - bbox[0]) + pad * 2))
+    h = int(round((bbox[3] - bbox[1]) + pad * 2))
+
+    img  = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.multiline_text((pad - bbox[0], pad - bbox[1]), text, font=font,
+                         fill=color, align="center")
+    return img
+
+
+def resolve_decor_window(decor_cfg, total_frames, fps):
+    """
+    Renvoie (frame_start, frame_end) : intervalle [frame_start, frame_end)
+    pendant lequel le décor est actif (visible).
+
+    Sans "active_window" sur le décor -> actif sur toute la duree de
+    l'episode (comportement historique, inchange).
+
+    "active_window": { "start_second": <defaut 0>, "duration_seconds": <requis> }
+    """
+    window = decor_cfg.get("active_window")
+    if not window:
+        return 0, total_frames
+    start_s = float(window.get("start_second", 0))
+    dur_s   = float(window["duration_seconds"])
+    f_start = max(0, int(round(start_s * fps)))
+    f_end   = min(total_frames, int(round((start_s + dur_s) * fps)))
+    return f_start, f_end
+
+
+def _ease(t, easing):
+    if easing == "ease_out_cubic":
+        return 1 - (1 - t) ** 3
+    if easing == "ease_in_cubic":
+        return t ** 3
+    return t  # "linear" / valeur inconnue
+
+
+def build_decor_effect_sequence(effects_cfg, frame_start, frame_end, fps):
+    """
+    Precalcule, pour chaque frame ACTIVE d'un décor (index relatif a
+    frame_start, de 0 a frame_end-frame_start-1), le quadruplet
+    (scale_mult, opacity, dx, dy) resultant de la combinaison de tous les
+    effets définis sur ce décor.
+
+    Chaque effet (dict dans "effects") :
+      "type"             : "scale" | "fade" | "slide"
+      "axis"             : "x" | "y"  (uniquement pour "slide", defaut "x")
+      "start_second"     : defaut 0 — relatif au DEBUT de la fenetre active
+                            du décor (pas au debut de l'episode)
+      "duration_seconds" : defaut = duree totale de la fenetre active
+      "from" / "to"      : valeurs de depart / arrivee
+                              scale -> multiplicateur (1.0 = taille normale
+                                       du décor telle que définie par "scale")
+                              fade  -> opacite, 0.0 (invisible) a 1.0 (opaque)
+                              slide -> decalage en pixels par rapport a
+                                       "screen_position"
+      "easing"           : "linear" (defaut) | "ease_out_cubic" | "ease_in_cubic"
+
+    Avant le debut de l'effet -> valeur "from" tenue.
+    Apres la fin de l'effet   -> valeur "to" tenue (jusqu'a la fin de la
+    fenetre active du décor ; l'effet ne repart jamais en arriere seul —
+    pour un aller-retour, definir deux effets avec des fenetres successives).
+
+    Plusieurs effets du meme type se cumulent (scale multiplie, fade
+    multiplie, slide s'additionne).
+    """
+    n = max(0, frame_end - frame_start)
+    if not effects_cfg or n == 0:
+        return [(1.0, 1.0, 0.0, 0.0)] * n
+
+    window_duration = n / fps if fps else 0.0
+    scale_seq   = [1.0] * n
+    opacity_seq = [1.0] * n
+    dx_seq      = [0.0] * n
+    dy_seq      = [0.0] * n
+
+    for eff in effects_cfg:
+        etype   = eff["type"]
+        start_s = float(eff.get("start_second", 0))
+        dur_s   = float(eff.get("duration_seconds", window_duration))
+        default_from = 0.0 if etype in ("fade", "slide") else 1.0
+        v_from  = float(eff.get("from", default_from))
+        v_to    = float(eff.get("to", 1.0 if etype != "slide" else 0.0))
+        easing  = eff.get("easing", "linear")
+        axis    = eff.get("axis", "x")
+
+        f_eff_start = int(round(start_s * fps))
+        f_eff_end   = int(round((start_s + dur_s) * fps))
+
+        for i in range(n):
+            if i <= f_eff_start:
+                t_raw = 0.0
+            elif i >= f_eff_end:
+                t_raw = 1.0
+            else:
+                t_raw = (i - f_eff_start) / max(f_eff_end - f_eff_start, 1)
+            t   = _ease(t_raw, easing)
+            val = v_from + (v_to - v_from) * t
+
+            if etype == "scale":
+                scale_seq[i] *= val
+            elif etype == "fade":
+                opacity_seq[i] *= val
+            elif etype == "slide":
+                if axis == "y":
+                    dy_seq[i] += val
+                else:
+                    dx_seq[i] += val
+            else:
+                sys.exit(f"[ERREUR] Type d'effet décor inconnu : '{etype}'")
+
+    return list(zip(scale_seq, opacity_seq, dx_seq, dy_seq))
+
+
+def apply_decor_effects(sprite_base, screen_x, screen_y, scale_mult, opacity, dx, dy):
+    """
+    Applique (scale_mult, opacity, dx, dy) — cf. build_decor_effect_sequence()
+    — a un sprite décor deja transforme (scale/flip/rotation "statiques" du
+    décor appliques). L'ancrage du scale se fait sur le CENTRE du sprite de
+    base (screen_x/y + moitie de sa taille), pas sur son coin, pour un
+    zoom-in/out visuellement centre plutot qu'un zoom depuis le coin.
+
+    Renvoie (sprite_final, paste_x, paste_y). Sans effet (scale_mult=1,
+    opacity=1, dx=dy=0), le resultat est identique au paste top-left
+    d'origine (screen_x, screen_y) — retro-compatible.
+    """
+    base_w, base_h = sprite_base.size
+
+    if scale_mult != 1.0:
+        w = max(1, round(base_w * scale_mult))
+        h = max(1, round(base_h * scale_mult))
+        sprite = sprite_base.resize((w, h), Image.LANCZOS)
+    else:
+        sprite = sprite_base
+
+    if opacity < 1.0:
+        opacity = max(0.0, opacity)
+        alpha = sprite.split()[3].point(lambda p: int(p * opacity))
+        sprite = sprite.copy()
+        sprite.putalpha(alpha)
+
+    cx = screen_x + base_w / 2
+    cy = screen_y + base_h / 2
+    paste_x = round(cx - sprite.width / 2 + dx)
+    paste_y = round(cy - sprite.height / 2 + dy)
+    return sprite, paste_x, paste_y
 
 
 # ---------------------------------------------------------------------------
@@ -1182,27 +1394,64 @@ def render_frames(episode, frames_dir, visemes_data=None):
     # composition, cf. DEFAULT_CHARACTER_LAYER / DEFAULT_DECOR_LAYER.
     decor_data = []
     for decor_cfg in episode.get("decors", []):
-        decor_id       = decor_cfg["decor"]
-        decor_settings = load_decor_settings(decor_id)
-        idle_cfg       = decor_settings["idle"]
-        color          = decor_cfg["color"]
+        decor_type = decor_cfg.get("type", "image")
 
-        if color not in idle_cfg.get("colors", {}):
-            sys.exit(f"[ERREUR] Couleur '{color}' introuvable pour le décor '{decor_id}'.")
+        f_start, f_end = resolve_decor_window(decor_cfg, total_frames, fps)
+        effect_seq = build_decor_effect_sequence(decor_cfg.get("effects"), f_start, f_end, fps)
 
-        frames  = idle_cfg["colors"][color]["frames"]
-        fps_cfg = idle_cfg.get("fps", 8)
-        pause_cfg = idle_cfg.get("pause_seconds")
+        default_layer = DEFAULT_TEXT_DECOR_LAYER if decor_type == "text" else DEFAULT_DECOR_LAYER
+        entry = {
+            "kind":        "decor",
+            "decor_type":  decor_type,
+            "layer":       float(decor_cfg.get("layer", default_layer)),
+            "cfg":         decor_cfg,
+            "frame_start": f_start,
+            "frame_end":   f_end,
+            "effect_seq":  effect_seq,
+        }
 
-        decor_data.append({
-            "kind":       "decor",
-            "layer":      float(decor_cfg.get("layer", DEFAULT_DECOR_LAYER)),
-            "cfg":        decor_cfg,
-            "sprite_seq": build_decor_idle_sequence(frames, fps_cfg, total_frames, fps, pause_cfg),
-        })
+        if decor_type == "text":
+            entry["base_sprite"] = render_text_sprite(decor_cfg)
+
+            # "align": "center" (optionnel, décors texte uniquement) : centre
+            # horizontalement sur la largeur de la video plutot que d'utiliser
+            # "screen_position.x" tel quel. Calcule une fois ici, car la
+            # largeur du sprite texte (post scale/flip/rotation du décor,
+            # hors effets) est constante sur toute sa fenetre active.
+            static_sprite = transform_img(
+                entry["base_sprite"],
+                float(decor_cfg.get("scale", 1.0)),
+                bool(decor_cfg.get("flip_x", False)),
+                float(decor_cfg.get("rotation", 0.0)),
+            )
+            if decor_cfg.get("align") == "center":
+                resolved_x = (world_w - static_sprite.width) / 2
+            else:
+                resolved_x = decor_cfg["screen_position"]["x"]
+            entry["resolved_pos"] = (resolved_x, decor_cfg["screen_position"]["y"])
+        else:
+            decor_id       = decor_cfg["decor"]
+            decor_settings = load_decor_settings(decor_id)
+            idle_cfg       = decor_settings["idle"]
+            color          = decor_cfg["color"]
+
+            if color not in idle_cfg.get("colors", {}):
+                sys.exit(f"[ERREUR] Couleur '{color}' introuvable pour le décor '{decor_id}'.")
+
+            frames    = idle_cfg["colors"][color]["frames"]
+            fps_cfg   = idle_cfg.get("fps", 8)
+            pause_cfg = idle_cfg.get("pause_seconds")
+            entry["sprite_seq"] = build_decor_idle_sequence(frames, fps_cfg, total_frames, fps, pause_cfg)
+
+        decor_data.append(entry)
 
     if decor_data:
-        print(f"  [INFO] Décors : {[d['cfg']['decor'] for d in decor_data]}")
+        print(f"  [INFO] Décors : "
+              f"{[d['cfg'].get('decor', d['cfg'].get('id', '?')) for d in decor_data]}")
+        timed = [d for d in decor_data if d["frame_start"] > 0 or d["frame_end"] < total_frames]
+        if timed:
+            print(f"  [INFO] Décors temporises : "
+                  f"{[(d['cfg'].get('id', '?'), d['frame_start']/fps, d['frame_end']/fps) for d in timed]}")
 
     # Ordre de composition : tri stable par layer DECROISSANT (arrière-plan ->
     # premier plan) — layer bas = devant, layer haut = derriere. A layer
@@ -1213,7 +1462,7 @@ def render_frames(episode, frames_dir, visemes_data=None):
     if any(e["layer"] != DEFAULT_CHARACTER_LAYER for e in char_data) or \
        any(e["layer"] != DEFAULT_DECOR_LAYER for e in decor_data):
         print(f"  [INFO] Ordre de composition (layers) : "
-              f"{[(e['kind'], e['cfg'].get('character', e['cfg'].get('decor')), e['layer']) for e in render_order]}")
+              f"{[(e['kind'], e['cfg'].get('character', e['cfg'].get('decor', e['cfg'].get('id'))), e['layer']) for e in render_order]}")
 
     pad = len(str(total_frames))
     for f in range(total_frames):
@@ -1221,16 +1470,36 @@ def render_frames(episode, frames_dir, visemes_data=None):
 
         for entry in render_order:
             if entry["kind"] == "decor":
+                f_start, f_end = entry["frame_start"], entry["frame_end"]
+                if not (f_start <= f < f_end):
+                    continue  # hors de sa fenetre active ("active_window")
+
                 decor_cfg = entry["cfg"]
-                sprite = composite_decor(
-                    decor_id    = decor_cfg["decor"],
-                    color       = decor_cfg["color"],
-                    sprite_file = entry["sprite_seq"][f],
-                    scale       = float(decor_cfg.get("scale", 1.0)),
-                    flip_x      = bool(decor_cfg.get("flip_x", False)),
-                    rotation    = float(decor_cfg.get("rotation", 0.0)),
+                scale_mult, opacity, dx, dy = entry["effect_seq"][f - f_start]
+
+                if entry["decor_type"] == "text":
+                    sprite_base = transform_img(
+                        entry["base_sprite"],
+                        float(decor_cfg.get("scale", 1.0)),
+                        bool(decor_cfg.get("flip_x", False)),
+                        float(decor_cfg.get("rotation", 0.0)),
+                    )
+                else:
+                    sprite_base = composite_decor(
+                        decor_id    = decor_cfg["decor"],
+                        color       = decor_cfg["color"],
+                        sprite_file = entry["sprite_seq"][f],
+                        scale       = float(decor_cfg.get("scale", 1.0)),
+                        flip_x      = bool(decor_cfg.get("flip_x", False)),
+                        rotation    = float(decor_cfg.get("rotation", 0.0)),
+                    )
+
+                sprite, px, py = apply_decor_effects(
+                    sprite_base,
+                    *entry.get("resolved_pos", (decor_cfg["screen_position"]["x"], decor_cfg["screen_position"]["y"])),
+                    scale_mult, opacity, dx, dy,
                 )
-                frame.paste(sprite, (decor_cfg["screen_position"]["x"], decor_cfg["screen_position"]["y"]), sprite)
+                frame.paste(sprite, (px, py), sprite)
                 continue
 
             cd          = entry
@@ -1433,7 +1702,8 @@ def main():
     print(f"  Sortie      : {output_path}")
     print(f"  Personnages : {[c['character'] for c in episode['characters']]}")
     if episode.get("decors"):
-        print(f"  Décors      : {[d['decor'] for d in episode['decors']]}")
+        print(f"  Décors      : "
+              f"{[d.get('decor', d.get('id', '?')) for d in episode['decors']]}")
     print(f"  Speakers    : {speakers}")
     if visemes_data:
         print(f"  Visemes     : {args.visemes}")
