@@ -221,6 +221,7 @@ let charactersAvailable = [];
 let decorCache = {};                                // nom -> data /api/decor/<name>
 let decorsAvailable = [];
 let draftSegment = null;                            // segment en cours d'édition (avant "Enregistrer")
+let draftEmotion = null;                            // keyframe d'emotion_timeline en cours d'édition
 
 /* ============================== UTILS ============================== */
 
@@ -327,6 +328,14 @@ function normalizeSegment(seg) {
   return out;
 }
 
+function normalizeEmotionKeyframe(ek) {
+  const out = { at_second: Number(ek.at_second ?? 0) };
+  // eyes/mouth sont des champs conditionnels : on ne les porte que s'ils étaient présents
+  if (ek.eyes) out.eyes = ek.eyes;
+  if (ek.mouth) out.mouth = ek.mouth;
+  return out;
+}
+
 function normalizeCharacter(c) {
   return {
     id: c.id || (c.character || "char"),
@@ -338,6 +347,7 @@ function normalizeCharacter(c) {
     overlay_scale: Number(c.overlay_scale ?? 1.0),
     flip_x: !!c.flip_x,
     emotions: { eyes: c.emotions?.eyes || "HAPPY", mouth: c.emotions?.mouth || "HAPPY" },
+    emotion_timeline: (c.emotion_timeline || []).map(normalizeEmotionKeyframe),
     speaker: c.speaker || "",
     gaze: { x: Number(c.gaze?.x ?? 0), y: Number(c.gaze?.y ?? 0) },
     moves: (c.moves || []).map(mv => ({
@@ -538,6 +548,7 @@ function renderElementList() {
 function selectElement(type, index) {
   selection = { type, index };
   draftSegment = null;
+  draftEmotion = null;
   cameraKeyIndex = state.camera.timeline.length ? 0 : -1;
   renderAll();
 }
@@ -562,6 +573,7 @@ async function addCharacter(name) {
     overlay_scale: 1.0,
     flip_x: false,
     emotions: { eyes: "HAPPY", mouth: "HAPPY" },
+    emotion_timeline: [],
     speaker: "",
     gaze: { x: 0, y: 0 },
     moves: [],
@@ -978,6 +990,7 @@ function buildCharacterInspector() {
     checkField("flip_x", c.flip_x, v => { c.flip_x = v; renderStage(); })
   ]));
 
+  wrap.appendChild(buildEmotionTimelineEditor(c));
   wrap.appendChild(buildMovesEditor(c));
 
   return wrap;
@@ -1045,6 +1058,111 @@ function buildMovesEditor(c) {
   }, "+ Ajouter un mouvement"));
 
   return wrap;
+}
+
+function buildEmotionTimelineEditor(c) {
+  const wrap = document.createElement("div");
+  wrap.appendChild(el("h3", {}, "Emotion timeline"));
+  wrap.appendChild(el("div", { class: "hint" },
+    "Change les émotions (eyes/mouth) du personnage à des instants précis, en plus de son état " +
+    "initial ci-dessus. Chaque keyframe est indépendante : elle peut ne changer que eyes, que mouth, ou les deux."));
+
+  if (!c.emotion_timeline) c.emotion_timeline = [];
+
+  const list = el("div", { class: "segList" });
+  const sorted = c.emotion_timeline.slice().sort((a, b) => a.at_second - b.at_second);
+  sorted.forEach((ek) => {
+    const ei = c.emotion_timeline.indexOf(ek);
+    const isEditing = draftEmotion && draftEmotion.__character === c && draftEmotion.__index === ei && !draftEmotion.__isNew;
+    const row = el("div", { class: "seg-row" + (isEditing ? " active" : "") });
+    const parts = [`t=${ek.at_second}s`];
+    if (ek.eyes) parts.push(`eyes:${ek.eyes}`);
+    if (ek.mouth) parts.push(`mouth:${ek.mouth}`);
+    row.appendChild(el("div", { class: "lbl" }, parts.join(" · ")));
+    row.appendChild(el("button", { onclick: () => startEditEmotionKeyframe(c, ei) }, "éditer"));
+    row.appendChild(el("button", {
+      class: "danger", onclick: () => {
+        c.emotion_timeline.splice(ei, 1);
+        if (draftEmotion && draftEmotion.__character === c) draftEmotion = null;
+        renderAll();
+      }
+    }, "✕"));
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+
+  wrap.appendChild(el("button", { onclick: () => startNewEmotionKeyframe(c) }, "+ Ajouter une keyframe émotion"));
+
+  if (draftEmotion && draftEmotion.__character === c) {
+    wrap.appendChild(buildEmotionKeyframeEditor(c));
+  }
+
+  return wrap;
+}
+
+function startNewEmotionKeyframe(c) {
+  const last = c.emotion_timeline[c.emotion_timeline.length - 1];
+  draftEmotion = {
+    __character: c, __index: c.emotion_timeline.length, __isNew: true,
+    at_second: last ? last.at_second + 1 : 0,
+    hasEyes: false, eyes: c.emotions.eyes || "HAPPY",
+    hasMouth: false, mouth: c.emotions.mouth || "HAPPY"
+  };
+  renderAll();
+}
+
+function startEditEmotionKeyframe(c, index) {
+  const ek = c.emotion_timeline[index];
+  draftEmotion = {
+    __character: c, __index: index, __isNew: false,
+    at_second: ek.at_second,
+    hasEyes: !!ek.eyes, eyes: ek.eyes || "HAPPY",
+    hasMouth: !!ek.mouth, mouth: ek.mouth || "HAPPY"
+  };
+  renderAll();
+}
+
+function buildEmotionKeyframeEditor(c) {
+  const d = draftEmotion;
+  const box = el("div", { class: "segment-editor" });
+  box.appendChild(el("h4", {}, d.__isNew ? "Nouvelle keyframe émotion" : `Modifier keyframe #${d.__index + 1}`));
+
+  box.appendChild(numberField("at_second", d.at_second, v => d.at_second = v, 0.1));
+
+  box.appendChild(el("div", { class: "check-row" }, [
+    checkField("définir eyes", d.hasEyes, v => { d.hasEyes = v; refreshInspector(); })
+  ]));
+  if (d.hasEyes) {
+    box.appendChild(labeled("eyes", selectField(["HAPPY", "UNHAPPY"], d.eyes, v => d.eyes = v)));
+  }
+
+  box.appendChild(el("div", { class: "check-row" }, [
+    checkField("définir mouth", d.hasMouth, v => { d.hasMouth = v; refreshInspector(); })
+  ]));
+  if (d.hasMouth) {
+    box.appendChild(labeled("mouth", selectField(["HAPPY", "UNHAPPY"], d.mouth, v => d.mouth = v)));
+  }
+  if (!d.hasEyes && !d.hasMouth) {
+    box.appendChild(el("div", { class: "hint" }, "Coche au moins une des deux cases avant d'enregistrer."));
+  }
+
+  box.appendChild(el("div", { class: "btnbar" }, [
+    el("button", { onclick: () => { draftEmotion = null; renderAll(); } }, "Annuler"),
+    el("button", {
+      class: "primary", onclick: () => {
+        if (!d.hasEyes && !d.hasMouth) { alert("Définis au moins eyes ou mouth."); return; }
+        const payload = { at_second: d.at_second };
+        if (d.hasEyes) payload.eyes = d.eyes;
+        if (d.hasMouth) payload.mouth = d.mouth;
+        if (d.__isNew) c.emotion_timeline.push(payload);
+        else c.emotion_timeline[d.__index] = payload;
+        draftEmotion = null;
+        renderAll();
+      }
+    }, "Enregistrer la keyframe")
+  ]));
+
+  return box;
 }
 
 function buildMoveBlock(c, mv, mi) {
