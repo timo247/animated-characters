@@ -157,6 +157,7 @@
     <div id="elementList"></div>
     <button id="btnAddCharacter" style="width:100%">+ Ajouter un personnage</button>
     <button id="btnAddDecor" style="width:100%;margin-top:6px">+ Ajouter un décor</button>
+    <button id="btnAddTextDecor" style="width:100%;margin-top:6px">+ Ajouter un titre / texte</button>
   </div>
 
   <div id="canvasWrap">
@@ -220,8 +221,10 @@ let characterCache = {};                            // nom -> data /api/characte
 let charactersAvailable = [];
 let decorCache = {};                                // nom -> data /api/decor/<name>
 let decorsAvailable = [];
+let fontsAvailable = [];                            // fichiers .ttf/.otf dans fonts/
 let draftSegment = null;                            // segment en cours d'édition (avant "Enregistrer")
 let draftEmotion = null;                            // keyframe d'emotion_timeline en cours d'édition
+let draftEffect = null;                             // effet de décor en cours d'édition
 
 /* ============================== UTILS ============================== */
 
@@ -273,6 +276,11 @@ async function loadInitialData() {
     const decs = await api("/api/decors");
     decorsAvailable = decs.decors;
   } catch (e) { setStatus("Erreur /api/decors: " + e.message); }
+
+  try {
+    const fonts = await api("/api/fonts");
+    fontsAvailable = fonts.fonts;
+  } catch (e) { setStatus("Erreur /api/fonts: " + e.message); }
 
   try {
     const bgs = await api("/api/backgrounds");
@@ -360,16 +368,50 @@ function normalizeCharacter(c) {
   };
 }
 
+function normalizeEffect(e) {
+  const type = ["scale", "fade", "slide"].includes(e.type) ? e.type : "fade";
+  const out = {
+    type,
+    start_second: Number(e.start_second ?? 0),
+    duration_seconds: (e.duration_seconds === undefined || e.duration_seconds === null)
+      ? null : Number(e.duration_seconds),
+    from: Number(e.from ?? (type === "scale" ? 1.0 : 0.0)),
+    to: Number(e.to ?? (type === "slide" ? 0.0 : 1.0)),
+    easing: e.easing || "linear"
+  };
+  if (type === "slide") out.axis = e.axis === "y" ? "y" : "x";
+  return out;
+}
+
 function normalizeDecor(d) {
-  return {
-    id: d.id || (d.decor || "decor"),
-    decor: d.decor || "",
-    color: d.color || "GREEN",
+  const type = d.type === "text" ? "text" : "image";
+  const out = {
+    id: d.id || (type === "text" ? "texte" : (d.decor || "decor")),
+    type,
     screen_position: { x: Number(d.screen_position?.x ?? 0), y: Number(d.screen_position?.y ?? 0) },
     scale: Number(d.scale ?? 1.0),
     flip_x: !!d.flip_x,
-    layer: Number(d.layer ?? 0)
+    layer: Number(d.layer ?? 0),
+    active_window: (d.active_window && d.active_window.duration_seconds != null) ? {
+      start_second: Number(d.active_window.start_second ?? 0),
+      duration_seconds: Number(d.active_window.duration_seconds)
+    } : null,
+    effects: Array.isArray(d.effects) ? d.effects.map(normalizeEffect) : []
   };
+  if (type === "text") {
+    out.text = d.text || "";
+    out.font = {
+      file: d.font?.file || "",
+      size: Number(d.font?.size ?? 48),
+      color: (Array.isArray(d.font?.color) && d.font.color.length === 4)
+        ? d.font.color.map(Number) : [255, 255, 255, 255]
+    };
+    out.align = d.align === "center" ? "center" : "left";
+  } else {
+    out.decor = d.decor || "";
+    out.color = d.color || "GREEN";
+  }
+  return out;
 }
 
 async function importEpisodeSettings(json) {
@@ -412,6 +454,8 @@ async function importEpisodeSettings(json) {
   selection = { type: "camera", index: null };
   cameraKeyIndex = 0;
   draftSegment = null;
+  draftEmotion = null;
+  draftEffect = null;
 
   rebuildStageSize();
   refreshTopbarFields();
@@ -531,12 +575,17 @@ function renderElementList() {
   });
 
   state.decors.forEach((d, i) => {
+    const icon = d.type === "text" ? "🔤" : "🌳";
+    const label = d.type === "text"
+      ? (d.text ? d.text.split("\n")[0] : "(texte vide)")
+      : (d.decor || "?");
+    const badge = d.active_window ? " ⏱" : "";
     const item = el("div", {
       class: "el-item" + (selection.type === "decor" && selection.index === i ? " active" : ""),
       onclick: () => selectElement("decor", i)
     }, [
-      el("div", { class: "dot", style: "background:var(--ok)" }),
-      el("div", { class: "name" }, `🌳 ${d.decor || "?"} (${d.id})`),
+      el("div", { class: "dot", style: `background:${d.type === "text" ? "var(--accent)" : "var(--ok)"}` }),
+      el("div", { class: "name" }, `${icon} ${label} (${d.id})${badge}`),
       el("div", {
         class: "del", html: "✕", onclick: (ev) => { ev.stopPropagation(); removeDecor(i); }
       })
@@ -549,6 +598,7 @@ function selectElement(type, index) {
   selection = { type, index };
   draftSegment = null;
   draftEmotion = null;
+  draftEffect = null;
   cameraKeyIndex = state.camera.timeline.length ? 0 : -1;
   renderAll();
 }
@@ -607,12 +657,15 @@ async function addDecor(name) {
 
   const d = {
     id: newDecorId(name),
+    type: "image",
     decor: name,
     color: firstColor,
     screen_position: { x: 0, y: 0 },
     scale: 1.0,
     flip_x: false,
-    layer: 0
+    layer: 0,
+    active_window: null,
+    effects: []
   };
   state.decors.push(d);
   selection = { type: "decor", index: state.decors.length - 1 };
@@ -620,7 +673,9 @@ async function addDecor(name) {
 }
 
 function removeDecor(i) {
+  const removed = state.decors[i];
   state.decors.splice(i, 1);
+  if (draftEffect && draftEffect.__decor === removed) draftEffect = null;
   if (selection.type === "decor") {
     if (state.decors.length === 0) selection = { type: "camera", index: null };
     else selection.index = clamp(selection.index, 0, state.decors.length - 1);
@@ -629,6 +684,70 @@ function removeDecor(i) {
 }
 
 document.getElementById("btnAddDecor").addEventListener("click", () => addDecor());
+
+function addTextDecor() {
+  const d = {
+    id: newDecorId("texte"),
+    type: "text",
+    text: "Nouveau texte",
+    font: { file: "", size: 48, color: [255, 255, 255, 255] },
+    align: "left",
+    screen_position: { x: 100, y: 100 },
+    scale: 1.0,
+    flip_x: false,
+    layer: -10,
+    active_window: null,
+    effects: []
+  };
+  state.decors.push(d);
+  selection = { type: "decor", index: state.decors.length - 1 };
+  renderAll();
+}
+
+document.getElementById("btnAddTextDecor").addEventListener("click", () => addTextDecor());
+
+/* ---- Bascule le type d'un décor existant (image <-> texte), en conservant
+   les champs communs (id, screen_position, scale, flip_x, layer, active_window, effects) ---- */
+function switchDecorType(d, newType) {
+  if (d.type === newType) return;
+  d.type = newType;
+  if (newType === "text") {
+    delete d.decor; delete d.color;
+    d.text = d.text || "Nouveau texte";
+    d.font = d.font || { file: "", size: 48, color: [255, 255, 255, 255] };
+    d.align = d.align || "left";
+  } else {
+    delete d.text; delete d.font; delete d.align;
+    d.decor = decorsAvailable[0] || "";
+    d.color = "GREEN";
+    if (d.decor) {
+      getDecorData(d.decor).then(data => {
+        d.color = Object.keys(data.colors)[0] || "GREEN";
+        renderAll();
+      }).catch(() => {});
+    }
+  }
+}
+
+/* ============================== FONTS (CSS Font Loading API, pour l'aperçu) ============================== */
+
+const loadedFontFamilies = {}; // fichier -> nom de famille CSS déjà chargé
+
+async function ensureFontLoaded(fontFile) {
+  if (!fontFile) return null;
+  if (loadedFontFamilies[fontFile]) return loadedFontFamilies[fontFile];
+  const family = "df-" + fontFile.replace(/[^a-zA-Z0-9]/g, "_");
+  try {
+    const url = "/api/file?path=" + encodeURIComponent("fonts/" + fontFile);
+    const face = new FontFace(family, `url(${url})`);
+    await face.load();
+    document.fonts.add(face);
+    loadedFontFamilies[fontFile] = family;
+    return family;
+  } catch (e) {
+    return null; // police introuvable/illisible : on retombe sur une police système
+  }
+}
 
 /* ============================== STAGE (canvas central) ============================== */
 
@@ -769,6 +888,33 @@ async function renderDraggableSprite(c, position, posObj, flipX, onMove, tag) {
   });
 }
 
+/* ---- Aperçu (approximatif) d'un décor texte : DOM + police réelle chargée en tâche de fond ---- */
+function buildTextPreviewNode(d) {
+  const box = document.createElement("div");
+  box.style.position = "absolute";
+  box.style.whiteSpace = "pre";
+  box.style.lineHeight = "1.15";
+  box.style.fontWeight = "700";
+  box.style.fontFamily = "sans-serif";
+  const color = (d.font && Array.isArray(d.font.color)) ? d.font.color : [255, 255, 255, 255];
+  box.style.color = `rgba(${color[0]},${color[1]},${color[2]},${(color[3] ?? 255) / 255})`;
+  box.style.fontSize = px(d.font?.size || 48);
+  box.textContent = d.text || "";
+  if (d.align === "center") {
+    box.style.left = "50%";
+    box.style.transform = "translateX(-50%)";
+  } else {
+    box.style.left = px(d.screen_position.x);
+  }
+  box.style.top = px(d.screen_position.y);
+  return box;
+}
+function applyTextPreviewFont(box, d) {
+  ensureFontLoaded(d.font?.file).then(family => {
+    box.style.fontFamily = family ? `"${family}", sans-serif` : "sans-serif";
+  });
+}
+
 // Aperçu permanent de TOUS les décors placés dans l'episode (pas seulement celui sélectionné).
 // Le décor actuellement sélectionné n'est pas dupliqué ici : il reste géré (interactif,
 // draggable) par renderDecorOverlay(). Les autres sont affichés en semi-transparent,
@@ -781,6 +927,17 @@ async function renderAllDecors() {
     const d = state.decors[i];
     const isSelected = selection.type === "decor" && selection.index === i;
     if (isSelected) continue; // rendu (interactif) par renderDecorOverlay()
+
+    if (d.type === "text") {
+      const box = buildTextPreviewNode(d);
+      box.classList.add("decor-preview");
+      box.style.zIndex = String(10 + (d.layer || 0));
+      box.appendChild(el("div", { class: "tag" }, `texte · ${d.id}`));
+      stage.appendChild(box);
+      applyTextPreviewFont(box, d);
+      continue;
+    }
+
     if (!d.decor) continue;
 
     let data;
@@ -816,6 +973,32 @@ async function renderDecorOverlay() {
   const d = state.decors[selection.index];
   if (!d) return;
   const stage = document.getElementById("stage");
+  document.querySelectorAll(".sprite-drag").forEach(n => n.remove());
+
+  if (d.type === "text") {
+    const box = buildTextPreviewNode(d);
+    box.classList.add("sprite-drag");
+    box.style.borderColor = "var(--ok)";
+    box.style.zIndex = String(1000 + (d.layer || 0));
+    box.appendChild(el("div", { class: "tag", style: "background:var(--ok);color:#0e1a12" },
+      `texte · layer ${d.layer}` + (d.align === "center" ? " · align=center (x ignoré)" : "")));
+    stage.appendChild(box);
+    applyTextPreviewFont(box, d);
+
+    makeDraggable(box, {
+      onMove: (dxPx, dyPx) => {
+        if (d.align !== "center") {
+          d.screen_position.x = Math.round(d.screen_position.x + dxPx / scaleFactor);
+          box.style.left = px(d.screen_position.x);
+        }
+        d.screen_position.y = Math.round(d.screen_position.y + dyPx / scaleFactor);
+        box.style.top = px(d.screen_position.y);
+        refreshInspector();
+      }
+    });
+    return;
+  }
+
   let data;
   try { data = await getDecorData(d.decor); } catch (e) { return; }
   const colorData = data.colors[d.color];
@@ -1002,27 +1185,24 @@ function buildDecorInspector() {
   const wrap = document.createElement("div");
 
   wrap.appendChild(el("h3", {}, "Décor"));
-  const decorSelect = el("select", {
-    onchange: async (e) => {
-      d.decor = e.target.value;
-      const data = await getDecorData(d.decor);
-      d.color = Object.keys(data.colors)[0] || "GREEN";
-      renderAll();
-    }
-  }, decorsAvailable.map(n => el("option", { value: n, ...(n === d.decor ? { selected: "selected" } : {}) }, n)));
-  wrap.appendChild(labeled("decor", decorSelect));
+
+  const typeSelect = el("select", {
+    onchange: (e) => { switchDecorType(d, e.target.value); renderAll(); }
+  }, [
+    el("option", { value: "image", ...(d.type !== "text" ? { selected: "selected" } : {}) }, "Image (sprite)"),
+    el("option", { value: "text", ...(d.type === "text" ? { selected: "selected" } : {}) }, "Texte")
+  ]);
+  wrap.appendChild(labeled("type", typeSelect));
+
   wrap.appendChild(labeled("id (identifiant unique)", textField(d.id, v => { d.id = v; renderElementList(); })));
 
-  const decorData = decorCache[d.decor];
-  const colors = decorData ? Object.keys(decorData.colors) : [d.color];
-  const colorSelect = el("select", {
-    onchange: (e) => { d.color = e.target.value; renderStage(); }
-  }, colors.map(cl => el("option", { value: cl, ...(cl === d.color ? { selected: "selected" } : {}) }, cl)));
-  wrap.appendChild(labeled("color", colorSelect));
+  if (d.type === "text") wrap.appendChild(buildTextDecorFields(d));
+  else wrap.appendChild(buildImageDecorFields(d));
 
   wrap.appendChild(el("div", { class: "coord-readout" },
     `x ${Math.round(d.screen_position.x)}  ·  y ${Math.round(d.screen_position.y)}` +
-    `  (glisse le décor sur le canvas)`));
+    `  (glisse sur le canvas)` +
+    (d.type === "text" && d.align === "center" ? "  ·  x ignoré (align=center)" : "")));
 
   const row = el("div", { class: "row2" });
   row.appendChild(numberField("scale", d.scale, v => { d.scale = v; renderStage(); }, 0.05));
@@ -1033,12 +1213,233 @@ function buildDecorInspector() {
     checkField("flip_x", d.flip_x, v => { d.flip_x = v; renderStage(); })
   ]));
 
+  wrap.appendChild(buildActiveWindowEditor(d));
+  wrap.appendChild(buildEffectsEditor(d));
+
   wrap.appendChild(el("div", { class: "hint" },
-    "Un décor est un élément de scène statique : pas de position/émotion, pas de mouvements — " +
-    "juste un placement, une couleur de variante et un ordre d'empilement (layer). " +
-    "Les autres décors déjà placés restent visibles en aperçu semi-transparent pendant l'édition."));
+    d.type === "text"
+      ? "Un décor texte est rendu via PIL côté script (pas d'aperçu pixel-parfait ici, juste une " +
+        "approximation avec la vraie police si elle est dans fonts/). \"screen_position\" = coin " +
+        "haut-gauche du texte recadré, sauf align=center qui centre horizontalement et ignore x."
+      : "Un décor est un élément de scène statique : pas de position animée ni d'émotion — " +
+        "juste un placement, une couleur de variante et un ordre d'empilement (layer)."));
 
   return wrap;
+}
+
+function buildImageDecorFields(d) {
+  const frag = document.createDocumentFragment();
+  const decorSelect = el("select", {
+    onchange: async (e) => {
+      d.decor = e.target.value;
+      const data = await getDecorData(d.decor);
+      d.color = Object.keys(data.colors)[0] || "GREEN";
+      renderAll();
+    }
+  }, decorsAvailable.map(n => el("option", { value: n, ...(n === d.decor ? { selected: "selected" } : {}) }, n)));
+  frag.appendChild(labeled("decor", decorSelect));
+
+  const decorData = decorCache[d.decor];
+  const colors = decorData ? Object.keys(decorData.colors) : [d.color];
+  const colorSelect = el("select", {
+    onchange: (e) => { d.color = e.target.value; renderStage(); }
+  }, colors.map(cl => el("option", { value: cl, ...(cl === d.color ? { selected: "selected" } : {}) }, cl)));
+  frag.appendChild(labeled("color", colorSelect));
+  return frag;
+}
+
+function colorField(rgba, onChange) {
+  const wrap = document.createElement("div");
+  wrap.style.display = "flex"; wrap.style.gap = "6px"; wrap.style.alignItems = "center";
+  const hex = "#" + rgba.slice(0, 3).map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, "0")).join("");
+  const colorInp = el("input", { type: "color", value: hex, style: "width:44px;padding:2px;" });
+  colorInp.addEventListener("input", () => {
+    const v = colorInp.value;
+    const r = parseInt(v.slice(1, 3), 16), g = parseInt(v.slice(3, 5), 16), b = parseInt(v.slice(5, 7), 16);
+    onChange([r, g, b, rgba[3] ?? 255]);
+  });
+  const alphaInp = el("input", { type: "number", min: "0", max: "255", value: rgba[3] ?? 255, style: "width:60px;" });
+  alphaInp.addEventListener("input", () => {
+    const a = clamp(parseInt(alphaInp.value) || 0, 0, 255);
+    onChange([rgba[0], rgba[1], rgba[2], a]);
+  });
+  wrap.appendChild(colorInp);
+  wrap.appendChild(el("span", { style: "color:var(--text-dim);font-size:11px;" }, "alpha"));
+  wrap.appendChild(alphaInp);
+  return wrap;
+}
+
+function buildTextDecorFields(d) {
+  const frag = document.createDocumentFragment();
+
+  const textArea = document.createElement("textarea");
+  textArea.rows = 3;
+  textArea.style.cssText = "width:100%;font-family:inherit;font-size:12px;background:var(--panel-2);" +
+    "color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 7px;resize:vertical;";
+  textArea.value = d.text || "";
+  textArea.addEventListener("input", () => { d.text = textArea.value; renderStage(); });
+  frag.appendChild(labeled("text (saut de ligne = nouvelle ligne)", textArea));
+
+  const fontOptions = [el("option", { value: "" }, "— police par défaut —")]
+    .concat(fontsAvailable.map(f => el("option", { value: f, ...(f === d.font.file ? { selected: "selected" } : {}) }, f)));
+  const fontSelect = el("select", {
+    onchange: (e) => { d.font.file = e.target.value; renderStage(); }
+  }, fontOptions);
+  frag.appendChild(labeled("font.file (dossier fonts/)", fontSelect));
+
+  const row = el("div", { class: "row2" });
+  row.appendChild(numberField("font.size", d.font.size, v => { d.font.size = v; renderStage(); }, 1));
+  row.appendChild(labeled("font.color", colorField(d.font.color, v => { d.font.color = v; renderStage(); })));
+  frag.appendChild(row);
+
+  const alignSelect = el("select", {
+    onchange: (e) => { d.align = e.target.value; renderStage(); }
+  }, [
+    el("option", { value: "left", ...(d.align !== "center" ? { selected: "selected" } : {}) }, "left (x manuel)"),
+    el("option", { value: "center", ...(d.align === "center" ? { selected: "selected" } : {}) }, "center (centré, x ignoré)")
+  ]);
+  frag.appendChild(labeled("align", alignSelect));
+
+  return frag;
+}
+
+function buildActiveWindowEditor(d) {
+  const wrap = document.createElement("div");
+  wrap.appendChild(el("h3", {}, "Fenêtre d'activation"));
+  const enabled = !!d.active_window;
+  wrap.appendChild(el("div", { class: "check-row" }, [
+    checkField("limiter dans le temps", enabled, v => {
+      d.active_window = v ? { start_second: 0, duration_seconds: 3 } : null;
+      refreshInspector();
+    })
+  ]));
+  if (d.active_window) {
+    const row = el("div", { class: "row2" });
+    row.appendChild(numberField("start_second", d.active_window.start_second, v => d.active_window.start_second = v, 0.1));
+    row.appendChild(numberField("duration_seconds", d.active_window.duration_seconds, v => d.active_window.duration_seconds = v, 0.1));
+    wrap.appendChild(row);
+    wrap.appendChild(el("div", { class: "hint" },
+      "Le décor n'est visible que pendant cette fenêtre. Sans elle, il est visible sur toute la durée de l'épisode."));
+  }
+  return wrap;
+}
+
+function buildEffectsEditor(d) {
+  const wrap = document.createElement("div");
+  wrap.appendChild(el("h3", {}, "Effets"));
+  wrap.appendChild(el("div", { class: "hint" },
+    "Effets cumulables, relatifs au début de la fenêtre d'activation du décor (ou au début de " +
+    "l'épisode si pas de fenêtre). scale = zoom in/out, fade = opacité, slide = glissement (pixels)."));
+
+  if (!d.effects) d.effects = [];
+
+  const list = el("div", { class: "segList" });
+  d.effects.forEach((eff, ei) => {
+    const isEditing = draftEffect && draftEffect.__decor === d && draftEffect.__index === ei && !draftEffect.__isNew;
+    const row = el("div", { class: "seg-row" + (isEditing ? " active" : "") });
+    const parts = [eff.type];
+    if (eff.type === "slide") parts.push(`axis:${eff.axis}`);
+    parts.push(`${eff.from} → ${eff.to}`);
+    parts.push(eff.duration_seconds != null ? `${eff.duration_seconds}s` : "toute la fenêtre");
+    if (eff.easing && eff.easing !== "linear") parts.push(eff.easing);
+    row.appendChild(el("div", { class: "lbl" }, parts.join(" · ")));
+    row.appendChild(el("button", { onclick: () => startEditEffect(d, ei) }, "éditer"));
+    row.appendChild(el("button", {
+      class: "danger", onclick: () => {
+        d.effects.splice(ei, 1);
+        if (draftEffect && draftEffect.__decor === d) draftEffect = null;
+        renderAll();
+      }
+    }, "✕"));
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+
+  wrap.appendChild(el("button", { onclick: () => startNewEffect(d) }, "+ Ajouter un effet"));
+
+  if (draftEffect && draftEffect.__decor === d) {
+    wrap.appendChild(buildEffectEditor(d));
+  }
+
+  return wrap;
+}
+
+function startNewEffect(d) {
+  draftEffect = {
+    __decor: d, __index: d.effects.length, __isNew: true,
+    type: "fade", axis: "x", start_second: 0,
+    hasDuration: false, duration_seconds: 1.0,
+    from: 0.0, to: 1.0, easing: "linear"
+  };
+  renderAll();
+}
+
+function startEditEffect(d, index) {
+  const eff = d.effects[index];
+  draftEffect = {
+    __decor: d, __index: index, __isNew: false,
+    type: eff.type, axis: eff.axis || "x", start_second: eff.start_second ?? 0,
+    hasDuration: eff.duration_seconds != null, duration_seconds: eff.duration_seconds ?? 1.0,
+    from: eff.from, to: eff.to, easing: eff.easing || "linear"
+  };
+  renderAll();
+}
+
+function buildEffectEditor(d) {
+  const e = draftEffect;
+  const box = el("div", { class: "segment-editor" });
+  box.appendChild(el("h4", {}, e.__isNew ? "Nouvel effet" : `Modifier effet #${e.__index + 1}`));
+
+  const typeSelect = el("select", {
+    onchange: (ev) => {
+      e.type = ev.target.value;
+      refreshInspector();
+    }
+  }, ["scale", "fade", "slide"].map(t => el("option", { value: t, ...(t === e.type ? { selected: "selected" } : {}) }, t)));
+  box.appendChild(labeled("type", typeSelect));
+
+  if (e.type === "slide") {
+    const axisSelect = el("select", {
+      onchange: (ev) => e.axis = ev.target.value
+    }, ["x", "y"].map(a => el("option", { value: a, ...(a === e.axis ? { selected: "selected" } : {}) }, a)));
+    box.appendChild(labeled("axis", axisSelect));
+  }
+
+  box.appendChild(numberField("start_second (relatif à la fenêtre du décor)", e.start_second, v => e.start_second = v, 0.1));
+
+  box.appendChild(el("div", { class: "check-row" }, [
+    checkField("durée définie (sinon = toute la fenêtre active)", e.hasDuration, v => { e.hasDuration = v; refreshInspector(); })
+  ]));
+  if (e.hasDuration) {
+    box.appendChild(numberField("duration_seconds", e.duration_seconds, v => e.duration_seconds = v, 0.1));
+  }
+
+  const row = el("div", { class: "row2" });
+  row.appendChild(numberField("from", e.from, v => e.from = v, 0.05));
+  row.appendChild(numberField("to", e.to, v => e.to = v, 0.05));
+  box.appendChild(row);
+
+  const easingSelect = el("select", {
+    onchange: (ev) => e.easing = ev.target.value
+  }, ["linear", "ease_out_cubic", "ease_in_cubic"].map(x => el("option", { value: x, ...(x === e.easing ? { selected: "selected" } : {}) }, x)));
+  box.appendChild(labeled("easing", easingSelect));
+
+  box.appendChild(el("div", { class: "btnbar" }, [
+    el("button", { onclick: () => { draftEffect = null; renderAll(); } }, "Annuler"),
+    el("button", {
+      class: "primary", onclick: () => {
+        const payload = { type: e.type, from: e.from, to: e.to, start_second: e.start_second, easing: e.easing };
+        if (e.type === "slide") payload.axis = e.axis;
+        payload.duration_seconds = e.hasDuration ? e.duration_seconds : null;
+        if (e.__isNew) d.effects.push(payload);
+        else d.effects[e.__index] = payload;
+        draftEffect = null;
+        renderAll();
+      }
+    }, "Enregistrer l'effet")
+  ]));
+
+  return box;
 }
 
 function buildMovesEditor(c) {
@@ -1277,7 +1678,7 @@ function buildSegmentEditor(c, mv) {
   }
 
   box.appendChild(el("div", { class: "check-row" }, [
-    checkField("flip_x", d.flip_x, v => { d.flip_x = v; renderStage(); }),
+    checkField("flip_x", d.flip_x, v => d.flip_x = v),
     checkField("reverse", d.reverse, v => d.reverse = v),
     checkField("skip_transition", d.skip_transition, v => d.skip_transition = v),
   ]));
@@ -1335,10 +1736,31 @@ function checkField(labelText, checked, onChange) {
 
 /* ============================== GÉNÉRATION / SAUVEGARDE ============================== */
 
+function cleanExportDecors(rawDecors) {
+  return rawDecors.map(d => {
+    const out = { ...d };
+    if (!out.active_window) delete out.active_window;
+    if (Array.isArray(out.effects)) {
+      if (out.effects.length === 0) delete out.effects;
+      else {
+        out.effects = out.effects.map(eff => {
+          const e2 = { ...eff };
+          if (e2.duration_seconds === null || e2.duration_seconds === undefined) delete e2.duration_seconds;
+          return e2;
+        });
+      }
+    } else {
+      delete out.effects;
+    }
+    return out;
+  });
+}
+
 function buildExportPayload() {
-  // clone profond + nettoyage des clés internes utilisées par l'UI
+  // clone profond + nettoyage des clés internes/optionnelles utilisées par l'UI
   const out = JSON.parse(JSON.stringify(state));
   out.output.resolution = [RES[0], RES[1]];
+  out.decors = cleanExportDecors(out.decors);
   return out;
 }
 

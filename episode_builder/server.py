@@ -26,6 +26,7 @@ ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 CHARACTERS_DIR = os.path.join(ROOT, "characters")
 DECORS_DIR = os.path.join(ROOT, "decors")
 BACKGROUNDS_DIR = os.path.join(ROOT, "episodes", "images")
+FONTS_DIR = os.path.join(ROOT, "fonts")
 SETTINGS_OUT_DIR = os.path.join(ROOT, "episodes", "episodes-settings")
 
 STATE_FOLDER = {"idle": "idles", "transitions": "transitions", "moves": "moves"}
@@ -96,6 +97,9 @@ class Handler(BaseHTTPRequestHandler):
 
             elif path == "/api/backgrounds":
                 self.handle_list_backgrounds()
+
+            elif path == "/api/fonts":
+                self.handle_list_fonts()
 
             elif path == "/api/episodes-audio":
                 self.handle_list_audio()
@@ -226,6 +230,14 @@ class Handler(BaseHTTPRequestHandler):
                 if name.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
                     result.append(name)
         self.send_json({"backgrounds": result})
+
+    def handle_list_fonts(self):
+        result = []
+        if os.path.isdir(FONTS_DIR):
+            for name in sorted(os.listdir(FONTS_DIR)):
+                if name.lower().endswith((".ttf", ".otf")):
+                    result.append(name)
+        self.send_json({"fonts": result})
 
     def handle_list_audio(self):
         audio_dir = os.path.join(ROOT, "episodes", "audios")
