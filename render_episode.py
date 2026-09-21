@@ -62,6 +62,13 @@ Emotion timeline :
     ["characters"][i]) permet de faire varier les emotions (yeux/bouche)
     au cours de l'episode. Voir build_emotion_sequence() pour le format.
 
+Mode de boucle des idles de décors :
+    Dans decors/{decor_id}/decor-settings.json, la clé optionnelle
+    "idle"."loop_mode" choisit l'ordre de lecture des frames idle :
+      "ping_pong" (defaut) -> [0,1,2,3][2,1] en boucle
+      "loop"               -> [0,1,2,3][0,1,2,3] en boucle
+    Voir build_decor_idle_sequence().
+
 Décors temporises et effets (intro, etc.) :
     Chaque element de "decors" accepte deux champs optionnels :
 
@@ -110,6 +117,12 @@ DEFAULT_DECOR_LAYER     = 100
 # Un décor "text" (titre/texte d'intro, etc.) est par defaut devant TOUT
 # (personnages inclus), sauf "layer" explicite sur le décor.
 DEFAULT_TEXT_DECOR_LAYER = -10
+
+# Modes de boucle acceptes pour les idles de décors ("idle"."loop_mode"
+# dans decor-settings.json).
+DECOR_LOOP_PING_PONG = "ping_pong"
+DECOR_LOOP_LOOP      = "loop"
+DECOR_LOOP_MODES     = (DECOR_LOOP_PING_PONG, DECOR_LOOP_LOOP)
 
 IDLE           = "idle"
 TRANSITION_OUT = "transition_out"
@@ -572,28 +585,44 @@ def build_emotion_sequence(default_eyes, default_mouth, emotion_timeline, total_
     return seq
 
 
-def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps, pause_cfg=None):
+def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps,
+                              pause_cfg=None, loop_mode=DECOR_LOOP_PING_PONG):
     """
     Sequence idle frame par frame pour un décor.
 
-    Sans pause_cfg (ou pause_cfg absent du decor-settings.json) : ping-pong
-    continu, comme avant — le décor est constamment en mouvement.
+    loop_mode ("idle"."loop_mode" dans decor-settings.json) :
+      "ping_pong" (defaut) -> cycle [0,1,2,3,2,1] : la derniere frame et la
+                              frame 0 ne sont pas repetees au retour
+                              (comportement historique, inchange).
+      "loop"               -> cycle [0,1,2,3] : retour direct de la derniere
+                              frame a la frame 0.
+
+    Sans pause_cfg (ou pause_cfg absent du decor-settings.json) : le cycle
+    tourne en continu — le décor est constamment en mouvement.
 
     Avec pause_cfg = {"min": secondes, "max": secondes} : le décor reste
     immobile sur sa premiere frame ("frames[0]") pendant une duree aleatoire
-    tiree entre min et max, puis joue une fois la sequence idle complete en
-    ping-pong (ce qui le ramene naturellement a sa frame de depart), avant
-    de repartir sur une nouvelle attente aleatoire. Se repete jusqu'a la fin
-    de l'episode.
+    tiree entre min et max, puis joue une fois le cycle complet (ce qui le
+    ramene naturellement a sa frame de depart en "ping_pong" ; en "loop",
+    il rejoue 0..N puis reprend la pose de la frame 0 pendant l'attente),
+    avant de repartir sur une nouvelle attente aleatoire. Se repete jusqu'a
+    la fin de l'episode.
     """
-    hold      = max(1, round(video_fps / fps_cfg))
-    ping_pong = frames + frames[-2:0:-1]
+    hold = max(1, round(video_fps / fps_cfg))
+
+    if loop_mode == DECOR_LOOP_LOOP:
+        cycle = list(frames)
+    elif loop_mode == DECOR_LOOP_PING_PONG:
+        cycle = frames + frames[-2:0:-1]
+    else:
+        sys.exit(f"[ERREUR] loop_mode décor inconnu : '{loop_mode}' "
+                 f"(attendu : {' ou '.join(DECOR_LOOP_MODES)})")
 
     if not pause_cfg:
         seq = []
         idx, ctr = 0, 0
         for _ in range(total_frames):
-            seq.append(ping_pong[idx % len(ping_pong)])
+            seq.append(cycle[idx % len(cycle)])
             ctr += 1
             if ctr >= hold:
                 ctr = 0
@@ -610,14 +639,14 @@ def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps, pause_cf
         if start >= total_frames:
             break
         idx, ctr, f = 0, 0, start
-        while idx < len(ping_pong) and f < total_frames:
-            seq[f] = ping_pong[idx]
+        while idx < len(cycle) and f < total_frames:
+            seq[f] = cycle[idx]
             ctr += 1
             if ctr >= hold:
                 ctr = 0
                 idx += 1
             f += 1
-        anim_duration_seconds = (len(ping_pong) * hold) / video_fps
+        anim_duration_seconds = (len(cycle) * hold) / video_fps
         t = (start / video_fps) + anim_duration_seconds + random.uniform(pause_min, pause_max)
 
     return seq
@@ -1441,7 +1470,12 @@ def render_frames(episode, frames_dir, visemes_data=None):
             frames    = idle_cfg["colors"][color]["frames"]
             fps_cfg   = idle_cfg.get("fps", 8)
             pause_cfg = idle_cfg.get("pause_seconds")
-            entry["sprite_seq"] = build_decor_idle_sequence(frames, fps_cfg, total_frames, fps, pause_cfg)
+            # "loop_mode" dans decor-settings.json ("idle"."loop_mode") :
+            # "ping_pong" (defaut) ou "loop", cf. build_decor_idle_sequence().
+            loop_mode = idle_cfg.get("loop_mode", DECOR_LOOP_PING_PONG)
+            entry["sprite_seq"] = build_decor_idle_sequence(
+                frames, fps_cfg, total_frames, fps, pause_cfg, loop_mode
+            )
 
         decor_data.append(entry)
 
