@@ -85,6 +85,12 @@ Décors temporises et effets (intro, etc.) :
     "type": "text" (defaut "image") — utile pour un titre/texte d'intro
     qui reutilise le meme mecanisme de fenetre/effets. Voir
     render_text_sprite().
+
+Visemes :
+    Le champ optionnel "visemes" de l'episode permet de fournir le fichier
+    de timeline de visemes sans passer par --visemes en ligne de commande.
+    Voir resolve_visemes_path() pour le format accepte. --visemes en ligne
+    de commande reste prioritaire s'il est fourni.
 """
 
 import argparse
@@ -98,13 +104,14 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-PROJECT_ROOT        = Path(__file__).parent.resolve()
-EPISODES_IMAGES_DIR = PROJECT_ROOT / "episodes" / "images"
-EPISODES_AUDIO_DIR  = PROJECT_ROOT / "episodes" / "audio"
-CHARACTERS_DIR      = PROJECT_ROOT / "characters"
-DECORS_DIR          = PROJECT_ROOT / "decors"
-FONTS_DIR           = PROJECT_ROOT / "fonts"
-DEFAULT_OUTPUT_DIR  = PROJECT_ROOT / "episodes" / "videos"
+PROJECT_ROOT         = Path(__file__).parent.resolve()
+EPISODES_IMAGES_DIR  = PROJECT_ROOT / "episodes" / "images"
+EPISODES_AUDIO_DIR   = PROJECT_ROOT / "episodes" / "audio"
+EPISODES_VISEMES_DIR = PROJECT_ROOT / "episodes" / "visemes-timeline"
+CHARACTERS_DIR       = PROJECT_ROOT / "characters"
+DECORS_DIR           = PROJECT_ROOT / "decors"
+FONTS_DIR            = PROJECT_ROOT / "fonts"
+DEFAULT_OUTPUT_DIR   = PROJECT_ROOT / "episodes" / "videos"
 
 # Layer par defaut (profondeur de composition) quand "layer" n'est pas
 # precise sur un personnage / decor dans l'episode. Plus la valeur est
@@ -415,6 +422,51 @@ def resolve_audio_path(audio_cfg):
 
     if not path.exists():
         sys.exit(f"[ERREUR] Fichier audio introuvable : {path}")
+
+    return path
+
+
+# ---------------------------------------------------------------------------
+# Visemes
+# ---------------------------------------------------------------------------
+
+def resolve_visemes_path(visemes_cfg):
+    """
+    Resout le chemin du fichier visemes a partir du champ "visemes" de
+    l'episode (meme logique que resolve_audio_path()).
+
+    Formats acceptes :
+        "visemes": "episode-001.json"                              -> resolu
+            depuis episodes/visemes-timeline/
+        "visemes": "episodes/visemes-timeline/episode-001.json"     -> chemin
+            relatif au projet
+        "visemes": "/abs/path/episode-001.json"                     -> chemin
+            absolu, utilise tel quel
+        "visemes": { "file": "episode-001.json" }                   -> equivalent
+            a la forme string
+
+    Retourne None si visemes_cfg est absent/vide.
+    """
+    if not visemes_cfg:
+        return None
+
+    if isinstance(visemes_cfg, str):
+        filename = visemes_cfg
+    elif isinstance(visemes_cfg, dict):
+        filename = visemes_cfg.get("file")
+    else:
+        filename = None
+
+    if not filename:
+        return None
+
+    path = Path(filename)
+    if not path.is_absolute():
+        candidate = EPISODES_VISEMES_DIR / filename
+        path = candidate if candidate.exists() else (PROJECT_ROOT / filename)
+
+    if not path.exists():
+        sys.exit(f"[ERREUR] Fichier visemes introuvable : {path}")
 
     return path
 
@@ -1673,20 +1725,21 @@ def assemble_video(frames_dir, output_path, fps, width, height, audio_path=None)
 def load_visemes(visemes_path):
     if not visemes_path:
         return None
-    path = Path(visemes_path)
-    if not path.is_absolute():
-        path = PROJECT_ROOT / path
-    if not path.exists():
-        sys.exit(f"[ERREUR] Fichier visemes introuvable : {path}")
-    data = load_json(path)
-    print(f"  [INFO] Visemes charges : {path.name} ({list(data.keys())} speakers)")
+    data = load_json(visemes_path)
+    print(f"  [INFO] Visemes charges : {visemes_path.name} ({list(data.keys())} speakers)")
     return data
 
 
 def main():
     parser = argparse.ArgumentParser(description="Render an episode from a JSON settings file.")
     parser.add_argument("--settings",    required=True)
-    parser.add_argument("--visemes",     default=None)
+    parser.add_argument(
+        "--visemes", default=None,
+        help=(
+            "Fichier de timeline de visemes. Surcharge le champ 'visemes' "
+            "de l'episode s'il est present."
+        ),
+    )
     parser.add_argument(
         "--output", default=None,
         help=(
@@ -1706,8 +1759,15 @@ def main():
     parser.add_argument("--keep-frames", action="store_true")
     args = parser.parse_args()
 
-    episode      = load_episode_settings(args.settings)
-    visemes_data = load_visemes(args.visemes)
+    episode = load_episode_settings(args.settings)
+
+    # --visemes en ligne de commande est prioritaire ; sinon on retombe sur
+    # le champ optionnel episode["visemes"] (cf. resolve_visemes_path()).
+    if args.visemes:
+        visemes_path = resolve_visemes_path(args.visemes)
+    else:
+        visemes_path = resolve_visemes_path(episode.get("visemes"))
+    visemes_data = load_visemes(visemes_path)
 
     if args.mute:
         audio_path = None
@@ -1739,8 +1799,8 @@ def main():
         print(f"  Décors      : "
               f"{[d.get('decor', d.get('id', '?')) for d in episode['decors']]}")
     print(f"  Speakers    : {speakers}")
-    if visemes_data:
-        print(f"  Visemes     : {args.visemes}")
+    if visemes_path:
+        print(f"  Visemes     : {visemes_path}")
     print(f"  Audio       : {audio_path if audio_path else '(aucun - episode muet)'}")
 
     with tempfile.TemporaryDirectory() as tmp:

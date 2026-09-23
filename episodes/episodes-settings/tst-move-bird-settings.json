@@ -1,0 +1,85 @@
+{
+  "episode_id": "tst-move-bird",
+  "output": {
+    "filename": "tst-move-bird.mp4",
+    "duration_seconds": 5,
+    "fps": 24,
+    "resolution": [
+      1920,
+      1080
+    ]
+  },
+  "background": {
+    "image": "episode-3.png"
+  },
+  "visemes": "./episodes/visemes-timeline/test-bird.json",
+  "audio": "",
+  "camera": {
+    "zoom": 1,
+    "x": 960,
+    "y": 540,
+    "timeline": [
+      {
+        "at_second": 0,
+        "zoom": 1,
+        "x": 960,
+        "y": 540
+      }
+    ]
+  },
+  "characters": [
+    {
+      "id": "antilope",
+      "character": "bird",
+      "position": "1",
+      "layer": 0,
+      "screen_position": {
+        "x": 972,
+        "y": 148
+      },
+      "scale": 1,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "emotion_timeline": [
+        { "at_second": 2, "mouth": "UNHAPPY" },
+        { "at_second": 3, "eyes": "UNHAPPY" },
+        { "at_second": 4, "mouth": "HAPPY" }
+      ],
+      "speaker": "SPEAKER_01",
+      "gaze": {
+        "x": 0,
+        "y": 0
+      },
+      "moves": [
+        {
+          "at_second": 0.1,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "1",
+              "from": {
+                "x": 972,
+                "y": 148
+              },
+              "to": {
+                "x": 3,
+                "y": 148
+              },
+              "duration_seconds": 1.5,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": false
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    }
+  ],
+  "decors": []
+}
