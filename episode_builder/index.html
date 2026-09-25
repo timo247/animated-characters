@@ -150,6 +150,8 @@
       <select id="f_background" style="width:170px"></select></label>
     <label class="tb-field"><span>audio</span>
       <select id="f_audio" style="width:190px"></select></label>
+    <label class="tb-field"><span>visemes</span>
+      <select id="f_visemes" style="width:190px"></select></label>
   </div>
 
   <div id="sidebar">
@@ -207,6 +209,7 @@ const state = {
   output: { filename: "", duration_seconds: 10, fps: 24, resolution: [1920, 1080] },
   background: { image: "" },
   audio: "",
+  visemes: "",
   camera: {
     zoom: 1.0, x: RES[0] / 2, y: RES[1] / 2,
     timeline: [{ at_second: 0.0, zoom: 1.0, x: RES[0] / 2, y: RES[1] / 2 }]
@@ -295,6 +298,13 @@ async function loadInitialData() {
     sel.innerHTML = "<option value=''>—</option>" +
       auds.audios.map(a => `<option value="${a}">${a}</option>`).join("");
   } catch (e) { setStatus("Erreur /api/episodes-audio: " + e.message); }
+
+  try {
+    const vis = await api("/api/episodes-visemes");
+    const sel = document.getElementById("f_visemes");
+    sel.innerHTML = "<option value=''>—</option>" +
+      vis.visemes.map(v => `<option value="${v}">${v}</option>`).join("");
+  } catch (e) { setStatus("Erreur /api/episodes-visemes: " + e.message); }
 
   // Personnage par défaut si la liste est vide
   if (state.characters.length === 0 && charactersAvailable.length > 0) {
@@ -430,6 +440,7 @@ async function importEpisodeSettings(json) {
   RES = resolution;
   state.background = { image: json.background?.image || "" };
   state.audio = json.audio || "";
+  state.visemes = json.visemes || "";
 
   const camSrc = json.camera || {};
   let timeline = Array.isArray(camSrc.timeline) ? camSrc.timeline.map(kf => ({
@@ -513,6 +524,9 @@ function bindTopbar() {
   document.getElementById("f_audio").addEventListener("change", (e) => {
     state.audio = e.target.value;
   });
+  document.getElementById("f_visemes").addEventListener("change", (e) => {
+    state.visemes = e.target.value;
+  });
 }
 
 function rebuildStageSize() {
@@ -543,6 +557,10 @@ function refreshTopbarFields() {
   const audSel = document.getElementById("f_audio");
   ensureOption(audSel, state.audio);
   audSel.value = state.audio || "";
+
+  const visSel = document.getElementById("f_visemes");
+  ensureOption(visSel, state.visemes);
+  visSel.value = state.visemes || "";
 }
 
 /* ============================== LISTE DES ÉLÉMENTS (sidebar gauche) ============================== */

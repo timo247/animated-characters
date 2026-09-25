@@ -27,6 +27,7 @@ CHARACTERS_DIR = os.path.join(ROOT, "characters")
 DECORS_DIR = os.path.join(ROOT, "decors")
 BACKGROUNDS_DIR = os.path.join(ROOT, "episodes", "images")
 FONTS_DIR = os.path.join(ROOT, "fonts")
+VISEMES_DIR = os.path.join(ROOT, "episodes", "visemes-timeline")
 SETTINGS_OUT_DIR = os.path.join(ROOT, "episodes", "episodes-settings")
 
 STATE_FOLDER = {"idle": "idles", "transitions": "transitions", "moves": "moves"}
@@ -103,6 +104,9 @@ class Handler(BaseHTTPRequestHandler):
 
             elif path == "/api/episodes-audio":
                 self.handle_list_audio()
+
+            elif path == "/api/episodes-visemes":
+                self.handle_list_visemes()
 
             elif path == "/api/file":
                 rel = qs.get("path", [""])[0]
@@ -247,6 +251,14 @@ class Handler(BaseHTTPRequestHandler):
                 if name.lower().endswith((".mp3", ".wav", ".m4a")):
                     result.append(os.path.join("episodes", "audios", name).replace(os.sep, "/"))
         self.send_json({"audios": result})
+
+    def handle_list_visemes(self):
+        result = []
+        if os.path.isdir(VISEMES_DIR):
+            for name in sorted(os.listdir(VISEMES_DIR)):
+                if name.lower().endswith(".json"):
+                    result.append(os.path.join("episodes", "visemes-timeline", name).replace(os.sep, "/"))
+        self.send_json({"visemes": result})
 
     def handle_get_file(self, rel_path):
         if not rel_path:
