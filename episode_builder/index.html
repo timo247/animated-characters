@@ -49,6 +49,8 @@
   #topbar .tb-field{display:flex;align-items:center;gap:6px;}
   #topbar .tb-field span{color:var(--text-dim);font-size:11px;}
   #topbar input,#topbar select{width:auto;min-width:90px;}
+  input.invalid{border-color:var(--danger) !important;background:#2a1418;}
+  .field-warning{color:var(--danger);font-size:10px;white-space:nowrap;}
 
   #sidebar{background:var(--panel);overflow-y:auto;padding:10px;}
   #elementList{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
@@ -138,8 +140,9 @@
       <input id="f_episode_id" placeholder="episode-xxx" style="width:170px"></label>
     <label class="tb-field"><span>output filename</span>
       <input id="f_output_filename" placeholder="episode-xxx.mp4" style="width:170px"></label>
-    <label class="tb-field"><span>durée (s)</span>
-      <input id="f_duration" type="number" step="0.5" style="width:70px"></label>
+    <label class="tb-field"><span>durée (s, entier)</span>
+      <input id="f_duration" type="number" step="1" min="1" style="width:70px"></label>
+    <span id="f_duration_warning" class="field-warning hidden">entier requis</span>
     <label class="tb-field"><span>fps</span>
       <input id="f_fps" type="number" style="width:55px"></label>
     <label class="tb-field"><span>résolution</span>
@@ -433,7 +436,7 @@ async function importEpisodeSettings(json) {
   state.episode_id = json.episode_id || "";
   state.output = {
     filename: json.output?.filename || "",
-    duration_seconds: Number(json.output?.duration_seconds ?? 10),
+    duration_seconds: Math.round(Number(json.output?.duration_seconds ?? 10)),
     fps: Number(json.output?.fps ?? 24),
     resolution
   };
@@ -497,7 +500,6 @@ function bindTopbar() {
   const map = [
     ["f_episode_id", () => state.episode_id, v => state.episode_id = v],
     ["f_output_filename", () => state.output.filename, v => state.output.filename = v],
-    ["f_duration", () => state.output.duration_seconds, v => state.output.duration_seconds = parseFloat(v) || 0],
     ["f_fps", () => state.output.fps, v => state.output.fps = parseInt(v) || 24],
   ];
   for (const [id, getter, setter] of map) {
@@ -505,6 +507,7 @@ function bindTopbar() {
     inp.value = getter();
     inp.addEventListener("input", () => setter(inp.value));
   }
+  bindDurationField();
   document.getElementById("f_res_w").value = RES[0];
   document.getElementById("f_res_h").value = RES[1];
   document.getElementById("f_res_w").addEventListener("input", (e) => {
@@ -529,6 +532,35 @@ function bindTopbar() {
   });
 }
 
+/* ---- Champ durée : valeur figée en dur par l'utilisateur, entiers uniquement ---- */
+function isIntegerString(v) {
+  return /^-?\d+$/.test(v.trim());
+}
+function bindDurationField() {
+  const inp = document.getElementById("f_duration");
+  const warn = document.getElementById("f_duration_warning");
+  inp.value = state.output.duration_seconds;
+
+  inp.addEventListener("input", () => {
+    const raw = inp.value;
+    if (raw === "" || !isIntegerString(raw) || parseInt(raw, 10) < 1) {
+      inp.classList.add("invalid");
+      warn.classList.remove("hidden");
+      return; // on ne touche pas au state tant que la saisie n'est pas un entier valide
+    }
+    inp.classList.remove("invalid");
+    warn.classList.add("hidden");
+    state.output.duration_seconds = parseInt(raw, 10);
+  });
+
+  // à la perte de focus, on force l'affichage vers un entier cohérent avec le state
+  inp.addEventListener("blur", () => {
+    inp.value = state.output.duration_seconds;
+    inp.classList.remove("invalid");
+    warn.classList.add("hidden");
+  });
+}
+
 function rebuildStageSize() {
   scaleFactor = STAGE_W / RES[0];
   const stage = document.getElementById("stage");
@@ -545,7 +577,9 @@ function ensureOption(selectEl, value) {
 function refreshTopbarFields() {
   document.getElementById("f_episode_id").value = state.episode_id || "";
   document.getElementById("f_output_filename").value = state.output.filename || "";
-  document.getElementById("f_duration").value = state.output.duration_seconds;
+  document.getElementById("f_duration").value = Math.round(state.output.duration_seconds);
+  document.getElementById("f_duration").classList.remove("invalid");
+  document.getElementById("f_duration_warning").classList.add("hidden");
   document.getElementById("f_fps").value = state.output.fps;
   document.getElementById("f_res_w").value = RES[0];
   document.getElementById("f_res_h").value = RES[1];
@@ -1677,9 +1711,18 @@ function buildSegmentEditor(c, mv) {
   }, positions.map(p => el("option", { value: p, ...(p === d.position ? { selected: "selected" } : {}) }, "position " + p)));
   box.appendChild(labeled("position", posSelect));
 
-  box.appendChild(el("div", { class: "coord-readout" },
-    `from (${Math.round(d.from.x)}, ${Math.round(d.from.y)})  →  to (${Math.round(d.to.x)}, ${Math.round(d.to.y)})`));
-  box.appendChild(el("div", { class: "hint" }, "Glisse le sprite sur le canvas pour définir le point d'arrivée (to)."));
+  // from / to : saisie manuelle (en plus du drag & drop du sprite pour "to")
+  box.appendChild(xyFields("from", d.from, () => {}));
+  box.appendChild(el("button", {
+    style: "width:100%;margin-bottom:6px",
+    onclick: () => {
+      d.from = previousToPoint(c, mv, d.__index);
+      refreshInspector();
+    }
+  }, "from ← fin du segment précédent"));
+  box.appendChild(xyFields("to", d.to, () => renderStage()));
+  box.appendChild(el("div", { class: "hint" },
+    "Saisis from/to à la main, ou glisse le sprite sur le canvas pour définir to."));
 
   box.appendChild(numberField("duration_seconds", d.duration_seconds, v => d.duration_seconds = v, 0.1));
 
@@ -1733,6 +1776,12 @@ function numberField(labelText, value, onChange, step) {
   const inp = el("input", { type: "number", step: step || "any", value });
   inp.addEventListener("input", () => onChange(parseFloat(inp.value) || 0));
   return labeled(labelText, inp);
+}
+function xyFields(labelText, pt, onChange) {
+  const row = el("div", { class: "row2" });
+  row.appendChild(numberField(labelText + ".x", pt.x, v => { pt.x = v; onChange(); }, 1));
+  row.appendChild(numberField(labelText + ".y", pt.y, v => { pt.y = v; onChange(); }, 1));
+  return row;
 }
 function textField(value, onChange) {
   const inp = el("input", { type: "text", value: value || "" });
