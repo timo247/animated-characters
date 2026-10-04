@@ -6,6 +6,7 @@ Genere une video d'episode a partir d'un fichier de settings JSON.
 
 Usage:
     python render_episode.py --settings episodes/episodes-settings/episode-settings.json
+    python render_episode.py --settings ... --preview      # rendu rapide, demi-resolution
 
 Systeme de coordonnees :
     Toutes les positions (x, y) = coin superieur gauche, convention Figma.
@@ -86,20 +87,46 @@ Décors temporises et effets (intro, etc.) :
     qui reutilise le meme mecanisme de fenetre/effets. Voir
     render_text_sprite().
 
+Personnages statiques :
+    Categorie "statics" (episode["statics"]) : sous-ensemble des décors,
+    mais avec une position (comme un personnage) et plusieurs idles
+    nommes possibles (statics/{static_id}/static-settings.json). Pas de
+    yeux/bouche, pas de moves/transitions, boucle idle toujours simple et
+    reguliere (pas de ping-pong, pas de pause_seconds aleatoire — c'est la
+    difference avec un décor). Le passage d'un idle/position a un autre se
+    fait par cut instantane via "segments". Voir build_static_timeline().
+
 Visemes :
     Le champ optionnel "visemes" de l'episode permet de fournir le fichier
     de timeline de visemes sans passer par --visemes en ligne de commande.
     Voir resolve_visemes_path() pour le format accepte. --visemes en ligne
     de commande reste prioritaire s'il est fourni.
+
+Performance :
+    - Cache des sprites : chaque image est lue, convertie et transformee
+      (scale/flip/rotation) une seule fois (load_rgba / load_transformed).
+    - Cache des personnages composes (LRU borne) : le sprite final
+      (base + yeux + bouche) est reutilise tant que la combinaison
+      etat / clignement / vizeme / regard ne change pas.
+    - Cache du "fond + décors de fond" : les décors situes derriere tous
+      les autres elements sont composes une fois par combinaison de frames
+      (LRU borne) au lieu d'etre recolles a chaque frame.
+    - Les frames sont envoyees a ffmpeg par un pipe (rgb24 brut) : plus de
+      PNG ecrits sur disque puis relus. --keep-frames sauvegarde toujours
+      les PNG (compression legere) dans episodes/videos/frames_debug.
+    - La composition se fait en RGB (le fond est opaque).
+    - Les elements entierement hors cadre ne sont pas colles.
+    - --preview : demi-resolution + ffmpeg ultrafast/crf 28, pour iterer vite.
 """
 
 import argparse
 import json
 import random
-import shutil
 import subprocess
 import sys
 import tempfile
+from collections import OrderedDict
+from functools import lru_cache
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -110,6 +137,7 @@ EPISODES_AUDIO_DIR   = PROJECT_ROOT / "episodes" / "audio"
 EPISODES_VISEMES_DIR = PROJECT_ROOT / "episodes" / "visemes-timeline"
 CHARACTERS_DIR       = PROJECT_ROOT / "characters"
 DECORS_DIR           = PROJECT_ROOT / "decors"
+STATICS_DIR          = PROJECT_ROOT / "statics"
 FONTS_DIR            = PROJECT_ROOT / "fonts"
 DEFAULT_OUTPUT_DIR   = PROJECT_ROOT / "episodes" / "videos"
 
@@ -120,6 +148,7 @@ DEFAULT_OUTPUT_DIR   = PROJECT_ROOT / "episodes" / "videos"
 # personnages sont par defaut devant tous les decors ; deux elements de
 # meme layer sont dessines dans leur ordre d'apparition dans l'episode.
 DEFAULT_CHARACTER_LAYER = 0
+DEFAULT_STATIC_LAYER    = 50
 DEFAULT_DECOR_LAYER     = 100
 # Un décor "text" (titre/texte d'intro, etc.) est par defaut devant TOUT
 # (personnages inclus), sauf "layer" explicite sur le décor.
@@ -165,6 +194,32 @@ EYE_STATE_LAYERS = {
     "CLOSED.png":    ["full", "pupils", "upper_eyelid", "lower_eyelid"],
 }
 
+# Tailles maximales des caches (nombre d'entrees). A reduire si la RAM manque.
+SPRITE_CACHE_MAX    = 1024   # sprites charges / transformes
+COMPOSITE_CACHE_MAX = 256    # personnages composes (base + yeux + bouche)
+LEAD_CACHE_MAX      = 24     # frames "fond + décors de fond" (taille monde)
+
+
+# ---------------------------------------------------------------------------
+# Caches de sprites
+# ---------------------------------------------------------------------------
+
+@lru_cache(maxsize=4096)
+def _exists(path_str):
+    """Existence d'un fichier, mise en cache (evite un appel disque par frame)."""
+    return Path(path_str).exists()
+
+
+@lru_cache(maxsize=SPRITE_CACHE_MAX)
+def load_rgba(path_str):
+    """Lit une image et la convertit en RGBA, une seule fois par fichier."""
+    return Image.open(path_str).convert("RGBA")
+
+
+def _offscreen(px, py, w, h, world_w, world_h):
+    """True si le rectangle (px, py, w, h) est entierement hors du canvas monde."""
+    return px + w <= 0 or py + h <= 0 or px >= world_w or py >= world_h
+
 
 # ---------------------------------------------------------------------------
 # Chargement des configs
@@ -192,6 +247,12 @@ def load_decor_settings(decor_id):
     path = DECORS_DIR / decor_id / "decor-settings.json"
     if not path.exists():
         sys.exit(f"[ERREUR] decor-settings.json introuvable : {path}")
+    return load_json(path)
+
+def load_static_settings(static_id):
+    path = STATICS_DIR / static_id / "static-settings.json"
+    if not path.exists():
+        sys.exit(f"[ERREUR] static-settings.json introuvable : {path}")
     return load_json(path)
 
 
@@ -363,6 +424,9 @@ def apply_decor_effects(sprite_base, screen_x, screen_y, scale_mult, opacity, dx
     Renvoie (sprite_final, paste_x, paste_y). Sans effet (scale_mult=1,
     opacity=1, dx=dy=0), le resultat est identique au paste top-left
     d'origine (screen_x, screen_y) — retro-compatible.
+
+    Ne modifie jamais sprite_base (il peut etre partage via le cache de
+    sprites) : toute modification se fait sur une copie.
     """
     base_w, base_h = sprite_base.size
 
@@ -503,6 +567,18 @@ def decor_frame_path(decor_id, color, filename):
     et une variante par couleur (a la place de l'emotion des personnages).
     """
     return DECORS_DIR / decor_id / "idles" / color / filename
+
+def static_frame_path(static_id, idle_name, color, filename):
+    """
+    Chemin vers un sprite de personnage statique.
+    statics/{static_id}/idles/{idle_name}/{COLOR}/{filename}
+
+    Comme un décor, un personnage statique n'a ni transitions ni moves,
+    et une variante par couleur. A la difference d'un décor, il peut avoir
+    plusieurs idles nommes (ex: "sitting", "standing") et une position
+    (géré au niveau de l'episode, cf. build_static_timeline()).
+    """
+    return STATICS_DIR / static_id / "idles" / idle_name / color / filename
 
 def eye_layer_path(character_id, position, state, emotion, layer_filename):
     """
@@ -659,6 +735,11 @@ def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps,
     il rejoue 0..N puis reprend la pose de la frame 0 pendant l'attente),
     avant de repartir sur une nouvelle attente aleatoire. Se repete jusqu'a
     la fin de l'episode.
+
+    Utilisee aussi pour les personnages statiques (cf. build_static_timeline())
+    avec loop_mode force a DECOR_LOOP_LOOP et pause_cfg=None, pour garantir
+    une alternance de frames strictement reguliere (pas de ping-pong, pas de
+    pause aleatoire).
     """
     hold = max(1, round(video_fps / fps_cfg))
 
@@ -702,6 +783,69 @@ def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps,
         t = (start / video_fps) + anim_duration_seconds + random.uniform(pause_min, pause_max)
 
     return seq
+
+
+def build_static_timeline(static_cfg, total_frames, fps):
+    """
+    Sequence frame par frame de position/idle pour un personnage statique.
+
+    Format episode["statics"][i] :
+        Sans changement de position/idle en cours d'episode :
+            { "static": "...", "color": "...", "idle": "sitting",
+              "screen_position": {"x":.., "y":..}, "scale": 1.0,
+              "flip_x": false, "layer": .. }
+
+        Avec plusieurs positions/idles ("segments", cut instantane, pas
+        d'interpolation ni de transition — c'est la difference avec les
+        moves des personnages) :
+            { "static": "...", "color": "...", "layer": ..,
+              "segments": [
+                { "idle": "sitting",  "at_second": 0, "screen_position": {...}, "scale": 1.0, "flip_x": false },
+                { "idle": "standing", "at_second": 5, "screen_position": {...}, "scale": 1.0, "flip_x": true  }
+              ] }
+
+    "at_second" du premier segment est optionnel (defaut 0). Chaque segment
+    reste actif jusqu'au "at_second" du suivant, ou jusqu'a la fin de
+    l'episode pour le dernier.
+
+    Retourne une liste de total_frames dicts { "idle", "x", "y", "scale", "flip_x" }.
+    """
+    if "segments" in static_cfg:
+        segments = sorted(static_cfg["segments"], key=lambda s: s.get("at_second", 0))
+    else:
+        segments = [{
+            "idle":            static_cfg["idle"],
+            "at_second":       0,
+            "screen_position": static_cfg["screen_position"],
+            "scale":           static_cfg.get("scale", 1.0),
+            "flip_x":          static_cfg.get("flip_x", False),
+        }]
+
+    timeline = [None] * total_frames
+    for i, seg in enumerate(segments):
+        f_start = max(0, min(int(seg.get("at_second", 0) * fps), total_frames))
+        if i + 1 < len(segments):
+            f_end = max(f_start, min(int(segments[i + 1].get("at_second", 0) * fps), total_frames))
+        else:
+            f_end = total_frames
+
+        entry = {
+            "idle":   seg["idle"],
+            "x":      seg["screen_position"]["x"],
+            "y":      seg["screen_position"]["y"],
+            "scale":  float(seg.get("scale", 1.0)),
+            "flip_x": bool(seg.get("flip_x", False)),
+        }
+        for f in range(f_start, f_end):
+            timeline[f] = entry
+
+    # Si le premier segment ne demarre pas a at_second=0, on tient sa pose
+    # sur les frames precedentes (comportement analogue a fill_idle_positions).
+    first_entry = timeline[next((f for f in range(total_frames) if timeline[f] is not None), 0)]
+    for f in range(total_frames):
+        if timeline[f] is None:
+            timeline[f] = first_entry
+    return timeline
 
 
 # ---------------------------------------------------------------------------
@@ -789,7 +933,7 @@ def apply_camera(frame, zoom, cx, cy, world_w, world_h, out_w, out_h):
     Le cadre est ensuite clampe pour ne jamais depasser les bords du canvas
     monde tant que la fenetre demandee (crop_w x crop_h) tient dedans ; si elle
     est plus grande que le canvas (dezoom au-dela du monde disponible), elle
-    est centree et les zones hors-canvas restent transparentes/noires.
+    est centree et les zones hors-canvas restent noires.
     """
     zoom = max(zoom, 0.01)
     crop_w = world_w / zoom
@@ -1124,6 +1268,19 @@ def transform_img(img, scale, flip_x, rotation=0.0):
     return img
 
 
+@lru_cache(maxsize=SPRITE_CACHE_MAX)
+def load_transformed(path_str, scale, flip_x, rotation=0.0):
+    """
+    Sprite RGBA charge puis transforme (scale/flip/rotation), mis en cache.
+
+    ATTENTION : l'image retournee est PARTAGEE entre tous les appelants — ne
+    jamais la modifier en place (paste dessus, putalpha, etc.). Faire un
+    .copy() avant toute modification. Toujours appeler avec les 4 arguments
+    en positionnel pour que les appels equivalents partagent la meme entree.
+    """
+    return transform_img(load_rgba(path_str), scale, flip_x, rotation)
+
+
 # ---------------------------------------------------------------------------
 # Resolution config overlay
 # ---------------------------------------------------------------------------
@@ -1157,7 +1314,56 @@ def resolve_overlay_cfg(anim_cfg, base_filename, overlay_key):
 # Composite
 # ---------------------------------------------------------------------------
 
+_COMPOSITE_CACHE = OrderedDict()
+
+
 def composite_character(
+    character_id, position, char_settings,
+    state, eye_emotion, mouth_emotion,
+    base_file, eye_file, mouth_file,
+    char_scale, overlay_scale, global_flip_x,
+    gaze_offset=(0, 0),
+    gaze_is_override=False,
+    ep_gaze_invert_x=None,
+    ep_gaze_invert_y=None,
+):
+    """
+    Version avec cache (LRU borne a COMPOSITE_CACHE_MAX) de
+    _composite_character_uncached().
+
+    Le sprite compose ne depend que des arguments ci-dessous (char_settings
+    est fixe pour un character_id donne) : on le reutilise donc tant que
+    l'etat, le clignement, le vizeme, le regard et le flip ne changent pas.
+
+    L'image retournee est PARTAGEE : l'appelant ne doit que la coller sur la
+    frame, jamais la modifier.
+    """
+    key = (character_id, position, state, eye_emotion, mouth_emotion,
+           base_file, eye_file, mouth_file,
+           char_scale, overlay_scale, bool(global_flip_x),
+           tuple(gaze_offset), bool(gaze_is_override),
+           ep_gaze_invert_x, ep_gaze_invert_y)
+
+    cached = _COMPOSITE_CACHE.get(key)
+    if cached is not None:
+        _COMPOSITE_CACHE.move_to_end(key)
+        return cached
+
+    img = _composite_character_uncached(
+        character_id, position, char_settings,
+        state, eye_emotion, mouth_emotion,
+        base_file, eye_file, mouth_file,
+        char_scale, overlay_scale, global_flip_x,
+        gaze_offset, gaze_is_override,
+        ep_gaze_invert_x, ep_gaze_invert_y,
+    )
+    _COMPOSITE_CACHE[key] = img
+    if len(_COMPOSITE_CACHE) > COMPOSITE_CACHE_MAX:
+        _COMPOSITE_CACHE.popitem(last=False)
+    return img
+
+
+def _composite_character_uncached(
     character_id, position, char_settings,
     state, eye_emotion, mouth_emotion,
     base_file, eye_file, mouth_file,
@@ -1244,9 +1450,11 @@ def composite_character(
 
     # --- Base ---
     base_path = pos_dir(character_id, position) / base_dir / base_file
-    if not base_path.exists():
+    if not _exists(str(base_path)):
         sys.exit(f"[ERREUR] Sprite introuvable : {base_path}")
-    base   = transform_img(Image.open(base_path).convert("RGBA"), char_scale, base_flip)
+    # .copy() obligatoire : les calques sont colles DANS cette image, alors
+    # que l'original (cache) est partage.
+    base   = load_transformed(str(base_path), char_scale, base_flip, 0.0).copy()
     base_w = base.width
 
     # --- Calques oculaires ---
@@ -1305,13 +1513,13 @@ def composite_character(
         layer_filename = EYE_LAYER_FILES[layer_key]
         lp = eye_layer_path(character_id, position, state, eye_emotion, layer_filename)
 
-        if not lp.exists():
+        if not _exists(str(lp)):
             print(f"  [WARN] Calque oculaire introuvable : {lp}")
             continue
 
         if layer_key == "pupils":
-            layer_img = transform_img(
-                Image.open(lp).convert("RGBA"),
+            layer_img = load_transformed(
+                str(lp),
                 char_scale * overlay_scale * pupils_scale,
                 pupils_flip,
                 eye_rot,
@@ -1322,8 +1530,8 @@ def composite_character(
             base.paste(layer_img, (px, py), layer_img)
 
         else:
-            layer_img = transform_img(
-                Image.open(lp).convert("RGBA"),
+            layer_img = load_transformed(
+                str(lp),
                 char_scale * overlay_scale * eye_scale,
                 eye_flip, eye_rot,
             )
@@ -1333,10 +1541,10 @@ def composite_character(
 
     # --- Mouth ---
     mp = mouth_img_path(character_id, position, state, mouth_emotion, mouth_file)
-    if mp.exists():
-        mouth_img = transform_img(Image.open(mp).convert("RGBA"),
-                                  char_scale * overlay_scale * mouth_scale,
-                                  mouth_flip, mouth_rot)
+    if _exists(str(mp)):
+        mouth_img = load_transformed(str(mp),
+                                     char_scale * overlay_scale * mouth_scale,
+                                     mouth_flip, mouth_rot)
         mx_raw = round(mouth_anchor.get("x", 0) * char_scale)
         mx = (base_w - mx_raw - mouth_img.width) if base_flip else mx_raw
         my = round(mouth_anchor.get("y", 0) * char_scale)
@@ -1355,34 +1563,121 @@ def composite_decor(decor_id, color, sprite_file, scale, flip_x, rotation=0.0):
     bouche), ni position, ni gaze : un décor est un unique sprite de base
     par frame idle, decline par couleur, transforme (scale/flip/rotation)
     et colle tel quel sur la frame.
+
+    L'image retournee vient du cache de sprites (partagee) : ne pas la
+    modifier en place.
     """
     path = decor_frame_path(decor_id, color, sprite_file)
-    if not path.exists():
+    if not _exists(str(path)):
         sys.exit(f"[ERREUR] Sprite décor introuvable : {path}")
-    img = Image.open(path).convert("RGBA")
-    return transform_img(img, scale, flip_x, rotation)
+    return load_transformed(str(path), scale, flip_x, rotation)
+
+
+def composite_static(static_id, idle_name, color, sprite_file, scale, flip_x):
+    """
+    Charge et transforme le sprite idle d'un personnage statique.
+
+    Comme composite_decor : ni overlays (yeux/bouche), ni gaze. A la
+    difference d'un décor, la position est geree par le caller
+    (build_static_timeline) plutot que fixee une fois pour toutes, et
+    plusieurs idles nommes coexistent (idle_name).
+
+    L'image retournee vient du cache de sprites (partagee) : ne pas la
+    modifier en place.
+    """
+    path = static_frame_path(static_id, idle_name, color, sprite_file)
+    if not _exists(str(path)):
+        sys.exit(f"[ERREUR] Sprite personnage statique introuvable : {path}")
+    return load_transformed(str(path), scale, flip_x, 0.0)
 
 
 # ---------------------------------------------------------------------------
 # Rendu
 # ---------------------------------------------------------------------------
 
-def render_frames(episode, frames_dir, visemes_data=None):
+def resolve_output_size(episode, preview=False):
+    """
+    Resolution de sortie de la video. En mode preview : moitie de la
+    resolution (arrondie a un nombre pair, requis par yuv420p).
+    """
+    width, height = episode["output"]["resolution"]
+    if preview:
+        width  = max(2, (width  // 2) // 2 * 2)
+        height = max(2, (height // 2) // 2 * 2)
+    return width, height
+
+
+def _decor_state_key(entry, f):
+    """
+    Cle hashable decrivant ce que dessine un décor a la frame f : None si
+    inactif, sinon (fichier de frame idle, (scale, opacite, dx, dy)).
+    Sert de cle au cache "fond + décors de fond".
+    """
+    f_start, f_end = entry["frame_start"], entry["frame_end"]
+    if not (f_start <= f < f_end):
+        return None
+    sprite_file = None if entry["decor_type"] == "text" else entry["sprite_seq"][f]
+    return (sprite_file, entry["effect_seq"][f - f_start])
+
+
+def _paste_decor(frame, entry, f, world_w, world_h):
+    """Colle le décor `entry` sur `frame` pour la frame f (rien si inactif)."""
+    f_start, f_end = entry["frame_start"], entry["frame_end"]
+    if not (f_start <= f < f_end):
+        return  # hors de sa fenetre active ("active_window")
+
+    decor_cfg = entry["cfg"]
+    scale_mult, opacity, dx, dy = entry["effect_seq"][f - f_start]
+    if opacity <= 0.0:
+        return  # entierement transparent : rien a dessiner
+
+    if entry["decor_type"] == "text":
+        sprite_base = entry["static_sprite"]
+    else:
+        sprite_base = composite_decor(
+            decor_id    = decor_cfg["decor"],
+            color       = decor_cfg["color"],
+            sprite_file = entry["sprite_seq"][f],
+            scale       = float(decor_cfg.get("scale", 1.0)),
+            flip_x      = bool(decor_cfg.get("flip_x", False)),
+            rotation    = float(decor_cfg.get("rotation", 0.0)),
+        )
+
+    sprite, px, py = apply_decor_effects(
+        sprite_base,
+        *entry.get("resolved_pos", (decor_cfg["screen_position"]["x"], decor_cfg["screen_position"]["y"])),
+        scale_mult, opacity, dx, dy,
+    )
+    if not _offscreen(px, py, sprite.width, sprite.height, world_w, world_h):
+        frame.paste(sprite, (px, py), sprite)
+
+
+def render_frames(episode, frame_sink, visemes_data=None, preview=False):
+    """
+    Compose chaque frame de l'episode et la transmet a frame_sink(f, frame),
+    ou `frame` est une image PIL RGB de la taille de sortie (cf.
+    resolve_output_size()). L'appelant decide quoi en faire (pipe ffmpeg,
+    PNG de debug...). `frame` peut etre ecrasee apres l'appel : copier si besoin.
+    """
     fps           = episode["output"]["fps"]
     duration      = episode["output"]["duration_seconds"]
     total_frames  = fps * duration
-    width, height = episode["output"]["resolution"]
+    width, height = resolve_output_size(episode, preview)
 
     # Resolution "monde" du canvas de composition. Par defaut = resolution de
-    # sortie (comportement identique a avant si aucune camera n'est utilisee).
-    # La definir plus grande que la resolution de sortie donne de la marge
-    # pour dezoomer (zoom < 1.0) sans montrer de bords vides.
-    world_w, world_h = episode["output"].get("world_resolution", [width, height])
+    # sortie *d'origine* (comportement identique a avant si aucune camera n'est
+    # utilisee). La definir plus grande que la resolution de sortie donne de la
+    # marge pour dezoomer (zoom < 1.0) sans montrer de bords vides. En mode
+    # preview, le monde reste a la resolution complete : seules la sortie et
+    # l'encodage sont reduits (positions des episodes inchangees).
+    full_w, full_h   = episode["output"]["resolution"]
+    world_w, world_h = episode["output"].get("world_resolution", [full_w, full_h])
 
     bg_path = EPISODES_IMAGES_DIR / episode["background"]["image"]
     if not bg_path.exists():
         sys.exit(f"[ERREUR] Background introuvable : {bg_path}")
-    background = Image.open(bg_path).convert("RGBA").resize((world_w, world_h))
+    # RGB : le fond est opaque, inutile de trimballer un canal alpha.
+    background = Image.open(bg_path).convert("RGB").resize((world_w, world_h))
 
     camera_cfg = episode.get("camera")
     camera_seq = build_camera_sequence(camera_cfg, total_frames, fps, world_w, world_h)
@@ -1494,17 +1789,22 @@ def render_frames(episode, frames_dir, visemes_data=None):
         if decor_type == "text":
             entry["base_sprite"] = render_text_sprite(decor_cfg)
 
-            # "align": "center" (optionnel, décors texte uniquement) : centre
-            # horizontalement sur la largeur de la video plutot que d'utiliser
-            # "screen_position.x" tel quel. Calcule une fois ici, car la
-            # largeur du sprite texte (post scale/flip/rotation du décor,
-            # hors effets) est constante sur toute sa fenetre active.
+            # Sprite texte apres scale/flip/rotation "statiques" du décor
+            # (hors effets) : constant sur toute la fenetre active, donc
+            # calcule une seule fois ici et reutilise a chaque frame.
             static_sprite = transform_img(
                 entry["base_sprite"],
                 float(decor_cfg.get("scale", 1.0)),
                 bool(decor_cfg.get("flip_x", False)),
                 float(decor_cfg.get("rotation", 0.0)),
             )
+            entry["static_sprite"] = static_sprite
+
+            # "align": "center" (optionnel, décors texte uniquement) : centre
+            # horizontalement sur la largeur de la video plutot que d'utiliser
+            # "screen_position.x" tel quel. Calcule une fois ici, car la
+            # largeur du sprite texte (post scale/flip/rotation du décor,
+            # hors effets) est constante sur toute sa fenetre active.
             if decor_cfg.get("align") == "center":
                 resolved_x = (world_w - static_sprite.width) / 2
             else:
@@ -1539,53 +1839,111 @@ def render_frames(episode, frames_dir, visemes_data=None):
             print(f"  [INFO] Décors temporises : "
                   f"{[(d['cfg'].get('id', '?'), d['frame_start']/fps, d['frame_end']/fps) for d in timed]}")
 
+    # Personnages statiques : comme un décor (pas de yeux/bouche, pas de
+    # moves/transitions, boucle idle toujours simple/reguliere), mais avec
+    # une position (comme un personnage) et plusieurs idles nommes possibles,
+    # cf. build_static_timeline() / composite_static().
+    static_data = []
+    for static_cfg in episode.get("statics", []):
+        static_id      = static_cfg["static"]
+        static_settings = load_static_settings(static_id)
+        idles_cfg      = static_settings.get("idles", {})
+        color          = static_cfg["color"]
+
+        timeline = build_static_timeline(static_cfg, total_frames, fps)
+
+        # Ne precalcule que les sequences idle effectivement utilisees
+        idle_names_used = sorted({tl["idle"] for tl in timeline})
+        sprite_seq_by_idle = {}
+        for idle_name in idle_names_used:
+            if idle_name not in idles_cfg:
+                sys.exit(f"[ERREUR] Idle '{idle_name}' introuvable pour le "
+                         f"personnage statique '{static_id}'.")
+            idle_cfg = idles_cfg[idle_name]
+            if color not in idle_cfg.get("colors", {}):
+                sys.exit(f"[ERREUR] Couleur '{color}' introuvable pour l'idle "
+                         f"'{idle_name}' du personnage statique '{static_id}'.")
+            frames  = idle_cfg["colors"][color]["frames"]
+            fps_cfg = idle_cfg.get("fps", 8)
+            # loop_mode force a "loop" (pas de ping-pong) et pause_cfg=None
+            # (pas de pause aleatoire) : alternance de frames strictement
+            # reguliere, contrairement a un décor.
+            sprite_seq_by_idle[idle_name] = build_decor_idle_sequence(
+                frames, fps_cfg, total_frames, fps,
+                pause_cfg=None, loop_mode=DECOR_LOOP_LOOP,
+            )
+
+        static_data.append({
+            "kind":               "static",
+            "layer":              float(static_cfg.get("layer", DEFAULT_STATIC_LAYER)),
+            "cfg":                static_cfg,
+            "static_id":          static_id,
+            "color":              color,
+            "timeline":           timeline,
+            "sprite_seq_by_idle": sprite_seq_by_idle,
+        })
+
+    if static_data:
+        print(f"  [INFO] Personnages statiques : "
+              f"{[d['static_id'] for d in static_data]}")
+
     # Ordre de composition : tri stable par layer DECROISSANT (arrière-plan ->
     # premier plan) — layer bas = devant, layer haut = derriere. A layer
     # egal, l'ordre d'apparition dans char_data/decor_data est conserve (les
     # personnages, ajoutes en premier, sont donc dessines — et retrouves
     # derriere — avant les decors de meme layer).
-    render_order = sorted(char_data + decor_data, key=lambda e: e["layer"], reverse=True)
+    render_order = sorted(char_data + static_data + decor_data, key=lambda e: e["layer"], reverse=True)
     if any(e["layer"] != DEFAULT_CHARACTER_LAYER for e in char_data) or \
+       any(e["layer"] != DEFAULT_STATIC_LAYER for e in static_data) or \
        any(e["layer"] != DEFAULT_DECOR_LAYER for e in decor_data):
         print(f"  [INFO] Ordre de composition (layers) : "
-              f"{[(e['kind'], e['cfg'].get('character', e['cfg'].get('decor', e['cfg'].get('id'))), e['layer']) for e in render_order]}")
+              f"{[(e['kind'], e['cfg'].get('character', e['cfg'].get('static', e['cfg'].get('decor', e['cfg'].get('id')))), e['layer']) for e in render_order]}")
 
-    pad = len(str(total_frames))
+    # Décors "de fond" : la serie de décors situee tout au debut de
+    # render_order (donc derriere tout personnage / statique). Ils se
+    # collent directement sur le fond opaque, on peut donc mettre en cache
+    # l'image "fond + ces décors" pour chaque combinaison d'etats distincte
+    # (cf. _decor_state_key) au lieu de les recoller a chaque frame.
+    n_lead = 0
+    while n_lead < len(render_order) and render_order[n_lead]["kind"] == "decor":
+        n_lead += 1
+    lead_entries = render_order[:n_lead]
+    rest_entries = render_order[n_lead:]
+    lead_cache   = OrderedDict()
+
     for f in range(total_frames):
-        frame = background.copy()
+        lead_key   = tuple(_decor_state_key(e, f) for e in lead_entries)
+        lead_frame = lead_cache.get(lead_key)
+        if lead_frame is None:
+            lead_frame = background.copy()
+            for entry in lead_entries:
+                _paste_decor(lead_frame, entry, f, world_w, world_h)
+            lead_cache[lead_key] = lead_frame
+            if len(lead_cache) > LEAD_CACHE_MAX:
+                lead_cache.popitem(last=False)
+        else:
+            lead_cache.move_to_end(lead_key)
+        frame = lead_frame.copy()
 
-        for entry in render_order:
-            if entry["kind"] == "decor":
-                f_start, f_end = entry["frame_start"], entry["frame_end"]
-                if not (f_start <= f < f_end):
-                    continue  # hors de sa fenetre active ("active_window")
+        for entry in rest_entries:
+            if entry["kind"] == "static":
+                tl          = entry["timeline"][f]
+                sprite_file = entry["sprite_seq_by_idle"][tl["idle"]][f]
 
-                decor_cfg = entry["cfg"]
-                scale_mult, opacity, dx, dy = entry["effect_seq"][f - f_start]
-
-                if entry["decor_type"] == "text":
-                    sprite_base = transform_img(
-                        entry["base_sprite"],
-                        float(decor_cfg.get("scale", 1.0)),
-                        bool(decor_cfg.get("flip_x", False)),
-                        float(decor_cfg.get("rotation", 0.0)),
-                    )
-                else:
-                    sprite_base = composite_decor(
-                        decor_id    = decor_cfg["decor"],
-                        color       = decor_cfg["color"],
-                        sprite_file = entry["sprite_seq"][f],
-                        scale       = float(decor_cfg.get("scale", 1.0)),
-                        flip_x      = bool(decor_cfg.get("flip_x", False)),
-                        rotation    = float(decor_cfg.get("rotation", 0.0)),
-                    )
-
-                sprite, px, py = apply_decor_effects(
-                    sprite_base,
-                    *entry.get("resolved_pos", (decor_cfg["screen_position"]["x"], decor_cfg["screen_position"]["y"])),
-                    scale_mult, opacity, dx, dy,
+                sprite = composite_static(
+                    static_id   = entry["static_id"],
+                    idle_name   = tl["idle"],
+                    color       = entry["color"],
+                    sprite_file = sprite_file,
+                    scale       = tl["scale"],
+                    flip_x      = tl["flip_x"],
                 )
-                frame.paste(sprite, (px, py), sprite)
+                if not _offscreen(tl["x"], tl["y"], sprite.width, sprite.height, world_w, world_h):
+                    frame.paste(sprite, (tl["x"], tl["y"]), sprite)
+                continue
+
+            if entry["kind"] == "decor":
+                _paste_decor(frame, entry, f, world_w, world_h)
                 continue
 
             cd          = entry
@@ -1645,57 +2003,59 @@ def render_frames(episode, frames_dir, visemes_data=None):
                 ep_gaze_invert_y = frame_gaze_inv_y,
             )
 
-            frame.paste(sprite, (tl["x"], tl["y"]), sprite)
+            if not _offscreen(tl["x"], tl["y"], sprite.width, sprite.height, world_w, world_h):
+                frame.paste(sprite, (tl["x"], tl["y"]), sprite)
 
         # --- Camera (zoom / pan) : applique en dernier, sur la composition finale ---
         zoom, cx, cy = camera_seq[f]
         if zoom != 1.0 or cx != world_w / 2 or cy != world_h / 2 or (world_w, world_h) != (width, height):
             frame = apply_camera(frame, zoom, cx, cy, world_w, world_h, width, height)
-        elif (width, height) != (world_w, world_h):
-            frame = frame.resize((width, height), Image.LANCZOS)
 
-        out_path = frames_dir / f"frame_{str(f).zfill(pad)}.png"
-        frame.convert("RGB").save(out_path)
+        frame_sink(f, frame)
 
         if f % fps == 0:
             print(f"  Frame {f + 1}/{total_frames}", end="\r")
 
     print(f"\n  {total_frames} frames generees.")
-    return width, height
 
 
 # ---------------------------------------------------------------------------
-# FFmpeg
+# FFmpeg (pipe)
 # ---------------------------------------------------------------------------
 
-def assemble_video(frames_dir, output_path, fps, width, height, audio_path=None):
+def start_ffmpeg(output_path, fps, width, height, audio_path=None, preview=False):
     """
-    Assemble les frames PNG en video via ffmpeg.
+    Lance ffmpeg en lisant les frames brutes (rgb24) sur son stdin.
 
     Si audio_path est fourni, la piste audio est muxee avec la video
     (re-encodee en AAC, calee sur la plus courte des deux pistes).
     Si audio_path est None, la video est generee sans piste audio
     (episode muet).
+
+    Retourne (process, fichier_stderr). stderr est redirige vers un fichier
+    temporaire (et non un pipe) pour ne jamais bloquer ffmpeg si on ne le lit
+    pas pendant le rendu.
     """
-    png_count = len([p for p in frames_dir.iterdir() if p.suffix == ".png"])
-    pad       = len(str(png_count))
-    pattern   = str(frames_dir / f"frame_%0{pad}d.png")
+    preset = "ultrafast" if preview else "fast"
+    crf    = "28" if preview else "18"
 
     cmd = [
-        "ffmpeg", "-y",
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-f", "rawvideo",
+        "-pix_fmt", "rgb24",
+        "-video_size", f"{width}x{height}",
         "-framerate", str(fps),
-        "-i", pattern,
+        "-i", "-",
     ]
 
     if audio_path:
         cmd += ["-i", str(audio_path)]
 
     cmd += [
-        "-vf", f"scale={width}:{height}",
         "-c:v", "libx264",
         "-pix_fmt", "yuv420p",
-        "-preset", "fast",
-        "-crf", "18",
+        "-preset", preset,
+        "-crf", crf,
     ]
 
     if audio_path:
@@ -1710,11 +2070,32 @@ def assemble_video(frames_dir, output_path, fps, width, height, audio_path=None)
     cmd += [str(output_path)]
 
     audio_note = f" (audio: {audio_path.name})" if audio_path else " (muet)"
-    print(f"\n[FFMPEG] Assemblage -> {output_path}{audio_note}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        print("[FFMPEG STDERR]", result.stderr)
+    print(f"\n[FFMPEG] Pipe -> {output_path}{audio_note}"
+          f"{' [preview]' if preview else ''}")
+
+    err = tempfile.TemporaryFile()
+    try:
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
+                                stdout=subprocess.DEVNULL, stderr=err)
+    except FileNotFoundError:
+        err.close()
+        sys.exit("[ERREUR] ffmpeg introuvable (non installe ou absent du PATH).")
+    return proc, err
+
+
+def finish_ffmpeg(proc, err, output_path):
+    """Ferme le pipe, attend la fin d'ffmpeg et signale une eventuelle erreur."""
+    try:
+        proc.stdin.close()
+    except (BrokenPipeError, OSError):
+        pass
+    returncode = proc.wait()
+    if returncode != 0:
+        err.seek(0)
+        print("[FFMPEG STDERR]", err.read().decode(errors="replace"))
+        err.close()
         sys.exit("[ERREUR] ffmpeg a echoue.")
+    err.close()
     print("[OK] Video generee :", output_path)
 
 
@@ -1756,6 +2137,13 @@ def main():
             "dans l'episode."
         ),
     )
+    parser.add_argument(
+        "--preview", action="store_true",
+        help=(
+            "Rendu rapide pour iterer : demi-resolution, ffmpeg ultrafast "
+            "(crf 28). Sans --output, le fichier prend le suffixe '-preview'."
+        ),
+    )
     parser.add_argument("--keep-frames", action="store_true")
     args = parser.parse_args()
 
@@ -1785,16 +2173,28 @@ def main():
             output_path = output_dir / out_arg
     else:
         output_path = output_dir / episode["output"]["filename"]
+        if args.preview:
+            output_path = output_path.with_name(
+                f"{output_path.stem}-preview{output_path.suffix}"
+            )
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    fps          = episode["output"]["fps"]
+    total_frames = fps * episode["output"]["duration_seconds"]
+    width, height = resolve_output_size(episode, args.preview)
+
     speakers = [c.get("speaker", "-") for c in episode["characters"]]
     print(f"[render_episode] Episode   : {episode['episode_id']}")
-    print(f"  Resolution  : {episode['output']['resolution']}")
-    print(f"  FPS         : {episode['output']['fps']}")
+    print(f"  Resolution  : {[width, height]}"
+          f"{' (preview)' if args.preview else ''}")
+    print(f"  FPS         : {fps}")
     print(f"  Duree       : {episode['output']['duration_seconds']}s")
     print(f"  Sortie      : {output_path}")
     print(f"  Personnages : {[c['character'] for c in episode['characters']]}")
+    if episode.get("statics"):
+        print(f"  Statiques   : "
+              f"{[s.get('static', '?') for s in episode['statics']]}")
     if episode.get("decors"):
         print(f"  Décors      : "
               f"{[d.get('decor', d.get('id', '?')) for d in episode['decors']]}")
@@ -1803,23 +2203,44 @@ def main():
         print(f"  Visemes     : {visemes_path}")
     print(f"  Audio       : {audio_path if audio_path else '(aucun - episode muet)'}")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        frames_dir = Path(tmp) / "frames"
-        frames_dir.mkdir()
+    # --keep-frames : PNG de debug ecrits en plus du pipe (compression legere
+    # pour ne pas ralentir le rendu).
+    debug_dir = None
+    if args.keep_frames:
+        debug_dir = output_dir / "frames_debug"
+        debug_dir.mkdir(parents=True, exist_ok=True)
+    pad = len(str(total_frames))
 
-        print("\n[1/2] Rendu des frames...")
-        width, height = render_frames(episode, frames_dir, visemes_data)
+    proc, err = start_ffmpeg(output_path, fps, width, height,
+                             audio_path=audio_path, preview=args.preview)
 
-        print("\n[2/2] Assemblage ffmpeg...")
-        assemble_video(
-            frames_dir, output_path, episode["output"]["fps"], width, height,
-            audio_path=audio_path,
-        )
+    def frame_sink(f, frame):
+        if frame.size != (width, height):
+            frame = frame.resize((width, height), Image.LANCZOS)
+        try:
+            proc.stdin.write(frame.tobytes())
+        except (BrokenPipeError, OSError):
+            finish_ffmpeg(proc, err, output_path)  # affiche l'erreur ffmpeg et quitte
+            sys.exit("[ERREUR] ffmpeg s'est arrete pendant l'ecriture des frames.")
+        if debug_dir is not None:
+            frame.save(debug_dir / f"frame_{str(f).zfill(pad)}.png", compress_level=1)
 
-        if args.keep_frames:
-            kept = output_dir / "frames_debug"
-            shutil.copytree(frames_dir, kept, dirs_exist_ok=True)
-            print(f"[DEBUG] Frames conservees dans : {kept}")
+    print("\n[1/1] Rendu des frames + encodage (pipe ffmpeg)...")
+    try:
+        render_frames(episode, frame_sink, visemes_data, preview=args.preview)
+    except KeyboardInterrupt:
+        proc.kill()
+        raise
+    except BaseException:
+        # Erreur de rendu (asset manquant -> sys.exit, etc.) : ne pas laisser
+        # ffmpeg en attente ni produire une video tronquee.
+        proc.kill()
+        raise
+
+    finish_ffmpeg(proc, err, output_path)
+
+    if debug_dir is not None:
+        print(f"[DEBUG] Frames conservees dans : {debug_dir}")
 
 
 if __name__ == "__main__":
