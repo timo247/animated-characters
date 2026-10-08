@@ -1190,10 +1190,16 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
         final_x         = last_seg["to_x"]
         final_y         = last_seg["to_y"]
         final_reverse   = last_seg.get("reverse", False)
-        final_gaze      = last_seg.get("gaze", None)
-        final_gaze_inv_x = last_seg.get("gaze_invert_x", None)
-        final_gaze_inv_y = last_seg.get("gaze_invert_y", None)
         final_flip_x    = last_seg.get("flip_x", None)
+        # NB: le "gaze" (et gaze_invert_x/y) d'un segment ne s'applique QUE
+        # pendant que ce segment joue (transition_out/move/transition_in,
+        # assigne plus haut). Une fois l'idle_after entame, on ne le fige
+        # plus dans le temps : on laisse seg_gaze/seg_gaze_inv_x/y a None
+        # pour que le gaze de l'episode (statique "gaze" ou "gaze_timeline")
+        # reprenne la main. Sans ca, un segment definissant "gaze" geait
+        # cette valeur pour le reste de l'episode (ou jusqu'au prochain
+        # move), masquant silencieusement tout gaze_timeline sur cette
+        # fenetre — cf. discussion "changements de regard sans effet".
         pos_cfg_final = char_settings["positions"][str(final_pos)]
         idle_frames_f = pos_cfg_final["idle"]["frames"]
         idle_fps_f    = pos_cfg_final["idle"].get("fps", idle_fps_cfg)
@@ -1212,9 +1218,9 @@ def build_move_timeline(moves_cfg, total_frames, fps, char_settings, position):
                     "flip_phase":     "idle_after",
                     "position":       final_pos,
                     "seg_flip_x":     final_flip_x,
-                    "seg_gaze":       final_gaze,
-                    "seg_gaze_inv_x": final_gaze_inv_x,
-                    "seg_gaze_inv_y": final_gaze_inv_y,
+                    "seg_gaze":       None,
+                    "seg_gaze_inv_x": None,
+                    "seg_gaze_inv_y": None,
                     "_positioned":    True,
                 }
                 ic += 1
