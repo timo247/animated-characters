@@ -1,0 +1,1497 @@
+{
+  "episode_id": "characters-ep-1",
+  "output": {
+    "filename": "characters-episode-1.mp4",
+    "duration_seconds": 355,
+    "fps": 24,
+    "resolution": [
+      1920,
+      1080
+    ]
+  },
+  "background": {
+    "image": "episode-1.png"
+  },
+  "audio": "episodes/audios/episode-1.mp3",
+  "visemes": "episodes/visemes-timeline/episode-1.json",
+  "camera": {
+    "zoom": 1,
+    "x": 960,
+    "y": 540,
+    "timeline": [
+      {
+        "at_second": 0,
+        "zoom": 1,
+        "x": 960,
+        "y": 540
+      }
+    ]
+  },
+  "characters": [
+    {
+      "id": "antilope",
+      "character": "spider",
+      "position": "2",
+      "layer": 0,
+      "screen_position": {
+        "x": -436,
+        "y": 410
+      },
+      "scale": 0.55,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "emotion_timeline": [
+        {
+          "at_second": 97,
+          "eyes": "UNHAPPY"
+        },
+        {
+          "at_second": 42,
+          "mouth": "UNHAPPY"
+        },
+        {
+          "at_second": 310,
+          "eyes": "HAPPY",
+          "mouth": "HAPPY"
+        }
+      ],
+      "speaker": "SPEAKER_00",
+      "gaze": {
+        "x": 10,
+        "y": 0
+      },
+      "gaze_timeline": [
+        {
+          "at_second": 38.7915,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.8332,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.8332,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.8749,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.8749,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.8749,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9166,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9166,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9166,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9166,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9583,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9583,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9583,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9583,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 38.9583,
+          "x": 10,
+          "y": 0
+        },
+        {
+          "at_second": 39,
+          "x": 10,
+          "y": -5
+        },
+        {
+          "at_second": 307.7915,
+          "x": 10,
+          "y": -5
+        },
+        {
+          "at_second": 307.8332,
+          "x": 10,
+          "y": -5
+        },
+        {
+          "at_second": 307.8332,
+          "x": 10,
+          "y": -5
+        },
+        {
+          "at_second": 307.8749,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 309.7915,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 309.8332,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 309.8332,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 309.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 309.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 309.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 309.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 310,
+          "x": -10,
+          "y": 0
+        }
+      ],
+      "moves": [
+        {
+          "at_second": 36,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "2",
+              "from": {
+                "x": -446,
+                "y": 428
+              },
+              "to": {
+                "x": 651,
+                "y": 396
+              },
+              "duration_seconds": 3,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": false,
+              "gaze": {
+                "x": 10,
+                "y": 0
+              }
+            }
+          ]
+        },
+        {
+          "at_second": 315,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "2",
+              "from": {
+                "x": 651,
+                "y": 396
+              },
+              "to": {
+                "x": 1920,
+                "y": 370
+              },
+              "duration_seconds": 4,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": false,
+              "gaze": {
+                "x": 10,
+                "y": 0
+              }
+            }
+          ]
+        },
+        {
+          "at_second": 306,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "2",
+              "from": {
+                "x": 651,
+                "y": 396
+              },
+              "to": {
+                "x": 651,
+                "y": 396
+              },
+              "duration_seconds": 0.1,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    },
+    {
+      "id": "antilope-2",
+      "character": "lion",
+      "position": "2",
+      "layer": 1,
+      "screen_position": {
+        "x": 1909,
+        "y": 255
+      },
+      "scale": 0.6,
+      "overlay_scale": 1,
+      "flip_x": true,
+      "emotions": {
+        "eyes": "UNHAPPY",
+        "mouth": "UNHAPPY"
+      },
+      "emotion_timeline": [
+        {
+          "at_second": 255,
+          "eyes": "HAPPY"
+        },
+        {
+          "at_second": 255,
+          "mouth": "HAPPY"
+        }
+      ],
+      "speaker": "SPEAKER_02",
+      "gaze": {
+        "x": -10,
+        "y": 0
+      },
+      "gaze_timeline": [
+        {
+          "at_second": 26.7915,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.8332,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.8332,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 26.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 27,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.7915,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.8332,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.8332,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.8749,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.8749,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.8749,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.9166,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.9166,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.9166,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.9166,
+          "x": -10,
+          "y": -5
+        },
+        {
+          "at_second": 27.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 27.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 27.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 27.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 27.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 28,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.7915,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.8332,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.8332,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 31.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 32,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.7915,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.8332,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.8332,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.8749,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.8749,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.8749,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9166,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9166,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9166,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9166,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9583,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9583,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9583,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9583,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 32.9583,
+          "x": -10,
+          "y": 10
+        },
+        {
+          "at_second": 33,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.7915,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.8332,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.8332,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.8749,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9166,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 37.9583,
+          "x": -10,
+          "y": 0
+        },
+        {
+          "at_second": 38,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.7915,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.8332,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.8332,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.8749,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.8749,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.8749,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9166,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9166,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9166,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9166,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 305.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 306,
+          "x": -10,
+          "y": 0
+        }
+      ],
+      "moves": [
+        {
+          "at_second": 21,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "2",
+              "from": {
+                "x": 1810,
+                "y": 275
+              },
+              "to": {
+                "x": 956,
+                "y": 277
+              },
+              "duration_seconds": 2,
+              "skip_transition": true,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            }
+          ]
+        },
+        {
+          "at_second": 306,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "2",
+              "from": {
+                "x": 956,
+                "y": 283
+              },
+              "to": {
+                "x": -807,
+                "y": 277
+              },
+              "duration_seconds": 5.5,
+              "skip_transition": true,
+              "reverse": false,
+              "flip_x": true,
+              "gaze": {
+                "x": -10,
+                "y": 0
+              }
+            }
+          ]
+        }
+      ],
+      "dialogue": null
+    }
+  ],
+  "decors": [
+    {
+      "id": "texte",
+      "type": "text",
+      "screen_position": {
+        "x": 245,
+        "y": 458
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 0,
+        "duration_seconds": 17
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 2,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Les apparences sont parfois trompeuses. Donc si on choisit \nde juger autrui, autant le faire avec méthode.",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 38,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
+    },
+    {
+      "id": "texte-2",
+      "type": "text",
+      "screen_position": {
+        "x": 100,
+        "y": 301
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 3,
+        "duration_seconds": 14
+      },
+      "effects": [
+        {
+          "type": "scale",
+          "start_second": 0,
+          "duration_seconds": 4,
+          "from": 0.4,
+          "to": 1,
+          "easing": "ease_out_cubic"
+        }
+      ],
+      "text": "Tester les gens",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 90,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
+    },
+    {
+      "id": "texte-3",
+      "type": "text",
+      "screen_position": {
+        "x": 100,
+        "y": 100
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 173,
+        "duration_seconds": 17
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Certains ont l'air durs mais sont mous",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-4",
+      "type": "text",
+      "screen_position": {
+        "x": 100,
+        "y": 167
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 177,
+        "duration_seconds": 13
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "D'autres ont l'air de stars mais sont nuls",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-3",
+      "type": "text",
+      "screen_position": {
+        "x": 100,
+        "y": 100
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 205,
+        "duration_seconds": 110
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Fidélité: Tâches demandant beaucoup de temps pour être accomplies",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-4",
+      "type": "text",
+      "screen_position": {
+        "x": 100,
+        "y": 167
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 216,
+        "duration_seconds": 99
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Autorité: tâche à exécuter tout de suite",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-6",
+      "type": "text",
+      "screen_position": {
+        "x": 100,
+        "y": 233
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 236,
+        "duration_seconds": 79
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Honnêteté: Confier de l'argent",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-7",
+      "type": "text",
+      "screen_position": {
+        "x": 94,
+        "y": 297
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 245,
+        "duration_seconds": 70
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Compétences: Devoirs difficiles",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-8",
+      "type": "text",
+      "screen_position": {
+        "x": 94,
+        "y": 357
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 252,
+        "duration_seconds": 63
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Savoir: Poser des questions à l'improviste",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-9",
+      "type": "text",
+      "screen_position": {
+        "x": 96,
+        "y": 418
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 270,
+        "duration_seconds": 45
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Précision: Rendez-vous urgent",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-10",
+      "type": "text",
+      "screen_position": {
+        "x": 96,
+        "y": 476
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 285,
+        "duration_seconds": 30
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Fermeté: Alerter d'un danger",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "texte-11",
+      "type": "text",
+      "screen_position": {
+        "x": 94,
+        "y": 538
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 298,
+        "duration_seconds": 17
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 1,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Bonne tenue: Alcool",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 32,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "left"
+    },
+    {
+      "id": "outro-credits",
+      "type": "text",
+      "screen_position": {
+        "x": 0,
+        "y": 460
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 320,
+        "duration_seconds": 20
+      },
+      "effects": [
+        {
+          "type": "slide",
+          "start_second": 0,
+          "duration_seconds": 30,
+          "from": -200,
+          "to": 1600,
+          "easing": "linear",
+          "axis": "y"
+        }
+      ],
+      "text": "Narratteur: Yohann Thénazie",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 36,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
+    },
+    {
+      "id": "outro-credits",
+      "type": "text",
+      "screen_position": {
+        "x": 0,
+        "y": 460
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 321.5,
+        "duration_seconds": 20
+      },
+      "effects": [
+        {
+          "type": "slide",
+          "start_second": 0,
+          "duration_seconds": 30,
+          "from": -200,
+          "to": 1600,
+          "easing": "linear",
+          "axis": "y"
+        }
+      ],
+      "text": "Lion: Quentin Lepot",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 36,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
+    },
+    {
+      "id": "outro-credits",
+      "type": "text",
+      "screen_position": {
+        "x": 0,
+        "y": 460
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 323,
+        "duration_seconds": 20
+      },
+      "effects": [
+        {
+          "type": "slide",
+          "start_second": 0,
+          "duration_seconds": 30,
+          "from": -200,
+          "to": 1600,
+          "easing": "linear",
+          "axis": "y"
+        }
+      ],
+      "text": "Arraignée: Laura Cruz Texeira",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 36,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
+    },
+        {
+      "id": "outro-credits",
+      "type": "text",
+      "screen_position": {
+        "x": 0,
+        "y": 460
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 324.5,
+        "duration_seconds": 20
+      },
+      "effects": [
+        {
+          "type": "slide",
+          "start_second": 0,
+          "duration_seconds": 30,
+          "from": -200,
+          "to": 1600,
+          "easing": "linear",
+          "axis": "y"
+        }
+      ],
+      "text": "Écriture & Réalisation: Timothée Dione",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 36,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
+    },
+    {
+      "id": "outro-titre",
+      "type": "text",
+      "screen_position": {
+        "x": 0,
+        "y": 300
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 326,
+        "duration_seconds": 29
+      },
+      "effects": [
+        {
+          "type": "slide",
+          "from": -200,
+          "to": 200,
+          "start_second": 0,
+          "easing": "linear",
+          "axis": "y",
+          "duration_seconds": 20
+        }
+      ],
+      "text": "La voie de la Savane: Tester les gens",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 64,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
+    }
+  ]
+}
