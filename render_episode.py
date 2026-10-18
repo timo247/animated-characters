@@ -96,6 +96,20 @@ Personnages statiques :
     difference avec un décor). Le passage d'un idle/position a un autre se
     fait par cut instantane via "segments". Voir build_static_timeline().
 
+    Duree d'apparition (duree de vie) :
+        Comme un décor, un element de episode["statics"] accepte un
+        "active_window": { "start_second": 0, "duration_seconds": 3 }
+        optionnel, qui limite son affichage a cette fenetre de temps au
+        lieu de toute la duree de l'episode. Voir resolve_decor_window().
+
+    Duree du loop d'idle :
+        Dans statics/{static_id}/static-settings.json, chaque idle accepte,
+        en plus (ou a la place) de "fps", un "duration_seconds" optionnel :
+        la duree d'un cycle complet de la boucle, en secondes (ex: 2.0).
+        Prioritaire sur "fps" si les deux sont presents — fps est alors
+        deduit du nombre de frames pour que le cycle dure exactement ce
+        temps-la.
+
 Visemes :
     Le champ optionnel "visemes" de l'episode permet de fournir le fichier
     de timeline de visemes sans passer par --visemes en ligne de commande.
@@ -736,10 +750,10 @@ def build_decor_idle_sequence(frames, fps_cfg, total_frames, video_fps,
     avant de repartir sur une nouvelle attente aleatoire. Se repete jusqu'a
     la fin de l'episode.
 
-    Utilisee aussi pour les personnages statiques (cf. build_static_timeline())
-    avec loop_mode force a DECOR_LOOP_LOOP et pause_cfg=None, pour garantir
-    une alternance de frames strictement reguliere (pas de ping-pong, pas de
-    pause aleatoire).
+    Utilisee aussi pour les personnages statiques (cf. build_static_timeline()) :
+    loop_mode force a DECOR_LOOP_LOOP (jamais de ping-pong), mais pause_cfg y
+    est accepte comme pour un décor — avec min==max pour une pause fixe et
+    reguliere, ou min!=max pour une pause aleatoire comme pour un décor.
     """
     hold = max(1, round(video_fps / fps_cfg))
 
@@ -1869,15 +1883,44 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
             if color not in idle_cfg.get("colors", {}):
                 sys.exit(f"[ERREUR] Couleur '{color}' introuvable pour l'idle "
                          f"'{idle_name}' du personnage statique '{static_id}'.")
-            frames  = idle_cfg["colors"][color]["frames"]
-            fps_cfg = idle_cfg.get("fps", 8)
-            # loop_mode force a "loop" (pas de ping-pong) et pause_cfg=None
-            # (pas de pause aleatoire) : alternance de frames strictement
-            # reguliere, contrairement a un décor.
+            frames = idle_cfg["colors"][color]["frames"]
+            # "duration_seconds" (duree d'un cycle complet de l'idle, ex: 2.0)
+            # est prioritaire sur "fps" quand les deux sont presents : fps_cfg
+            # est alors deduit du nombre de frames pour que le cycle entier
+            # dure exactement duration_seconds, quel que soit le nombre de
+            # frames. Sans "duration_seconds", comportement inchange ("fps",
+            # defaut 8).
+            if "duration_seconds" in idle_cfg:
+                loop_duration_s = float(idle_cfg["duration_seconds"])
+                if loop_duration_s <= 0:
+                    sys.exit(f"[ERREUR] duration_seconds doit etre > 0 pour "
+                             f"l'idle '{idle_name}' du personnage statique "
+                             f"'{static_id}'.")
+                fps_cfg = len(frames) / loop_duration_s
+            else:
+                fps_cfg = idle_cfg.get("fps", 8)
+            # "pause_seconds" ({"min":.., "max":..}) optionnel : meme champ et
+            # meme semantique que pour un décor (cf. build_decor_idle_sequence())
+            # — pause sur la 1ere frame de l'idle entre deux cycles complets.
+            # loop_mode reste force a "loop" (jamais de ping-pong, a la
+            # difference d'un décor) : c'est ça, et seulement ça, qui garantit
+            # une alternance regulière. Avec min==max (comme "pause_seconds":
+            # {"min":1,"max":1}), la pause est fixe et deterministe a chaque
+            # cycle ; min!=max y reintroduit une irregularite (aleatoire),
+            # exactement comme pour un décor — a eviter si on veut un rythme
+            # strictement reguliere.
+            pause_cfg = idle_cfg.get("pause_seconds")
             sprite_seq_by_idle[idle_name] = build_decor_idle_sequence(
                 frames, fps_cfg, total_frames, fps,
-                pause_cfg=None, loop_mode=DECOR_LOOP_LOOP,
+                pause_cfg=pause_cfg, loop_mode=DECOR_LOOP_LOOP,
             )
+
+        # "active_window" (duree d'apparition / duree de vie du personnage
+        # statique) : meme champ et meme semantique que pour les décors
+        # (cf. resolve_decor_window()) — { "start_second": .., "duration_seconds": .. }.
+        # Absent -> visible sur toute la duree de l'episode (comportement
+        # historique, inchange).
+        f_start, f_end = resolve_decor_window(static_cfg, total_frames, fps)
 
         static_data.append({
             "kind":               "static",
@@ -1887,6 +1930,8 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
             "color":              color,
             "timeline":           timeline,
             "sprite_seq_by_idle": sprite_seq_by_idle,
+            "frame_start":        f_start,
+            "frame_end":          f_end,
         })
 
     if static_data:
@@ -1933,6 +1978,9 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
 
         for entry in rest_entries:
             if entry["kind"] == "static":
+                if not (entry["frame_start"] <= f < entry["frame_end"]):
+                    continue  # hors de sa fenetre d'apparition ("active_window")
+
                 tl          = entry["timeline"][f]
                 sprite_file = entry["sprite_seq_by_idle"][tl["idle"]][f]
 

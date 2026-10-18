@@ -17,6 +17,7 @@
     --cam:#5aa9e6;
     --danger:#d3564a;
     --ok:#5fb383;
+    --static:#b388ff;
     --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   }
   *{box-sizing:border-box;}
@@ -91,6 +92,9 @@
     color:#0e1a12;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px 3px 0 0;
     white-space:nowrap;opacity:.9;}
 
+  .static-preview{border-color:var(--static);}
+  .static-preview .tag{background:var(--static);color:#120b1f;}
+
   #inspector{background:var(--panel);overflow-y:auto;padding:12px;}
   .placeholder{color:var(--text-dim);font-size:12px;padding:20px 4px;line-height:1.6;}
   .segList{display:flex;flex-direction:column;gap:6px;margin:6px 0 12px;}
@@ -161,6 +165,7 @@
     <h3>Éléments</h3>
     <div id="elementList"></div>
     <button id="btnAddCharacter" style="width:100%">+ Ajouter un personnage</button>
+    <button id="btnAddStatic" style="width:100%;margin-top:6px">+ Ajouter un personnage statique</button>
     <button id="btnAddDecor" style="width:100%;margin-top:6px">+ Ajouter un décor</button>
     <button id="btnAddTextDecor" style="width:100%;margin-top:6px">+ Ajouter un titre / texte</button>
   </div>
@@ -218,7 +223,8 @@ const state = {
     timeline: [{ at_second: 0.0, zoom: 1.0, x: RES[0] / 2, y: RES[1] / 2 }]
   },
   characters: [],
-  decors: []
+  decors: [],
+  statics: []
 };
 
 let selection = { type: null, index: null };      // {type:'camera'} | {type:'character', index}
@@ -227,10 +233,16 @@ let characterCache = {};                            // nom -> data /api/characte
 let charactersAvailable = [];
 let decorCache = {};                                // nom -> data /api/decor/<name>
 let decorsAvailable = [];
+let staticCache = {};                               // nom -> data /api/static/<name>
+let staticsAvailable = [];
 let fontsAvailable = [];                            // fichiers .ttf/.otf dans fonts/
 let draftSegment = null;                            // segment en cours d'édition (avant "Enregistrer")
 let draftEmotion = null;                            // keyframe d'emotion_timeline en cours d'édition
 let draftEffect = null;                             // effet de décor en cours d'édition
+let draftGaze = null;                                // keyframe de gaze_timeline (changement ponctuel) en cours d'édition
+let draftStaticSegment = null;                      // pose (segment) de personnage statique en cours d'édition
+
+const STATIC_DEFAULT_LAYER = 50;                    // doit matcher DEFAULT_STATIC_LAYER cote render_episode.py
 
 /* ============================== UTILS ============================== */
 
@@ -284,6 +296,11 @@ async function loadInitialData() {
   } catch (e) { setStatus("Erreur /api/decors: " + e.message); }
 
   try {
+    const stats = await api("/api/statics");
+    staticsAvailable = stats.statics;
+  } catch (e) { setStatus("Erreur /api/statics: " + e.message); }
+
+  try {
     const fonts = await api("/api/fonts");
     fontsAvailable = fonts.fonts;
   } catch (e) { setStatus("Erreur /api/fonts: " + e.message); }
@@ -330,6 +347,13 @@ async function getDecorData(name) {
   return data;
 }
 
+async function getStaticData(name) {
+  if (staticCache[name]) return staticCache[name];
+  const data = await api("/api/static/" + encodeURIComponent(name));
+  staticCache[name] = data;
+  return data;
+}
+
 /* ============================== IMPORT D'UN EPISODE-SETTINGS.JSON EXISTANT ============================== */
 
 function normalizeSegment(seg) {
@@ -371,6 +395,9 @@ function normalizeCharacter(c) {
     emotion_timeline: (c.emotion_timeline || []).map(normalizeEmotionKeyframe),
     speaker: c.speaker || "",
     gaze: { x: Number(c.gaze?.x ?? 0), y: Number(c.gaze?.y ?? 0) },
+    gaze_timeline: (c.gaze_timeline || []).map(kf => ({
+      at_second: Number(kf.at_second ?? 0), x: Number(kf.x ?? 0), y: Number(kf.y ?? 0)
+    })),
     moves: (c.moves || []).map(mv => ({
       at_second: Number(mv.at_second ?? 0),
       transition_fps: Number(mv.transition_fps ?? 8),
@@ -427,6 +454,44 @@ function normalizeDecor(d) {
   return out;
 }
 
+function normalizeStaticSegment(seg) {
+  return {
+    idle: seg.idle || "",
+    at_second: Number(seg.at_second ?? 0),
+    screen_position: { x: Number(seg.screen_position?.x ?? 0), y: Number(seg.screen_position?.y ?? 0) },
+    scale: Number(seg.scale ?? 1.0),
+    flip_x: !!seg.flip_x
+  };
+}
+
+function normalizeStatic(s) {
+  // "segments" in static_cfg (presence de la clé, cote render_episode.py) decide
+  // du mode : segments non-vides -> mode "poses dans le temps" ; sinon -> mode
+  // "pose unique" via idle/screen_position/scale/flip_x au niveau racine.
+  const segments = Array.isArray(s.segments) ? s.segments.map(normalizeStaticSegment) : [];
+  const out = {
+    id: s.id || (s.static || "static"),
+    static: s.static || "",
+    color: s.color || "",
+    layer: Number(s.layer ?? STATIC_DEFAULT_LAYER),
+    segments,
+    // Champs de "pose unique" conserves meme en mode segments (reconstruits a
+    // partir du premier segment), pour que l'UI puisse revenir en arriere sans
+    // perte si l'utilisateur decoche "poses multiples".
+    idle: segments.length > 0 ? segments[0].idle : (s.idle || ""),
+    screen_position: segments.length > 0
+      ? { ...segments[0].screen_position }
+      : { x: Number(s.screen_position?.x ?? 0), y: Number(s.screen_position?.y ?? 0) },
+    scale: segments.length > 0 ? segments[0].scale : Number(s.scale ?? 1.0),
+    flip_x: segments.length > 0 ? segments[0].flip_x : !!s.flip_x,
+    active_window: (s.active_window && s.active_window.duration_seconds != null) ? {
+      start_second: Number(s.active_window.start_second ?? 0),
+      duration_seconds: Number(s.active_window.duration_seconds)
+    } : null,
+  };
+  return out;
+}
+
 async function importEpisodeSettings(json) {
   if (!json || typeof json !== "object") throw new Error("JSON invalide");
 
@@ -465,11 +530,17 @@ async function importEpisodeSettings(json) {
   const decorNames = [...new Set(state.decors.map(d => d.decor).filter(Boolean))];
   await Promise.all(decorNames.map(n => getDecorData(n).catch(() => null)));
 
+  state.statics = (json.statics || []).map(normalizeStatic);
+  const staticNames = [...new Set(state.statics.map(s => s.static).filter(Boolean))];
+  await Promise.all(staticNames.map(n => getStaticData(n).catch(() => null)));
+
   selection = { type: "camera", index: null };
   cameraKeyIndex = 0;
   draftSegment = null;
   draftEmotion = null;
   draftEffect = null;
+  draftGaze = null;
+  draftStaticSegment = null;
 
   rebuildStageSize();
   refreshTopbarFields();
@@ -644,6 +715,21 @@ function renderElementList() {
     ]);
     list.appendChild(item);
   });
+
+  state.statics.forEach((s, i) => {
+    const badge = (s.segments && s.segments.length > 0) ? " 🔀" : "";
+    const item = el("div", {
+      class: "el-item" + (selection.type === "static" && selection.index === i ? " active" : ""),
+      onclick: () => selectElement("static", i)
+    }, [
+      el("div", { class: "dot", style: "background:var(--static)" }),
+      el("div", { class: "name" }, `🧍 ${s.static || "?"} (${s.id})${badge}`),
+      el("div", {
+        class: "del", html: "✕", onclick: (ev) => { ev.stopPropagation(); removeStatic(i); }
+      })
+    ]);
+    list.appendChild(item);
+  });
 }
 
 function selectElement(type, index) {
@@ -651,6 +737,8 @@ function selectElement(type, index) {
   draftSegment = null;
   draftEmotion = null;
   draftEffect = null;
+  draftGaze = null;
+  draftStaticSegment = null;
   cameraKeyIndex = state.camera.timeline.length ? 0 : -1;
   renderAll();
 }
@@ -678,6 +766,7 @@ async function addCharacter(name) {
     emotion_timeline: [],
     speaker: "",
     gaze: { x: 0, y: 0 },
+    gaze_timeline: [],
     moves: [],
     dialogue: null
   };
@@ -758,6 +847,56 @@ function addTextDecor() {
 
 document.getElementById("btnAddTextDecor").addEventListener("click", () => addTextDecor());
 
+function newStaticId(staticName) {
+  let n = 1;
+  let id = staticName;
+  const used = new Set(state.statics.map(s => s.id));
+  while (used.has(id)) { n += 1; id = staticName + "-" + n; }
+  return id;
+}
+
+async function addStatic(name) {
+  name = name || staticsAvailable[0];
+  if (!name) { setStatus("Aucun personnage statique disponible dans statics/"); return; }
+  let data;
+  try { data = await getStaticData(name); }
+  catch (e) { setStatus("Erreur chargement personnage statique: " + e.message); return; }
+
+  const idleNames = Object.keys(data.idles);
+  const firstIdle = idleNames[0] || "";
+  const colors = firstIdle ? Object.keys(data.idles[firstIdle].colors) : [];
+  const firstColor = colors[0] || "";
+
+  const s = {
+    id: newStaticId(name),
+    static: name,
+    color: firstColor,
+    layer: STATIC_DEFAULT_LAYER,
+    idle: firstIdle,
+    screen_position: { x: 0, y: 0 },
+    scale: 1.0,
+    flip_x: false,
+    segments: [],
+    active_window: null
+  };
+  state.statics.push(s);
+  selection = { type: "static", index: state.statics.length - 1 };
+  renderAll();
+}
+
+function removeStatic(i) {
+  const removed = state.statics[i];
+  state.statics.splice(i, 1);
+  if (draftStaticSegment && draftStaticSegment.__static === removed) draftStaticSegment = null;
+  if (selection.type === "static") {
+    if (state.statics.length === 0) selection = { type: "camera", index: null };
+    else selection.index = clamp(selection.index, 0, state.statics.length - 1);
+  }
+  renderAll();
+}
+
+document.getElementById("btnAddStatic").addEventListener("click", () => addStatic());
+
 /* ---- Bascule le type d'un décor existant (image <-> texte), en conservant
    les champs communs (id, screen_position, scale, flip_x, layer, active_window, effects) ---- */
 function switchDecorType(d, newType) {
@@ -820,12 +959,15 @@ function renderStage() {
   // nettoie les overlays précédents (les aperçus de décors gèrent leur propre nettoyage)
   document.querySelectorAll(".cam-rect,.sprite-drag,.sprite-ghost").forEach(n => n.remove());
 
-  // aperçu permanent de tous les décors déjà placés (non-interactif, sauf celui sélectionné)
+  // aperçu permanent de tous les décors / personnages statiques déjà placés
+  // (non-interactif, sauf l'élément sélectionné)
   renderAllDecors();
+  renderAllStatics();
 
   if (selection.type === "camera") renderCameraOverlay();
   else if (selection.type === "character") renderCharacterOverlay();
   else if (selection.type === "decor") renderDecorOverlay();
+  else if (selection.type === "static") renderStaticOverlay();
 }
 
 function px(v) { return (v * scaleFactor) + "px"; }
@@ -1093,6 +1235,137 @@ async function renderDecorOverlay() {
   });
 }
 
+/* ---- Personnages statiques : comme un décor, mais avec idle nommé + ---- */
+/* ---- éventuellement plusieurs "poses" (segments, cut instantané)    ---- */
+
+function staticUsedIdleNames(s) {
+  if (s.segments && s.segments.length > 0) {
+    return [...new Set(s.segments.map(seg => seg.idle).filter(Boolean))];
+  }
+  return s.idle ? [s.idle] : [];
+}
+
+function staticAvailableColors(s) {
+  const data = staticCache[s.static];
+  if (!data) return s.color ? [s.color] : [];
+  const idleNames = staticUsedIdleNames(s);
+  if (idleNames.length === 0) {
+    const firstIdle = Object.values(data.idles)[0];
+    return firstIdle ? Object.keys(firstIdle.colors) : [];
+  }
+  const colorSets = idleNames.map(n => new Set(Object.keys(data.idles[n]?.colors || {})));
+  return [...colorSets[0]].filter(c => colorSets.every(set => set.has(c)));
+}
+
+// Pose actuellement "affichable" pour un personnage statique : en mode
+// segments, la pose en cours d'édition (draftStaticSegment) si elle existe,
+// sinon la première pose de la liste ; en mode simple, les champs racine.
+function staticDisplayPose(s) {
+  if (s.segments && s.segments.length > 0) {
+    if (draftStaticSegment && draftStaticSegment.__static === s) {
+      return { idle: draftStaticSegment.idle, screen_position: draftStaticSegment.screen_position,
+               scale: draftStaticSegment.scale, flip_x: draftStaticSegment.flip_x,
+               tag: `pose #${draftStaticSegment.__index + 1} (édition)` };
+    }
+    const first = s.segments[0];
+    return { idle: first.idle, screen_position: first.screen_position,
+             scale: first.scale, flip_x: first.flip_x, tag: "pose #1" };
+  }
+  return { idle: s.idle, screen_position: s.screen_position, scale: s.scale, flip_x: s.flip_x, tag: "pose unique" };
+}
+
+async function renderAllStatics() {
+  document.querySelectorAll(".static-preview").forEach(n => n.remove());
+  const stage = document.getElementById("stage");
+
+  for (let i = 0; i < state.statics.length; i++) {
+    const s = state.statics[i];
+    const isSelected = selection.type === "static" && selection.index === i;
+    if (isSelected) continue; // rendu (interactif) par renderStaticOverlay()
+    if (!s.static) continue;
+
+    let data;
+    try { data = await getStaticData(s.static); } catch (e) { continue; }
+
+    // l'état a pu changer pendant l'attente (sélection, suppression, etc.)
+    if (state.statics[i] !== s) continue;
+    if (selection.type === "static" && selection.index === i) continue;
+
+    const pose = staticDisplayPose(s);
+    const idleData = data.idles[pose.idle];
+    const colorData = idleData && idleData.colors[s.color];
+    const previewUrl = colorData && colorData.preview_url;
+    const dims = previewUrl ? await loadImageNaturalSize(previewUrl) : { w: 160, h: 160 };
+
+    if (state.statics[i] !== s) continue;
+
+    const w = dims.w * (pose.scale || 1);
+    const h = dims.h * (pose.scale || 1);
+
+    const box = el("div", { class: "decor-preview static-preview" });
+    box.style.left = px(pose.screen_position.x); box.style.top = px(pose.screen_position.y);
+    box.style.width = px(w); box.style.height = px(h);
+    box.style.zIndex = String(10 + (s.layer || 0));
+    if (pose.flip_x) box.style.transform = "scaleX(-1)";
+    box.appendChild(el("div", { class: "tag" }, `${s.static} · ${pose.idle || "?"} · ${s.color}`));
+    if (previewUrl) {
+      box.appendChild(el("img", { src: previewUrl, draggable: "false" }));
+    }
+    stage.appendChild(box);
+  }
+}
+
+async function renderStaticOverlay() {
+  const s = state.statics[selection.index];
+  if (!s) return;
+  const stage = document.getElementById("stage");
+  document.querySelectorAll(".sprite-drag").forEach(n => n.remove());
+  if (!s.static) return;
+
+  let data;
+  try { data = await getStaticData(s.static); } catch (e) { return; }
+
+  const pose = staticDisplayPose(s);
+  const idleData = data.idles[pose.idle];
+  const colorData = idleData && idleData.colors[s.color];
+  const previewUrl = colorData && colorData.preview_url;
+  const dims = previewUrl ? await loadImageNaturalSize(previewUrl) : { w: 160, h: 160 };
+
+  // évite les doublons si l'utilisateur a changé de sélection entre-temps
+  if (!(selection.type === "static" && state.statics[selection.index] === s)) return;
+  document.querySelectorAll(".sprite-drag").forEach(n => n.remove());
+
+  const w = dims.w * (pose.scale || 1);
+  const h = dims.h * (pose.scale || 1);
+
+  const box = el("div", { class: "sprite-drag" });
+  box.style.left = px(pose.screen_position.x); box.style.top = px(pose.screen_position.y);
+  box.style.width = px(w); box.style.height = px(h);
+  box.style.borderColor = "var(--static)";
+  box.style.zIndex = String(1000 + (s.layer || 0));
+  if (pose.flip_x) box.style.transform = "scaleX(-1)";
+  box.appendChild(el("div", { class: "tag", style: "background:var(--static);color:#120b1f" },
+    `${s.static} · ${pose.idle || "?"} · ${s.color} · ${pose.tag} · ${Math.round(w)}×${Math.round(h)}px`));
+  if (previewUrl) {
+    box.appendChild(el("img", { src: previewUrl, draggable: "false" }));
+  } else {
+    box.appendChild(el("div", {
+      style: "width:100%;height:100%;display:flex;align-items:center;justify-content:center;" +
+             "color:var(--text-dim);font-size:11px;text-align:center;padding:6px;"
+    }, "pas d'aperçu idle disponible pour cette couleur"));
+  }
+  stage.appendChild(box);
+
+  makeDraggable(box, {
+    onMove: (dxPx, dyPx) => {
+      pose.screen_position.x = Math.round(clamp(pose.screen_position.x + dxPx / scaleFactor, -w, RES[0]));
+      pose.screen_position.y = Math.round(clamp(pose.screen_position.y + dyPx / scaleFactor, -h, RES[1]));
+      box.style.left = px(pose.screen_position.x); box.style.top = px(pose.screen_position.y);
+      refreshInspector();
+    }
+  });
+}
+
 function makeDraggable(node, { onMove, onResize }) {
   node.addEventListener("mousedown", (e) => {
     const rect = node.getBoundingClientRect();
@@ -1124,6 +1397,7 @@ function renderInspector() {
   if (selection.type === "camera") root.appendChild(buildCameraInspector());
   else if (selection.type === "character") root.appendChild(buildCharacterInspector());
   else if (selection.type === "decor") root.appendChild(buildDecorInspector());
+  else if (selection.type === "static") root.appendChild(buildStaticInspector());
   else root.appendChild(el("div", { class: "placeholder" }, "Sélectionne un élément."));
 }
 
@@ -1225,6 +1499,7 @@ function buildCharacterInspector() {
     checkField("flip_x", c.flip_x, v => { c.flip_x = v; renderStage(); })
   ]));
 
+  wrap.appendChild(buildGazeTimelineEditor(c));
   wrap.appendChild(buildEmotionTimelineEditor(c));
   wrap.appendChild(buildMovesEditor(c));
 
@@ -1277,6 +1552,235 @@ function buildDecorInspector() {
         "juste un placement, une couleur de variante et un ordre d'empilement (layer)."));
 
   return wrap;
+}
+
+/* ---- Personnage statique ---- */
+function buildStaticInspector() {
+  const s = state.statics[selection.index];
+  const wrap = document.createElement("div");
+
+  wrap.appendChild(el("h3", {}, "Personnage statique"));
+
+  const staticSelect = el("select", {
+    onchange: async (e) => {
+      s.static = e.target.value;
+      const data = await getStaticData(s.static);
+      const idleNames = Object.keys(data.idles);
+      const firstIdle = idleNames[0] || "";
+      const colors = firstIdle ? Object.keys(data.idles[firstIdle].colors) : [];
+      s.idle = firstIdle;
+      s.color = colors[0] || "";
+      s.segments = [];
+      draftStaticSegment = null;
+      renderAll();
+    }
+  }, staticsAvailable.map(n => el("option", { value: n, ...(n === s.static ? { selected: "selected" } : {}) }, n)));
+  wrap.appendChild(labeled("static", staticSelect));
+
+  wrap.appendChild(labeled("id (identifiant unique)", textField(s.id, v => { s.id = v; renderElementList(); })));
+
+  const colorOptions = staticAvailableColors(s);
+  const colorSelectOptions = colorOptions.length ? colorOptions : (s.color ? [s.color] : []);
+  const colorSelect = el("select", {
+    onchange: (e) => { s.color = e.target.value; renderStage(); }
+  }, colorSelectOptions.map(c => el("option", { value: c, ...(c === s.color ? { selected: "selected" } : {}) }, c)));
+  wrap.appendChild(labeled("color", colorSelect));
+  if (colorOptions.length === 0) {
+    wrap.appendChild(el("div", { class: "hint" },
+      "Aucune couleur commune trouvée pour le(s) idle(s) utilisé(s) — vérifie les assets."));
+  }
+
+  wrap.appendChild(numberField("layer (ordre d'empilement)", s.layer, v => s.layer = v, 1));
+
+  const hasSegments = !!(s.segments && s.segments.length > 0);
+  wrap.appendChild(el("div", { class: "check-row" }, [
+    checkField("Poses multiples dans le temps (segments, cut instantané)", hasSegments, v => {
+      if (v) {
+        if (!s.segments) s.segments = [];
+        if (s.segments.length === 0) {
+          s.segments.push({
+            idle: s.idle, at_second: 0,
+            screen_position: { ...s.screen_position }, scale: s.scale, flip_x: s.flip_x
+          });
+        }
+      } else {
+        if (s.segments && s.segments.length > 0) {
+          const first = s.segments[0];
+          s.idle = first.idle;
+          s.screen_position = { ...first.screen_position };
+          s.scale = first.scale;
+          s.flip_x = first.flip_x;
+        }
+        s.segments = [];
+      }
+      draftStaticSegment = null;
+      renderAll();
+    })
+  ]));
+
+  if (!hasSegments) {
+    const staticData = staticCache[s.static];
+    const idleNames = staticData ? Object.keys(staticData.idles) : (s.idle ? [s.idle] : []);
+    const idleSelect = el("select", {
+      onchange: (e) => { s.idle = e.target.value; renderStage(); }
+    }, idleNames.map(n => el("option", { value: n, ...(n === s.idle ? { selected: "selected" } : {}) }, n)));
+    wrap.appendChild(labeled("idle", idleSelect));
+    wrap.appendChild(idleLoopReadout(staticData, s.idle));
+
+    wrap.appendChild(el("div", { class: "coord-readout" },
+      `x ${Math.round(s.screen_position.x)}  ·  y ${Math.round(s.screen_position.y)}  (glisse sur le canvas)`));
+
+    const row = el("div", { class: "row2" });
+    row.appendChild(numberField("scale", s.scale, v => { s.scale = v; renderStage(); }, 0.05));
+    wrap.appendChild(row);
+
+    wrap.appendChild(el("div", { class: "check-row" }, [
+      checkField("flip_x", s.flip_x, v => { s.flip_x = v; renderStage(); })
+    ]));
+  } else {
+    wrap.appendChild(buildStaticSegmentsEditor(s));
+  }
+
+  wrap.appendChild(buildActiveWindowEditor(s, "personnage"));
+
+  wrap.appendChild(el("div", { class: "hint" },
+    "Un personnage statique est comme un décor (pas de yeux/bouche, pas de moves/transitions animées, " +
+    "boucle idle toujours régulière) mais avec une position et, en mode segments, plusieurs poses " +
+    "(idle + position + scale + flip_x) qui changent par cut instantané à des instants donnés — " +
+    "pas d'interpolation entre les poses."));
+
+  return wrap;
+}
+
+// Lecture seule : fps / duration_seconds de l'idle tels que définis dans
+// statics/<id>/static-settings.json — ce fichier d'asset n'est pas éditable
+// depuis ce builder (qui n'écrit que l'episode-settings.json), donc on se
+// contente d'afficher la valeur courante pour que l'utilisateur sache ce
+// qu'il doit aller changer à la main. N'affiche rien si l'API /api/static
+// ne renvoie pas ces champs (selon la version du backend).
+function idleLoopReadout(staticData, idleName) {
+  const idleCfg = staticData && staticData.idles && staticData.idles[idleName];
+  if (!idleCfg) return document.createDocumentFragment();
+  let text = null;
+  if (idleCfg.duration_seconds != null) {
+    text = `Boucle idle : ${idleCfg.duration_seconds}s par cycle (duration_seconds)`;
+  } else if (idleCfg.fps != null) {
+    text = `Boucle idle : ${idleCfg.fps} fps`;
+  }
+  if (!text) return document.createDocumentFragment();
+  return el("div", { class: "hint" },
+    `${text} — défini dans static-settings.json, pas éditable ici.`);
+}
+
+function buildStaticSegmentsEditor(s) {
+  const wrap = document.createElement("div");
+  wrap.appendChild(el("h3", {}, "Poses (segments)"));
+  wrap.appendChild(el("div", { class: "hint" },
+    "Chaque pose est active depuis son at_second jusqu'à la pose suivante (ou la fin de l'épisode " +
+    "pour la dernière). Pas de transition : changement net (cut)."));
+
+  if (!s.segments) s.segments = [];
+
+  const list = el("div", { class: "segList" });
+  const sorted = s.segments.slice().sort((a, b) => a.at_second - b.at_second);
+  sorted.forEach((seg) => {
+    const si = s.segments.indexOf(seg);
+    const isEditing = draftStaticSegment && draftStaticSegment.__static === s &&
+      draftStaticSegment.__index === si && !draftStaticSegment.__isNew;
+    const row = el("div", { class: "seg-row" + (isEditing ? " active" : "") });
+    row.appendChild(el("div", { class: "lbl" },
+      `t=${seg.at_second}s · ${seg.idle || "?"} · (${Math.round(seg.screen_position.x)},${Math.round(seg.screen_position.y)})` +
+      (seg.flip_x ? " · flip_x" : "")));
+    row.appendChild(el("button", { onclick: () => startEditStaticSegment(s, si) }, "éditer"));
+    row.appendChild(el("button", {
+      class: "danger", onclick: () => {
+        s.segments.splice(si, 1);
+        if (draftStaticSegment && draftStaticSegment.__static === s) draftStaticSegment = null;
+        renderAll();
+      }
+    }, "✕"));
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+
+  wrap.appendChild(el("button", { onclick: () => startNewStaticSegment(s) }, "+ Ajouter une pose"));
+
+  if (draftStaticSegment && draftStaticSegment.__static === s) {
+    wrap.appendChild(buildStaticSegmentEditor(s));
+  }
+
+  return wrap;
+}
+
+function startNewStaticSegment(s) {
+  const last = s.segments[s.segments.length - 1];
+  const staticData = staticCache[s.static];
+  const idleNames = staticData ? Object.keys(staticData.idles) : [];
+  draftStaticSegment = {
+    __static: s, __index: s.segments.length, __isNew: true,
+    idle: last ? last.idle : (idleNames[0] || ""),
+    at_second: last ? last.at_second + 1 : 0,
+    screen_position: last ? { ...last.screen_position } : { x: 0, y: 0 },
+    scale: last ? last.scale : 1.0,
+    flip_x: last ? last.flip_x : false
+  };
+  renderAll();
+}
+
+function startEditStaticSegment(s, index) {
+  const seg = s.segments[index];
+  draftStaticSegment = {
+    __static: s, __index: index, __isNew: false,
+    idle: seg.idle, at_second: seg.at_second,
+    screen_position: { ...seg.screen_position },
+    scale: seg.scale, flip_x: seg.flip_x
+  };
+  renderAll();
+}
+
+function buildStaticSegmentEditor(s) {
+  const d = draftStaticSegment;
+  const box = el("div", { class: "segment-editor" });
+  box.appendChild(el("h4", {}, d.__isNew ? "Nouvelle pose" : `Modifier pose #${d.__index + 1}`));
+
+  const staticData = staticCache[s.static];
+  const idleNames = staticData ? Object.keys(staticData.idles) : (d.idle ? [d.idle] : []);
+  const idleSelect = el("select", {
+    onchange: (e) => { d.idle = e.target.value; refreshInspector(); }
+  }, idleNames.map(n => el("option", { value: n, ...(n === d.idle ? { selected: "selected" } : {}) }, n)));
+  box.appendChild(labeled("idle", idleSelect));
+  box.appendChild(idleLoopReadout(staticData, d.idle));
+
+  box.appendChild(numberField("at_second", d.at_second, v => d.at_second = v, 0.1));
+
+  box.appendChild(el("div", { class: "coord-readout" },
+    `x ${Math.round(d.screen_position.x)}  ·  y ${Math.round(d.screen_position.y)}  (glisse sur le canvas)`));
+
+  const row = el("div", { class: "row2" });
+  row.appendChild(numberField("scale", d.scale, v => d.scale = v, 0.05));
+  box.appendChild(row);
+
+  box.appendChild(el("div", { class: "check-row" }, [
+    checkField("flip_x", d.flip_x, v => d.flip_x = v)
+  ]));
+
+  box.appendChild(el("div", { class: "btnbar" }, [
+    el("button", { onclick: () => { draftStaticSegment = null; renderAll(); } }, "Annuler"),
+    el("button", {
+      class: "primary", onclick: () => {
+        const payload = {
+          idle: d.idle, at_second: d.at_second,
+          screen_position: { ...d.screen_position }, scale: d.scale, flip_x: d.flip_x
+        };
+        if (d.__isNew) s.segments.push(payload);
+        else s.segments[d.__index] = payload;
+        draftStaticSegment = null;
+        renderAll();
+      }
+    }, "Enregistrer la pose")
+  ]));
+
+  return box;
 }
 
 function buildImageDecorFields(d) {
@@ -1355,9 +1859,12 @@ function buildTextDecorFields(d) {
   return frag;
 }
 
-function buildActiveWindowEditor(d) {
+// noun : "décor" | "personnage" — n'affecte que le libellé, le champ sous-jacent
+// (d.active_window) et sa structure sont identiques cote render_episode.py
+// pour les décors ET les personnages statiques (cf. resolve_decor_window()).
+function buildActiveWindowEditor(d, noun = "décor") {
   const wrap = document.createElement("div");
-  wrap.appendChild(el("h3", {}, "Fenêtre d'activation"));
+  wrap.appendChild(el("h3", {}, "Fenêtre d'activation (durée d'apparition)"));
   const enabled = !!d.active_window;
   wrap.appendChild(el("div", { class: "check-row" }, [
     checkField("limiter dans le temps", enabled, v => {
@@ -1371,7 +1878,7 @@ function buildActiveWindowEditor(d) {
     row.appendChild(numberField("duration_seconds", d.active_window.duration_seconds, v => d.active_window.duration_seconds = v, 0.1));
     wrap.appendChild(row);
     wrap.appendChild(el("div", { class: "hint" },
-      "Le décor n'est visible que pendant cette fenêtre. Sans elle, il est visible sur toute la durée de l'épisode."));
+      `Le ${noun} n'est visible que pendant cette fenêtre (durée de vie). Sans elle, il est visible sur toute la durée de l'épisode.`));
   }
   return wrap;
 }
@@ -1511,6 +2018,92 @@ function buildMovesEditor(c) {
   }, "+ Ajouter un mouvement"));
 
   return wrap;
+}
+
+function buildGazeTimelineEditor(c) {
+  const wrap = document.createElement("div");
+  wrap.appendChild(el("h3", {}, "Regard (gaze) — changements ponctuels"));
+  wrap.appendChild(el("div", { class: "hint" },
+    "Change la direction du regard à un instant précis, sans mouvement ni changement de position " +
+    "(indépendant des segments \"moves\"). Le changement est quasi instantané (bascule nette), pas " +
+    "un glissement progressif : à l'export, chaque keyframe est dédoublée sur une fraction de frame " +
+    "pour simuler une coupe franche, via le mécanisme gaze_timeline déjà existant côté rendu."));
+
+  if (!c.gaze_timeline) c.gaze_timeline = [];
+
+  const list = el("div", { class: "segList" });
+  const sorted = c.gaze_timeline.slice().sort((a, b) => a.at_second - b.at_second);
+  sorted.forEach((gk) => {
+    const gi = c.gaze_timeline.indexOf(gk);
+    const isEditing = draftGaze && draftGaze.__character === c && draftGaze.__index === gi && !draftGaze.__isNew;
+    const row = el("div", { class: "seg-row" + (isEditing ? " active" : "") });
+    row.appendChild(el("div", { class: "lbl" }, `t=${gk.at_second}s · x:${gk.x} · y:${gk.y}`));
+    row.appendChild(el("button", { onclick: () => startEditGazeKeyframe(c, gi) }, "éditer"));
+    row.appendChild(el("button", {
+      class: "danger", onclick: () => {
+        c.gaze_timeline.splice(gi, 1);
+        if (draftGaze && draftGaze.__character === c) draftGaze = null;
+        renderAll();
+      }
+    }, "✕"));
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+
+  wrap.appendChild(el("button", { onclick: () => startNewGazeKeyframe(c) }, "+ Ajouter un changement de regard"));
+
+  if (draftGaze && draftGaze.__character === c) {
+    wrap.appendChild(buildGazeKeyframeEditor(c));
+  }
+
+  return wrap;
+}
+
+function startNewGazeKeyframe(c) {
+  const last = c.gaze_timeline[c.gaze_timeline.length - 1];
+  draftGaze = {
+    __character: c, __index: c.gaze_timeline.length, __isNew: true,
+    at_second: last ? last.at_second + 1 : 0,
+    x: last ? last.x : c.gaze.x, y: last ? last.y : c.gaze.y
+  };
+  renderAll();
+}
+
+function startEditGazeKeyframe(c, index) {
+  const gk = c.gaze_timeline[index];
+  draftGaze = {
+    __character: c, __index: index, __isNew: false,
+    at_second: gk.at_second, x: gk.x, y: gk.y
+  };
+  renderAll();
+}
+
+function buildGazeKeyframeEditor(c) {
+  const d = draftGaze;
+  const box = el("div", { class: "segment-editor" });
+  box.appendChild(el("h4", {}, d.__isNew ? "Nouveau changement de regard" : `Modifier keyframe #${d.__index + 1}`));
+
+  box.appendChild(numberField("at_second", d.at_second, v => d.at_second = v, 0.1));
+
+  const row = el("div", { class: "row2" });
+  row.appendChild(numberField("x", d.x, v => d.x = v, 1));
+  row.appendChild(numberField("y", d.y, v => d.y = v, 1));
+  box.appendChild(row);
+
+  box.appendChild(el("div", { class: "btnbar" }, [
+    el("button", { onclick: () => { draftGaze = null; renderAll(); } }, "Annuler"),
+    el("button", {
+      class: "primary", onclick: () => {
+        const payload = { at_second: d.at_second, x: d.x, y: d.y };
+        if (d.__isNew) c.gaze_timeline.push(payload);
+        else c.gaze_timeline[d.__index] = payload;
+        draftGaze = null;
+        renderAll();
+      }
+    }, "Enregistrer la keyframe")
+  ]));
+
+  return box;
 }
 
 function buildEmotionTimelineEditor(c) {
@@ -1803,6 +2396,48 @@ function checkField(labelText, checked, onChange) {
 
 /* ============================== GÉNÉRATION / SAUVEGARDE ============================== */
 
+function round4(v) { return Math.round(v * 10000) / 10000; }
+
+// Transforme les keyframes "gaze_timeline" éditées dans l'UI (bascules nettes,
+// une par instant) en la forme attendue par le gaze_timeline interpolé de
+// render_episode.py : pour chaque changement, on insère une keyframe-palier
+// juste avant (valeur precedente tenue), à 1 frame d'écart (1/fps). Comme
+// l'interpolation se fait alors sur une seule frame, l'oeil "coupe" net d'un
+// point de vue perceptif, sans toucher au script de rendu (qui ne voit que
+// des keyframes classiques, interpolées comme d'habitude).
+function buildSteppedGazeTimeline(rawKeyframes, staticGaze, fps) {
+  const eps = 1 / (fps || 24);
+  const sorted = rawKeyframes.slice().sort((a, b) => a.at_second - b.at_second);
+  const result = [];
+  let lastEmittedT = -1; // sentinelle : aucune keyframe-palier avant t=0
+  let prevValue = { x: staticGaze?.x ?? 0, y: staticGaze?.y ?? 0 };
+
+  for (const kf of sorted) {
+    const t = kf.at_second;
+    const preHoldT = t - eps;
+    if (preHoldT > 0 && preHoldT > lastEmittedT + 1e-6) {
+      result.push({ at_second: round4(preHoldT), x: prevValue.x, y: prevValue.y });
+      lastEmittedT = preHoldT;
+    }
+    result.push({ at_second: round4(t), x: kf.x, y: kf.y });
+    lastEmittedT = t;
+    prevValue = { x: kf.x, y: kf.y };
+  }
+  return result;
+}
+
+function cleanExportCharacters(rawCharacters, fps) {
+  return rawCharacters.map(c => {
+    const out = { ...c };
+    if (Array.isArray(out.gaze_timeline) && out.gaze_timeline.length > 0) {
+      out.gaze_timeline = buildSteppedGazeTimeline(out.gaze_timeline, out.gaze, fps);
+    } else {
+      delete out.gaze_timeline;
+    }
+    return out;
+  });
+}
+
 function cleanExportDecors(rawDecors) {
   return rawDecors.map(d => {
     const out = { ...d };
@@ -1823,11 +2458,35 @@ function cleanExportDecors(rawDecors) {
   });
 }
 
+function cleanExportStatics(rawStatics) {
+  return rawStatics.map(s => {
+    const out = { ...s };
+    if (!out.active_window) delete out.active_window;
+    if (Array.isArray(out.segments) && out.segments.length > 0) {
+      // mode segments : les champs "pose unique" sont redondants (le script
+      // ignore les clés en trop, mais on nettoie pour un export clair)
+      out.segments = out.segments.map(seg => ({ ...seg }));
+      delete out.idle;
+      delete out.screen_position;
+      delete out.scale;
+      delete out.flip_x;
+    } else {
+      // pas de segments : ne JAMAIS exporter "segments: []", le script
+      // teste la presence de la cle ("segments" in static_cfg) et plante
+      // sur une liste vide.
+      delete out.segments;
+    }
+    return out;
+  });
+}
+
 function buildExportPayload() {
   // clone profond + nettoyage des clés internes/optionnelles utilisées par l'UI
   const out = JSON.parse(JSON.stringify(state));
   out.output.resolution = [RES[0], RES[1]];
+  out.characters = cleanExportCharacters(out.characters, out.output.fps);
   out.decors = cleanExportDecors(out.decors);
+  out.statics = cleanExportStatics(out.statics || []);
   return out;
 }
 
