@@ -1,0 +1,62 @@
+{
+  "_comment": "Mapping phonème IPA (espeak-ng fr-fr) -> visème. Jeu de visèmes inchangé : CLOSED, O, A, E, F, L, CONS. Tout phonème absent de la liste prend la valeur 'default'. Pour tester un autre rendu, il suffit de déplacer un phonème d'une liste à l'autre (ex. 'y', 'ø', 'œ' de O vers E, ou 'ʃ', 'ʒ' de CONS vers O).",
+  "visemes": {
+    "CLOSED": [
+      "p",
+      "b",
+      "m"
+    ],
+    "F": [
+      "f",
+      "v"
+    ],
+    "L": [
+      "l"
+    ],
+    "O": [
+      "u",
+      "o",
+      "ɔ",
+      "ɔ̃",
+      "y",
+      "ø",
+      "œ",
+      "w",
+      "ɥ",
+      "ɒ"
+    ],
+    "E": [
+      "i",
+      "e",
+      "ɛ",
+      "ɛ̃",
+      "œ̃",
+      "ə",
+      "j"
+    ],
+    "A": [
+      "a",
+      "ɑ",
+      "ɑ̃"
+    ],
+    "CONS": [
+      "t",
+      "d",
+      "k",
+      "ɡ",
+      "g",
+      "s",
+      "z",
+      "ʃ",
+      "ʒ",
+      "n",
+      "ɲ",
+      "ŋ",
+      "ʁ",
+      "r",
+      "h",
+      "x"
+    ]
+  },
+  "default": "CONS"
+}
