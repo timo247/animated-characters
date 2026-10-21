@@ -1,0 +1,12 @@
+{
+  "decor_id": "cloud-1",
+  "label": "cloud 1",
+  "idle": {
+    "fps": 1,
+    "pause_seconds": { "min": 0, "max": 0 },
+    "colors": {
+      "DAY":  { "frames": ["IDLE-1.png"] },
+      "NIGHT": { "frames": ["IDLE-1.png"] }
+    }
+  }
+}

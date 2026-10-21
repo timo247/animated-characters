@@ -82,6 +82,20 @@ Décors temporises et effets (intro, etc.) :
         Anime l'apparition/disparition du décor pendant sa fenetre
         active (zoom, fondu, glissement). Voir build_decor_effect_sequence().
 
+      "movement_timeline": [ { "at_second": 0, "x": .., "y": .. }, ... ]
+        Deplacement continu (interpole lineairement) du décor au cours de
+        l'episode — un décor peut ainsi traverser l'ecran, pas seulement
+        rester fixe. "at_second" est relatif au DEBUT DE L'EPISODE (comme
+        camera/gaze_timeline), PAS au debut de la fenetre active du décor
+        (contrairement a "effects", qui eux sont relatifs a cette fenetre).
+        Avant la 1ere keyframe / apres la derniere, la position est tenue.
+        Sans "movement_timeline", comportement inchange : le décor reste a
+        "screen_position". Un décor "type": "text" avec "align": "center"
+        ignore le x de "movement_timeline" (il reste centre horizontalement)
+        mais suit son y. Voir build_decor_position_sequence(). Se combine
+        avec "effects" : les deux s'additionnent (slide est un offset relatif
+        a la position courante, animee ou non).
+
     Un décor peut aussi etre du texte plutot qu'un sprite image, via
     "type": "text" (defaut "image") — utile pour un titre/texte d'intro
     qui reutilise le meme mecanisme de fenetre/effets. Voir
@@ -462,6 +476,64 @@ def apply_decor_effects(sprite_base, screen_x, screen_y, scale_mult, opacity, dx
     paste_x = round(cx - sprite.width / 2 + dx)
     paste_y = round(cy - sprite.height / 2 + dy)
     return sprite, paste_x, paste_y
+
+
+def build_decor_position_sequence(screen_position, movement_timeline, total_frames, fps):
+    """
+    Retourne une liste de total_frames tuples (x, y) : la position du décor
+    (coin superieur gauche, avant effets) a chaque frame.
+
+    Meme logique que build_gaze_sequence() :
+
+    Priorite :
+      1. movement_timeline : keyframes { "at_second", "x", "y" } interpolees
+         LINEAIREMENT (deplacement continu, pas un cut) — triees automatiquement
+         par at_second.
+      2. screen_position : position statique (comportement historique, inchange)
+
+    "at_second" est relatif au DEBUT DE L'EPISODE (comme camera/gaze_timeline),
+    PAS au debut de la fenetre active du décor ("active_window") — a la
+    difference de "effects" qui sont, eux, relatifs au debut de la fenetre.
+    Un décor hors de sa fenetre active n'est de toute façon pas dessine
+    (cf. resolve_decor_window() / _paste_decor()), donc ce choix ne change
+    rien a ce qu'on voit, seulement a quoi "at_second" fait reference quand
+    on ecrit le JSON.
+
+    Avant la premiere keyframe -> position tenue a la valeur de cette
+    premiere keyframe. Apres la derniere -> tenue a sa valeur. Sans
+    movement_timeline -> screen_position tenue sur toute la duree
+    (comportement identique a avant l'ajout de cette feature).
+    """
+    static_x = float(screen_position.get("x", 0))
+    static_y = float(screen_position.get("y", 0))
+
+    if not movement_timeline:
+        return [(static_x, static_y)] * total_frames
+
+    seq = [(static_x, static_y)] * total_frames
+    kf  = sorted(movement_timeline, key=lambda k: k["at_second"])
+
+    first   = kf[0]
+    f_first = int(first["at_second"] * fps)
+    x0, y0  = float(first["x"]), float(first["y"])
+    for f in range(0, min(f_first, total_frames)):
+        seq[f] = (x0, y0)
+
+    for i, k in enumerate(kf):
+        f_start = int(k["at_second"] * fps)
+        x0, y0  = float(k["x"]), float(k["y"])
+        if i + 1 < len(kf):
+            nxt    = kf[i + 1]
+            f_end  = int(nxt["at_second"] * fps)
+            x1, y1 = float(nxt["x"]), float(nxt["y"])
+            for f in range(f_start, min(f_end, total_frames)):
+                t = (f - f_start) / max(f_end - f_start - 1, 1)
+                seq[f] = (x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)
+        else:
+            for f in range(f_start, total_frames):
+                seq[f] = (x0, y0)
+
+    return seq
 
 
 # ---------------------------------------------------------------------------
@@ -1630,14 +1702,18 @@ def resolve_output_size(episode, preview=False):
 def _decor_state_key(entry, f):
     """
     Cle hashable decrivant ce que dessine un décor a la frame f : None si
-    inactif, sinon (fichier de frame idle, (scale, opacite, dx, dy)).
-    Sert de cle au cache "fond + décors de fond".
+    inactif, sinon (fichier de frame idle, (scale, opacite, dx, dy), (x, y)).
+    Sert de cle au cache "fond + décors de fond". La position (x, y) est
+    incluse pour que deux frames ou un décor anime ("movement_timeline")
+    occupe des positions differentes ne partagent jamais la meme entree de
+    cache — sinon un décor en mouvement se figerait visuellement des que son
+    sprite/effet redevient identique a une frame precedente.
     """
     f_start, f_end = entry["frame_start"], entry["frame_end"]
     if not (f_start <= f < f_end):
         return None
     sprite_file = None if entry["decor_type"] == "text" else entry["sprite_seq"][f]
-    return (sprite_file, entry["effect_seq"][f - f_start])
+    return (sprite_file, entry["effect_seq"][f - f_start], entry["pos_seq"][f])
 
 
 def _paste_decor(frame, entry, f, world_w, world_h):
@@ -1665,7 +1741,7 @@ def _paste_decor(frame, entry, f, world_w, world_h):
 
     sprite, px, py = apply_decor_effects(
         sprite_base,
-        *entry.get("resolved_pos", (decor_cfg["screen_position"]["x"], decor_cfg["screen_position"]["y"])),
+        *entry["pos_seq"][f],
         scale_mult, opacity, dx, dy,
     )
     if not _offscreen(px, py, sprite.width, sprite.height, world_w, world_h):
@@ -1806,6 +1882,14 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
             "effect_seq":  effect_seq,
         }
 
+        # Position par frame : fixe (screen_position) ou animee via
+        # "movement_timeline" (deplacement continu, interpole) — cf.
+        # build_decor_position_sequence(). Commun aux décors image et texte.
+        pos_seq = build_decor_position_sequence(
+            decor_cfg["screen_position"], decor_cfg.get("movement_timeline"),
+            total_frames, fps,
+        )
+
         if decor_type == "text":
             entry["base_sprite"] = render_text_sprite(decor_cfg)
 
@@ -1822,14 +1906,14 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
 
             # "align": "center" (optionnel, décors texte uniquement) : centre
             # horizontalement sur la largeur de la video plutot que d'utiliser
-            # "screen_position.x" tel quel. Calcule une fois ici, car la
-            # largeur du sprite texte (post scale/flip/rotation du décor,
-            # hors effets) est constante sur toute sa fenetre active.
+            # "screen_position.x" (ou le x de "movement_timeline") tel quel —
+            # la largeur du sprite texte (post scale/flip/rotation du décor,
+            # hors effets) est constante, donc le centrage reste valable sur
+            # toute la fenetre active. Seul le x est remplace : le y anime
+            # par "movement_timeline" (le cas echeant) reste actif.
             if decor_cfg.get("align") == "center":
                 resolved_x = (world_w - static_sprite.width) / 2
-            else:
-                resolved_x = decor_cfg["screen_position"]["x"]
-            entry["resolved_pos"] = (resolved_x, decor_cfg["screen_position"]["y"])
+                pos_seq = [(resolved_x, y) for (_, y) in pos_seq]
         else:
             decor_id       = decor_cfg["decor"]
             decor_settings = load_decor_settings(decor_id)
@@ -1849,6 +1933,7 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
                 frames, fps_cfg, total_frames, fps, pause_cfg, loop_mode
             )
 
+        entry["pos_seq"] = pos_seq
         decor_data.append(entry)
 
     if decor_data:

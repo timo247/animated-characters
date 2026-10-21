@@ -1,0 +1,114 @@
+{
+  "episode_id": "ep001",
+  "output": {
+    "filename": "episode_001.mp4",
+    "duration_seconds": 10,
+    "fps": 24,
+    "resolution": [
+      1920,
+      1080
+    ]
+  },
+  "background": {
+    "image": "background-dry.png"
+  },
+  "audio": "",
+  "visemes": "",
+  "camera": {
+    "zoom": 1,
+    "x": 960,
+    "y": 540,
+    "timeline": [
+      {
+        "at_second": 0,
+        "zoom": 1,
+        "x": 960,
+        "y": 540
+      }
+    ]
+  },
+  "characters": [
+    {
+      "id": "antilope_main",
+      "character": "antilope",
+      "position": "1",
+      "layer": 0,
+      "screen_position": {
+        "x": 0,
+        "y": 0
+      },
+      "scale": 1,
+      "overlay_scale": 1,
+      "flip_x": false,
+      "emotions": {
+        "eyes": "HAPPY",
+        "mouth": "HAPPY"
+      },
+      "emotion_timeline": [],
+      "speaker": "",
+      "gaze": {
+        "x": 0,
+        "y": 0
+      },
+      "moves": [],
+      "dialogue": null
+    }
+  ],
+  "decors": [
+    {
+      "id": "asian-flowers-1",
+      "type": "image",
+      "decor": "cloud-1",
+      "color": "DAY",
+      "screen_position": {
+        "x": 0,
+        "y": 0
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": 0,
+      "active_window": {
+        "start_second": 0,
+        "duration_seconds": 7
+      },
+      "movement_timeline": [
+        {
+          "at_second": 0,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "at_second": 7,
+          "x": 1465,
+          "y": 24
+        }
+      ]
+    },
+    {
+      "id": "asian-flowers-1-2",
+      "type": "image",
+      "decor": "background-bird",
+      "color": "DARK",
+      "screen_position": {
+        "x": 1836,
+        "y": 50
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": 0,
+      "movement_timeline": [
+        {
+          "at_second": 0,
+          "x": -98,
+          "y": 50
+        },
+        {
+          "at_second": 7,
+          "x": 1816,
+          "y": 51
+        }
+      ]
+    }
+  ],
+  "statics": []
+}

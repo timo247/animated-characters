@@ -1,0 +1,11 @@
+{
+  "decor_id": "background-bird",
+  "label": "Background bird",
+  "idle": {
+    "fps": 3,
+    "pause_seconds": { "min": 0, "max": 0 },
+    "colors": {
+      "DARK":  { "frames": ["IDLE-2.png", "IDLE-3.png"] }
+    }
+  }
+}

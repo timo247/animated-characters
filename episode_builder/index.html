@@ -240,6 +240,7 @@ let draftSegment = null;                            // segment en cours d'éditi
 let draftEmotion = null;                            // keyframe d'emotion_timeline en cours d'édition
 let draftEffect = null;                             // effet de décor en cours d'édition
 let draftGaze = null;                                // keyframe de gaze_timeline (changement ponctuel) en cours d'édition
+let draftMovement = null;                            // waypoint de movement_timeline (décor en déplacement) en cours d'édition
 let draftStaticSegment = null;                      // pose (segment) de personnage statique en cours d'édition
 
 const STATIC_DEFAULT_LAYER = 50;                    // doit matcher DEFAULT_STATIC_LAYER cote render_episode.py
@@ -436,7 +437,10 @@ function normalizeDecor(d) {
       start_second: Number(d.active_window.start_second ?? 0),
       duration_seconds: Number(d.active_window.duration_seconds)
     } : null,
-    effects: Array.isArray(d.effects) ? d.effects.map(normalizeEffect) : []
+    effects: Array.isArray(d.effects) ? d.effects.map(normalizeEffect) : [],
+    movement_timeline: Array.isArray(d.movement_timeline) ? d.movement_timeline.map(kf => ({
+      at_second: Number(kf.at_second ?? 0), x: Number(kf.x ?? 0), y: Number(kf.y ?? 0)
+    })) : []
   };
   if (type === "text") {
     out.text = d.text || "";
@@ -541,6 +545,7 @@ async function importEpisodeSettings(json) {
   draftEffect = null;
   draftGaze = null;
   draftStaticSegment = null;
+  draftMovement = null;
 
   rebuildStageSize();
   refreshTopbarFields();
@@ -739,6 +744,7 @@ function selectElement(type, index) {
   draftEffect = null;
   draftGaze = null;
   draftStaticSegment = null;
+  draftMovement = null;
   cameraKeyIndex = state.camera.timeline.length ? 0 : -1;
   renderAll();
 }
@@ -806,7 +812,8 @@ async function addDecor(name) {
     flip_x: false,
     layer: 0,
     active_window: null,
-    effects: []
+    effects: [],
+    movement_timeline: []
   };
   state.decors.push(d);
   selection = { type: "decor", index: state.decors.length - 1 };
@@ -817,6 +824,7 @@ function removeDecor(i) {
   const removed = state.decors[i];
   state.decors.splice(i, 1);
   if (draftEffect && draftEffect.__decor === removed) draftEffect = null;
+  if (draftMovement && draftMovement.__decor === removed) draftMovement = null;
   if (selection.type === "decor") {
     if (state.decors.length === 0) selection = { type: "camera", index: null };
     else selection.index = clamp(selection.index, 0, state.decors.length - 1);
@@ -838,7 +846,8 @@ function addTextDecor() {
     flip_x: false,
     layer: -10,
     active_window: null,
-    effects: []
+    effects: [],
+    movement_timeline: []
   };
   state.decors.push(d);
   selection = { type: "decor", index: state.decors.length - 1 };
@@ -1083,7 +1092,11 @@ async function renderDraggableSprite(c, position, posObj, flipX, onMove, tag) {
 }
 
 /* ---- Aperçu (approximatif) d'un décor texte : DOM + police réelle chargée en tâche de fond ---- */
-function buildTextPreviewNode(d) {
+// `pos` (optionnel) : position {x,y} à utiliser à la place de
+// d.screen_position — sert à prévisualiser/éditer un waypoint de
+// movement_timeline en cours d'édition (cf. decorDisplayPos()).
+function buildTextPreviewNode(d, pos) {
+  pos = pos || d.screen_position;
   const box = document.createElement("div");
   box.style.position = "absolute";
   box.style.whiteSpace = "pre";
@@ -1098,9 +1111,9 @@ function buildTextPreviewNode(d) {
     box.style.left = "50%";
     box.style.transform = "translateX(-50%)";
   } else {
-    box.style.left = px(d.screen_position.x);
+    box.style.left = px(pos.x);
   }
-  box.style.top = px(d.screen_position.y);
+  box.style.top = px(pos.y);
   return box;
 }
 function applyTextPreviewFont(box, d) {
@@ -1163,30 +1176,45 @@ async function renderAllDecors() {
   }
 }
 
+// Position actuellement "affichable" (et déplaçable sur le canvas) pour un
+// décor : le waypoint de movement_timeline en cours d'édition s'il y en a
+// un, sinon la position de base ("screen_position" — c'est aussi la
+// position tenue avant le 1er waypoint, donc toujours pertinente même en
+// mode animé).
+function decorDisplayPos(d) {
+  if (draftMovement && draftMovement.__decor === d) {
+    return { pos: draftMovement, tag: `waypoint #${draftMovement.__index + 1} (édition)` };
+  }
+  const tag = (d.movement_timeline && d.movement_timeline.length > 0)
+    ? "position de base (avant 1er waypoint)" : "position";
+  return { pos: d.screen_position, tag };
+}
+
 async function renderDecorOverlay() {
   const d = state.decors[selection.index];
   if (!d) return;
   const stage = document.getElementById("stage");
   document.querySelectorAll(".sprite-drag").forEach(n => n.remove());
+  const { pos, tag } = decorDisplayPos(d);
 
   if (d.type === "text") {
-    const box = buildTextPreviewNode(d);
+    const box = buildTextPreviewNode(d, pos);
     box.classList.add("sprite-drag");
     box.style.borderColor = "var(--ok)";
     box.style.zIndex = String(1000 + (d.layer || 0));
     box.appendChild(el("div", { class: "tag", style: "background:var(--ok);color:#0e1a12" },
-      `texte · layer ${d.layer}` + (d.align === "center" ? " · align=center (x ignoré)" : "")));
+      `texte · ${tag} · layer ${d.layer}` + (d.align === "center" ? " · align=center (x ignoré)" : "")));
     stage.appendChild(box);
     applyTextPreviewFont(box, d);
 
     makeDraggable(box, {
       onMove: (dxPx, dyPx) => {
         if (d.align !== "center") {
-          d.screen_position.x = Math.round(d.screen_position.x + dxPx / scaleFactor);
-          box.style.left = px(d.screen_position.x);
+          pos.x = Math.round(pos.x + dxPx / scaleFactor);
+          box.style.left = px(pos.x);
         }
-        d.screen_position.y = Math.round(d.screen_position.y + dyPx / scaleFactor);
-        box.style.top = px(d.screen_position.y);
+        pos.y = Math.round(pos.y + dyPx / scaleFactor);
+        box.style.top = px(pos.y);
         refreshInspector();
       }
     });
@@ -1208,13 +1236,13 @@ async function renderDecorOverlay() {
   const h = dims.h * (d.scale || 1);
 
   const box = el("div", { class: "sprite-drag" });
-  box.style.left = px(d.screen_position.x); box.style.top = px(d.screen_position.y);
+  box.style.left = px(pos.x); box.style.top = px(pos.y);
   box.style.width = px(w); box.style.height = px(h);
   box.style.borderColor = "var(--ok)";
   box.style.zIndex = String(1000 + (d.layer || 0)); // toujours au-dessus des aperçus statiques
   if (d.flip_x) box.style.transform = "scaleX(-1)";
   box.appendChild(el("div", { class: "tag", style: "background:var(--ok);color:#0e1a12" },
-    `${d.decor} · ${d.color} · layer ${d.layer} · ${Math.round(w)}×${Math.round(h)}px`));
+    `${d.decor} · ${d.color} · ${tag} · layer ${d.layer} · ${Math.round(w)}×${Math.round(h)}px`));
   if (previewUrl) {
     box.appendChild(el("img", { src: previewUrl, draggable: "false" }));
   } else {
@@ -1227,9 +1255,9 @@ async function renderDecorOverlay() {
 
   makeDraggable(box, {
     onMove: (dxPx, dyPx) => {
-      d.screen_position.x = Math.round(clamp(d.screen_position.x + dxPx / scaleFactor, -w, RES[0]));
-      d.screen_position.y = Math.round(clamp(d.screen_position.y + dyPx / scaleFactor, -h, RES[1]));
-      box.style.left = px(d.screen_position.x); box.style.top = px(d.screen_position.y);
+      pos.x = Math.round(clamp(pos.x + dxPx / scaleFactor, -w, RES[0]));
+      pos.y = Math.round(clamp(pos.y + dyPx / scaleFactor, -h, RES[1]));
+      box.style.left = px(pos.x); box.style.top = px(pos.y);
       refreshInspector();
     }
   });
@@ -1542,16 +1570,109 @@ function buildDecorInspector() {
 
   wrap.appendChild(buildActiveWindowEditor(d));
   wrap.appendChild(buildEffectsEditor(d));
+  wrap.appendChild(buildMovementTimelineEditor(d));
 
   wrap.appendChild(el("div", { class: "hint" },
     d.type === "text"
       ? "Un décor texte est rendu via PIL côté script (pas d'aperçu pixel-parfait ici, juste une " +
         "approximation avec la vraie police si elle est dans fonts/). \"screen_position\" = coin " +
         "haut-gauche du texte recadré, sauf align=center qui centre horizontalement et ignore x."
-      : "Un décor est un élément de scène statique : pas de position animée ni d'émotion — " +
-        "juste un placement, une couleur de variante et un ordre d'empilement (layer)."));
+      : "Un décor est un élément de scène statique : un placement, une couleur de variante et un " +
+        "ordre d'empilement (layer), avec en plus une fenêtre d'activation et un déplacement " +
+        "animé optionnels ci-dessous."));
 
   return wrap;
+}
+
+/* ---- Déplacement (movement_timeline) : waypoints interpolés en continu, à ---- */
+/* ---- la différence des "poses" (segments) des personnages statiques, qui ---- */
+/* ---- changent par cut instantané. ---- */
+function buildMovementTimelineEditor(d) {
+  const wrap = document.createElement("div");
+  wrap.appendChild(el("h3", {}, "Déplacement (movement_timeline)"));
+  wrap.appendChild(el("div", { class: "hint" },
+    "Fait glisser le décor d'une position à l'autre au fil de l'épisode : entre deux waypoints, le " +
+    "déplacement est interpolé en continu (pas un cut). \"at_second\" est relatif au début de " +
+    "l'épisode (pas à la fenêtre d'activation). Avant le premier waypoint / après le dernier, la " +
+    "position reste tenue. Sans waypoint, le décor reste fixe à \"screen_position\" ci-dessus." +
+    (d.type === "text" && d.align === "center" ? " (align=center : seul le y animé est pris en compte, le x reste centré.)" : "")));
+
+  if (!d.movement_timeline) d.movement_timeline = [];
+
+  const list = el("div", { class: "segList" });
+  const sorted = d.movement_timeline.slice().sort((a, b) => a.at_second - b.at_second);
+  sorted.forEach((wp) => {
+    const wi = d.movement_timeline.indexOf(wp);
+    const isEditing = draftMovement && draftMovement.__decor === d && draftMovement.__index === wi && !draftMovement.__isNew;
+    const row = el("div", { class: "seg-row" + (isEditing ? " active" : "") });
+    row.appendChild(el("div", { class: "lbl" },
+      `t=${wp.at_second}s · (${Math.round(wp.x)},${Math.round(wp.y)})`));
+    row.appendChild(el("button", { onclick: () => startEditMovementWaypoint(d, wi) }, "éditer"));
+    row.appendChild(el("button", {
+      class: "danger", onclick: () => {
+        d.movement_timeline.splice(wi, 1);
+        if (draftMovement && draftMovement.__decor === d) draftMovement = null;
+        renderAll();
+      }
+    }, "✕"));
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+
+  wrap.appendChild(el("button", { onclick: () => startNewMovementWaypoint(d) }, "+ Ajouter un waypoint"));
+
+  if (draftMovement && draftMovement.__decor === d) {
+    wrap.appendChild(buildMovementWaypointEditor(d));
+  }
+
+  return wrap;
+}
+
+function startNewMovementWaypoint(d) {
+  const sorted = d.movement_timeline.slice().sort((a, b) => a.at_second - b.at_second);
+  const last = sorted[sorted.length - 1];
+  draftMovement = {
+    __decor: d, __index: d.movement_timeline.length, __isNew: true,
+    at_second: last ? last.at_second + 1 : 0,
+    x: last ? last.x : d.screen_position.x,
+    y: last ? last.y : d.screen_position.y
+  };
+  renderAll();
+}
+
+function startEditMovementWaypoint(d, index) {
+  const wp = d.movement_timeline[index];
+  draftMovement = {
+    __decor: d, __index: index, __isNew: false,
+    at_second: wp.at_second, x: wp.x, y: wp.y
+  };
+  renderAll();
+}
+
+function buildMovementWaypointEditor(d) {
+  const w = draftMovement;
+  const box = el("div", { class: "segment-editor" });
+  box.appendChild(el("h4", {}, w.__isNew ? "Nouveau waypoint" : `Modifier waypoint #${w.__index + 1}`));
+
+  box.appendChild(numberField("at_second", w.at_second, v => w.at_second = v, 0.1));
+
+  box.appendChild(el("div", { class: "coord-readout" },
+    `x ${Math.round(w.x)}  ·  y ${Math.round(w.y)}  (glisse sur le canvas)`));
+
+  box.appendChild(el("div", { class: "btnbar" }, [
+    el("button", { onclick: () => { draftMovement = null; renderAll(); } }, "Annuler"),
+    el("button", {
+      class: "primary", onclick: () => {
+        const payload = { at_second: w.at_second, x: w.x, y: w.y };
+        if (w.__isNew) d.movement_timeline.push(payload);
+        else d.movement_timeline[w.__index] = payload;
+        draftMovement = null;
+        renderAll();
+      }
+    }, "Enregistrer le waypoint")
+  ]));
+
+  return box;
 }
 
 /* ---- Personnage statique ---- */
@@ -2453,6 +2574,9 @@ function cleanExportDecors(rawDecors) {
       }
     } else {
       delete out.effects;
+    }
+    if (!Array.isArray(out.movement_timeline) || out.movement_timeline.length === 0) {
+      delete out.movement_timeline;
     }
     return out;
   });
