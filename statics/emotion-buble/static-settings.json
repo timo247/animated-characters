@@ -1,0 +1,22 @@
+{
+  "decor_id": "Emotion buble",
+  "label": "Emotion-buble",
+  "idles": {
+    "water-drop": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": [
+            "1.png"
+          ]
+        }
+      }
+    }
+  }
+}
