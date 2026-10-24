@@ -42,6 +42,25 @@
         }
       }
     },
+    "rolling-shoulders": {
+      "fps": 3,
+      "loop_mode": "loop",
+      "duration_seconds": 1.5,
+      "pause_seconds": {
+        "min": 1,
+        "max": 1
+      },
+      "colors": {
+        "BLACK": {
+          "frames": [
+            "1.png",
+            "2.png",
+            "3.png",
+	    "4.png"
+          ]
+        }
+      }
+    },
     "opening-arms-opposite-directions": {
       "fps": 3,
       "loop_mode": "loop",
@@ -59,6 +78,27 @@
             "4.png",
 	    "5.png",
 	    "6.png"
+          ]
+        }
+      }
+    },
+    "opening-arms-opposite-directions-switch": {
+      "fps": 3,
+      "loop_mode": "loop",
+      "duration_seconds": 2.0,
+      "pause_seconds": {
+        "min": 1,
+        "max": 1
+      },
+      "colors": {
+        "BLACK": {
+          "frames": [
+            "1.png",
+            "2.png",
+            "3.png",
+            "4.png",
+            "5.png",
+            "6.png"
           ]
         }
       }

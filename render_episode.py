@@ -101,7 +101,7 @@ Décors temporises et effets (intro, etc.) :
     qui reutilise le meme mecanisme de fenetre/effets. Voir
     render_text_sprite().
 
-Personnages statiques :
+Statics (personnages statiques, bulles d'emotion, icones, props...) :
     Categorie "statics" (episode["statics"]) : sous-ensemble des décors,
     mais avec une position (comme un personnage) et plusieurs idles
     nommes possibles (statics/{static_id}/static-settings.json). Pas de
@@ -115,6 +115,16 @@ Personnages statiques :
         "active_window": { "start_second": 0, "duration_seconds": 3 }
         optionnel, qui limite son affichage a cette fenetre de temps au
         lieu de toute la duree de l'episode. Voir resolve_decor_window().
+
+    Effets :
+        Comme un décor, un static accepte "effects": [ { "type":
+        "scale"|"fade"|"slide", ... }, ... ] — meme format, memes valeurs par
+        defaut et meme semantique que pour les décors (voir
+        build_decor_effect_sequence()) : "start_second" relatif au DEBUT de
+        la fenetre active du static (ou de l'episode sans "active_window"),
+        zoom centre sur le sprite, fondu, glissement en pixels. Les effets
+        s'appliquent par-dessus la pose courante (segments inclus). Typique
+        pour une bulle d'emotion : fade in + petit scale pop a l'apparition.
 
     Duree du loop d'idle :
         Dans statics/{static_id}/static-settings.json, chaque idle accepte,
@@ -2007,6 +2017,12 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
         # historique, inchange).
         f_start, f_end = resolve_decor_window(static_cfg, total_frames, fps)
 
+        # "effects" (scale / fade / slide) : meme champ et meme semantique que
+        # pour les décors (cf. build_decor_effect_sequence()), relatifs au
+        # DEBUT de la fenetre active du static. S'appliquent par-dessus la
+        # pose courante (segments inclus). Absent -> aucun effet.
+        effect_seq = build_decor_effect_sequence(static_cfg.get("effects"), f_start, f_end, fps)
+
         static_data.append({
             "kind":               "static",
             "layer":              float(static_cfg.get("layer", DEFAULT_STATIC_LAYER)),
@@ -2017,6 +2033,7 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
             "sprite_seq_by_idle": sprite_seq_by_idle,
             "frame_start":        f_start,
             "frame_end":          f_end,
+            "effect_seq":         effect_seq,
         })
 
     if static_data:
@@ -2069,6 +2086,10 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
                 tl          = entry["timeline"][f]
                 sprite_file = entry["sprite_seq_by_idle"][tl["idle"]][f]
 
+                scale_mult, opacity, dx, dy = entry["effect_seq"][f - entry["frame_start"]]
+                if opacity <= 0.0:
+                    continue  # entierement transparent : rien a dessiner
+
                 sprite = composite_static(
                     static_id   = entry["static_id"],
                     idle_name   = tl["idle"],
@@ -2077,8 +2098,12 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
                     scale       = tl["scale"],
                     flip_x      = tl["flip_x"],
                 )
-                if not _offscreen(tl["x"], tl["y"], sprite.width, sprite.height, world_w, world_h):
-                    frame.paste(sprite, (tl["x"], tl["y"]), sprite)
+                # Effets (zoom centre, fondu, glissement) — identiques aux décors.
+                # Sans effet : (1,1,0,0) -> meme resultat qu'un paste direct.
+                sprite, sx, sy = apply_decor_effects(
+                    sprite, tl["x"], tl["y"], scale_mult, opacity, dx, dy)
+                if not _offscreen(sx, sy, sprite.width, sprite.height, world_w, world_h):
+                    frame.paste(sprite, (sx, sy), sprite)
                 continue
 
             if entry["kind"] == "decor":

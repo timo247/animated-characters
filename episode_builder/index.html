@@ -165,7 +165,7 @@
     <h3>Éléments</h3>
     <div id="elementList"></div>
     <button id="btnAddCharacter" style="width:100%">+ Ajouter un personnage</button>
-    <button id="btnAddStatic" style="width:100%;margin-top:6px">+ Ajouter un personnage statique</button>
+    <button id="btnAddStatic" style="width:100%;margin-top:6px">+ Ajouter un static (bulle, icône, perso fixe…)</button>
     <button id="btnAddDecor" style="width:100%;margin-top:6px">+ Ajouter un décor</button>
     <button id="btnAddTextDecor" style="width:100%;margin-top:6px">+ Ajouter un titre / texte</button>
   </div>
@@ -241,7 +241,7 @@ let draftEmotion = null;                            // keyframe d'emotion_timeli
 let draftEffect = null;                             // effet de décor en cours d'édition
 let draftGaze = null;                                // keyframe de gaze_timeline (changement ponctuel) en cours d'édition
 let draftMovement = null;                            // waypoint de movement_timeline (décor en déplacement) en cours d'édition
-let draftStaticSegment = null;                      // pose (segment) de personnage statique en cours d'édition
+let draftStaticSegment = null;                      // pose (segment) de static en cours d'édition
 
 const STATIC_DEFAULT_LAYER = 50;                    // doit matcher DEFAULT_STATIC_LAYER cote render_episode.py
 
@@ -492,6 +492,7 @@ function normalizeStatic(s) {
       start_second: Number(s.active_window.start_second ?? 0),
       duration_seconds: Number(s.active_window.duration_seconds)
     } : null,
+    effects: Array.isArray(s.effects) ? s.effects.map(normalizeEffect) : [],
   };
   return out;
 }
@@ -728,7 +729,7 @@ function renderElementList() {
       onclick: () => selectElement("static", i)
     }, [
       el("div", { class: "dot", style: "background:var(--static)" }),
-      el("div", { class: "name" }, `🧍 ${s.static || "?"} (${s.id})${badge}`),
+      el("div", { class: "name" }, `🖼️ ${s.static || "?"} (${s.id})${badge}${(s.effects && s.effects.length) ? " ✨" : ""}${s.active_window ? " ⏱" : ""}`),
       el("div", {
         class: "del", html: "✕", onclick: (ev) => { ev.stopPropagation(); removeStatic(i); }
       })
@@ -866,10 +867,10 @@ function newStaticId(staticName) {
 
 async function addStatic(name) {
   name = name || staticsAvailable[0];
-  if (!name) { setStatus("Aucun personnage statique disponible dans statics/"); return; }
+  if (!name) { setStatus("Aucun static disponible dans statics/"); return; }
   let data;
   try { data = await getStaticData(name); }
-  catch (e) { setStatus("Erreur chargement personnage statique: " + e.message); return; }
+  catch (e) { setStatus("Erreur chargement static: " + e.message); return; }
 
   const idleNames = Object.keys(data.idles);
   const firstIdle = idleNames[0] || "";
@@ -886,7 +887,8 @@ async function addStatic(name) {
     scale: 1.0,
     flip_x: false,
     segments: [],
-    active_window: null
+    active_window: null,
+    effects: []
   };
   state.statics.push(s);
   selection = { type: "static", index: state.statics.length - 1 };
@@ -897,6 +899,7 @@ function removeStatic(i) {
   const removed = state.statics[i];
   state.statics.splice(i, 1);
   if (draftStaticSegment && draftStaticSegment.__static === removed) draftStaticSegment = null;
+  if (draftEffect && draftEffect.__decor === removed) draftEffect = null;
   if (selection.type === "static") {
     if (state.statics.length === 0) selection = { type: "camera", index: null };
     else selection.index = clamp(selection.index, 0, state.statics.length - 1);
@@ -968,7 +971,7 @@ function renderStage() {
   // nettoie les overlays précédents (les aperçus de décors gèrent leur propre nettoyage)
   document.querySelectorAll(".cam-rect,.sprite-drag,.sprite-ghost").forEach(n => n.remove());
 
-  // aperçu permanent de tous les décors / personnages statiques déjà placés
+  // aperçu permanent de tous les décors / statics déjà placés
   // (non-interactif, sauf l'élément sélectionné)
   renderAllDecors();
   renderAllStatics();
@@ -1263,7 +1266,7 @@ async function renderDecorOverlay() {
   });
 }
 
-/* ---- Personnages statiques : comme un décor, mais avec idle nommé + ---- */
+/* ---- Statics (perso fixe, bulle d'émotion, icône…) : comme un décor, mais avec idle nommé + ---- */
 /* ---- éventuellement plusieurs "poses" (segments, cut instantané)    ---- */
 
 function staticUsedIdleNames(s) {
@@ -1285,7 +1288,7 @@ function staticAvailableColors(s) {
   return [...colorSets[0]].filter(c => colorSets.every(set => set.has(c)));
 }
 
-// Pose actuellement "affichable" pour un personnage statique : en mode
+// Pose actuellement "affichable" pour un static : en mode
 // segments, la pose en cours d'édition (draftStaticSegment) si elle existe,
 // sinon la première pose de la liste ; en mode simple, les champs racine.
 function staticDisplayPose(s) {
@@ -1585,7 +1588,7 @@ function buildDecorInspector() {
 }
 
 /* ---- Déplacement (movement_timeline) : waypoints interpolés en continu, à ---- */
-/* ---- la différence des "poses" (segments) des personnages statiques, qui ---- */
+/* ---- la différence des "poses" (segments) des statics, qui ---- */
 /* ---- changent par cut instantané. ---- */
 function buildMovementTimelineEditor(d) {
   const wrap = document.createElement("div");
@@ -1675,12 +1678,12 @@ function buildMovementWaypointEditor(d) {
   return box;
 }
 
-/* ---- Personnage statique ---- */
+/* ---- Static ---- */
 function buildStaticInspector() {
   const s = state.statics[selection.index];
   const wrap = document.createElement("div");
 
-  wrap.appendChild(el("h3", {}, "Personnage statique"));
+  wrap.appendChild(el("h3", {}, "Static"));
 
   const staticSelect = el("select", {
     onchange: async (e) => {
@@ -1762,10 +1765,11 @@ function buildStaticInspector() {
     wrap.appendChild(buildStaticSegmentsEditor(s));
   }
 
-  wrap.appendChild(buildActiveWindowEditor(s, "personnage"));
+  wrap.appendChild(buildActiveWindowEditor(s, "static"));
+  wrap.appendChild(buildEffectsEditor(s));
 
   wrap.appendChild(el("div", { class: "hint" },
-    "Un personnage statique est comme un décor (pas de yeux/bouche, pas de moves/transitions animées, " +
+    "Un static (personnage fixe, bulle d'émotion, icône…) est comme un décor (pas de yeux/bouche, pas de moves/transitions animées, " +
     "boucle idle toujours régulière) mais avec une position et, en mode segments, plusieurs poses " +
     "(idle + position + scale + flip_x) qui changent par cut instantané à des instants donnés — " +
     "pas d'interpolation entre les poses."));
@@ -1982,7 +1986,7 @@ function buildTextDecorFields(d) {
 
 // noun : "décor" | "personnage" — n'affecte que le libellé, le champ sous-jacent
 // (d.active_window) et sa structure sont identiques cote render_episode.py
-// pour les décors ET les personnages statiques (cf. resolve_decor_window()).
+// pour les décors ET les statics (cf. resolve_decor_window()).
 function buildActiveWindowEditor(d, noun = "décor") {
   const wrap = document.createElement("div");
   wrap.appendChild(el("h3", {}, "Fenêtre d'activation (durée d'apparition)"));
@@ -2008,7 +2012,7 @@ function buildEffectsEditor(d) {
   const wrap = document.createElement("div");
   wrap.appendChild(el("h3", {}, "Effets"));
   wrap.appendChild(el("div", { class: "hint" },
-    "Effets cumulables, relatifs au début de la fenêtre d'activation du décor (ou au début de " +
+    "Effets cumulables, relatifs au début de la fenêtre d'activation de l'élément (ou au début de " +
     "l'épisode si pas de fenêtre). scale = zoom in/out, fade = opacité, slide = glissement (pixels)."));
 
   if (!d.effects) d.effects = [];
@@ -2085,7 +2089,7 @@ function buildEffectEditor(d) {
     box.appendChild(labeled("axis", axisSelect));
   }
 
-  box.appendChild(numberField("start_second (relatif à la fenêtre du décor)", e.start_second, v => e.start_second = v, 0.1));
+  box.appendChild(numberField("start_second (relatif à la fenêtre de l'élément)", e.start_second, v => e.start_second = v, 0.1));
 
   box.appendChild(el("div", { class: "check-row" }, [
     checkField("durée définie (sinon = toute la fenêtre active)", e.hasDuration, v => { e.hasDuration = v; refreshInspector(); })
@@ -2586,6 +2590,15 @@ function cleanExportStatics(rawStatics) {
   return rawStatics.map(s => {
     const out = { ...s };
     if (!out.active_window) delete out.active_window;
+    if (Array.isArray(out.effects) && out.effects.length > 0) {
+      out.effects = out.effects.map(eff => {
+        const e2 = { ...eff };
+        if (e2.duration_seconds === null || e2.duration_seconds === undefined) delete e2.duration_seconds;
+        return e2;
+      });
+    } else {
+      delete out.effects;
+    }
     if (Array.isArray(out.segments) && out.segments.length > 0) {
       // mode segments : les champs "pose unique" sont redondants (le script
       // ignore les clés en trop, mais on nettoie pour un export clair)

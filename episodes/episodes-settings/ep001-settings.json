@@ -32,7 +32,7 @@
       "id": "antilope_main",
       "character": "antilope",
       "position": "1",
-      "layer": 0,
+      "layer": 1,
       "screen_position": {
         "x": 0,
         "y": 0
@@ -58,8 +58,6 @@
     {
       "id": "asian-flowers-1",
       "type": "image",
-      "decor": "cloud-1",
-      "color": "DAY",
       "screen_position": {
         "x": 0,
         "y": 0
@@ -82,13 +80,13 @@
           "x": 1465,
           "y": 24
         }
-      ]
+      ],
+      "decor": "cloud-1",
+      "color": "DAY"
     },
     {
       "id": "asian-flowers-1-2",
       "type": "image",
-      "decor": "background-bird",
-      "color": "DARK",
       "screen_position": {
         "x": 1836,
         "y": 50
@@ -107,8 +105,38 @@
           "x": 1816,
           "y": 51
         }
-      ]
+      ],
+      "decor": "background-bird",
+      "color": "DARK"
     }
   ],
-  "statics": []
+  "statics": [
+    {
+      "id": "emotion-buble",
+      "static": "emotion-buble",
+      "color": "voie-de-la-savane",
+      "layer": 0,
+      "idle": "happiness",
+      "screen_position": {
+        "x": 330,
+        "y": 80
+      },
+      "scale": 1.55,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 2,
+        "duration_seconds": 3
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 0.5,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ]
+    }
+  ]
 }
