@@ -85,6 +85,14 @@
     white-space:nowrap;}
   .sprite-ghost{position:absolute;border:1px dashed var(--text-dim);opacity:.5;pointer-events:none;}
 
+  .char-preview{position:absolute;pointer-events:none;opacity:.5;
+    border:1px dashed var(--accent);box-shadow:0 0 0 1px rgba(0,0,0,.3);}
+  .char-preview.dest{opacity:.25;}
+  .char-preview img{display:block;width:100%;height:100%;object-fit:contain;}
+  .char-preview .tag{position:absolute;top:-18px;left:-1px;background:var(--accent);
+    color:#1a1408;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px 3px 0 0;
+    white-space:nowrap;}
+
   .decor-preview{position:absolute;pointer-events:none;opacity:.55;
     border:1px dashed var(--ok);box-shadow:0 0 0 1px rgba(0,0,0,.3);}
   .decor-preview img{display:block;width:100%;height:100%;object-fit:contain;}
@@ -1057,7 +1065,7 @@ function renderStage() {
   }
 
   // nettoie les overlays précédents (les aperçus de décors gèrent leur propre nettoyage)
-  document.querySelectorAll(".cam-rect,.sprite-drag,.sprite-ghost,.veil-preview").forEach(n => n.remove());
+  document.querySelectorAll(".cam-rect,.sprite-drag,.sprite-ghost,.veil-preview,.char-preview").forEach(n => n.remove());
 
   // aperçu permanent de tous les décors / statics déjà placés
   // (non-interactif, sauf l'élément sélectionné)
@@ -1067,8 +1075,46 @@ function renderStage() {
   if (selection.type === "camera") renderCameraOverlay();
   else if (selection.type === "character") renderCharacterOverlay();
   else if (selection.type === "decor") renderDecorOverlay();
-  else if (selection.type === "static") renderStaticOverlay();
+  else if (selection.type === "static") { renderCharacterGhosts(); renderStaticOverlay(); }
   else if (selection.type === "overlay") renderVeilPreview();
+}
+
+// Repère de composition quand un static est sélectionné : affiche, non-interactif,
+// chaque personnage à sa position initiale (opacité .5) et à la fin de chacun de ses
+// déplacements (segments "to", opacité .25).
+let charGhostsRenderId = 0;
+async function renderCharacterGhosts() {
+  const myId = ++charGhostsRenderId;
+  const stage = document.getElementById("stage");
+
+  for (const c of state.characters) {
+    if (!c.character) continue;
+    let data;
+    try { data = await getCharacterData(c.character); } catch (e) { continue; }
+
+    const spots = [{ pos: c.position, at: c.screen_position, flip: c.flip_x, dest: false, tag: "initial" }];
+    (c.moves || []).forEach((mv, mi) => mv.segments.forEach((seg, si) => {
+      spots.push({ pos: seg.position, at: seg.to, flip: seg.flip_x, dest: true, tag: `fin move ${mi + 1}.${si + 1}` });
+    }));
+
+    for (const sp of spots) {
+      const url = data.positions[sp.pos]?.idle?.preview_url;
+      const dims = url ? await loadImageNaturalSize(url) : { w: 160, h: 240 };
+
+      // sélection changée / nouveau rendu lancé pendant l'attente
+      if (myId !== charGhostsRenderId || selection.type !== "static") return;
+
+      const w = dims.w * (c.scale || 1), h = dims.h * (c.scale || 1);
+      const box = el("div", { class: "char-preview" + (sp.dest ? " dest" : "") });
+      box.style.left = px(sp.at.x); box.style.top = px(sp.at.y);
+      box.style.width = px(w); box.style.height = px(h);
+      box.style.zIndex = String(10 + (c.layer || 0));
+      if (sp.flip) box.style.transform = "scaleX(-1)";
+      box.appendChild(el("div", { class: "tag" }, `${c.id} · ${sp.tag}`));
+      if (url) box.appendChild(el("img", { src: url, draggable: "false" }));
+      stage.appendChild(box);
+    }
+  }
 }
 
 // Aperçu du voile (opacité max, sans fondu ni particules) sur tout le stage.
