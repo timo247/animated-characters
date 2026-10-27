@@ -95,6 +95,11 @@
   .static-preview{border-color:var(--static);}
   .static-preview .tag{background:var(--static);color:#120b1f;}
 
+  .veil-preview{position:absolute;inset:0;pointer-events:none;z-index:3000;
+    border:2px dashed #cfd2da;}
+  .veil-preview .tag{position:absolute;top:6px;left:8px;background:#cfd2da;color:#15161a;
+    font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;}
+
   #inspector{background:var(--panel);overflow-y:auto;padding:12px;}
   .placeholder{color:var(--text-dim);font-size:12px;padding:20px 4px;line-height:1.6;}
   .segList{display:flex;flex-direction:column;gap:6px;margin:6px 0 12px;}
@@ -168,6 +173,7 @@
     <button id="btnAddStatic" style="width:100%;margin-top:6px">+ Ajouter un static (bulle, icône, perso fixe…)</button>
     <button id="btnAddDecor" style="width:100%;margin-top:6px">+ Ajouter un décor</button>
     <button id="btnAddTextDecor" style="width:100%;margin-top:6px">+ Ajouter un titre / texte</button>
+    <button id="btnAddOverlay" style="width:100%;margin-top:6px">+ Ajouter un voile grisé (narrateur)</button>
   </div>
 
   <div id="canvasWrap">
@@ -224,7 +230,8 @@ const state = {
   },
   characters: [],
   decors: [],
-  statics: []
+  statics: [],
+  overlays: []
 };
 
 let selection = { type: null, index: null };      // {type:'camera'} | {type:'character', index}
@@ -497,6 +504,37 @@ function normalizeStatic(s) {
   return out;
 }
 
+const OVERLAY_PARTICLE_DEFAULTS = {
+  count: 40, min_radius: 8, max_radius: 60, min_gray: 140, max_gray: 225,
+  opacity: 0.6, speed: 25, seed: 1
+};
+
+function normalizeOverlay(o) {
+  const p = o.particles || null;
+  return {
+    id: o.id || "voile",
+    active_window: (o.active_window && o.active_window.duration_seconds != null) ? {
+      start_second: Number(o.active_window.start_second ?? 0),
+      duration_seconds: Number(o.active_window.duration_seconds)
+    } : null,
+    color: (Array.isArray(o.color) && o.color.length >= 3) ? o.color.slice(0, 3).map(Number) : [255, 255, 255],
+    opacity: Number(o.opacity ?? 0.5),
+    fade_in_seconds: Number(o.fade_in_seconds ?? 1.0),
+    fade_out_seconds: Number(o.fade_out_seconds ?? 1.0),
+    easing: o.easing || "linear",
+    particles: {
+      count: Number(p ? (p.count ?? OVERLAY_PARTICLE_DEFAULTS.count) : 0),
+      min_radius: Number(p?.min_radius ?? OVERLAY_PARTICLE_DEFAULTS.min_radius),
+      max_radius: Number(p?.max_radius ?? OVERLAY_PARTICLE_DEFAULTS.max_radius),
+      min_gray: Number(p?.min_gray ?? OVERLAY_PARTICLE_DEFAULTS.min_gray),
+      max_gray: Number(p?.max_gray ?? OVERLAY_PARTICLE_DEFAULTS.max_gray),
+      opacity: Number(p?.opacity ?? OVERLAY_PARTICLE_DEFAULTS.opacity),
+      speed: Number(p?.speed ?? OVERLAY_PARTICLE_DEFAULTS.speed),
+      seed: Number(p?.seed ?? OVERLAY_PARTICLE_DEFAULTS.seed)
+    }
+  };
+}
+
 async function importEpisodeSettings(json) {
   if (!json || typeof json !== "object") throw new Error("JSON invalide");
 
@@ -538,6 +576,8 @@ async function importEpisodeSettings(json) {
   state.statics = (json.statics || []).map(normalizeStatic);
   const staticNames = [...new Set(state.statics.map(s => s.static).filter(Boolean))];
   await Promise.all(staticNames.map(n => getStaticData(n).catch(() => null)));
+
+  state.overlays = (json.overlays || []).map(normalizeOverlay);
 
   selection = { type: "camera", index: null };
   cameraKeyIndex = 0;
@@ -736,7 +776,55 @@ function renderElementList() {
     ]);
     list.appendChild(item);
   });
+
+  state.overlays.forEach((o, i) => {
+    const item = el("div", {
+      class: "el-item" + (selection.type === "overlay" && selection.index === i ? " active" : ""),
+      onclick: () => selectElement("overlay", i)
+    }, [
+      el("div", { class: "dot", style: "background:#cfd2da" }),
+      el("div", { class: "name" }, `🌫️ voile (${o.id})${o.active_window ? " ⏱" : ""}`),
+      el("div", {
+        class: "del", html: "✕", onclick: (ev) => { ev.stopPropagation(); removeOverlay(i); }
+      })
+    ]);
+    list.appendChild(item);
+  });
 }
+
+function newOverlayId() {
+  let n = 1;
+  let id = "voile";
+  const used = new Set(state.overlays.map(o => o.id));
+  while (used.has(id)) { n += 1; id = "voile-" + n; }
+  return id;
+}
+
+function addOverlay() {
+  state.overlays.push({
+    id: newOverlayId(),
+    active_window: { start_second: 0, duration_seconds: Math.min(6, state.output.duration_seconds) },
+    color: [255, 255, 255],
+    opacity: 0.5,
+    fade_in_seconds: 1.0,
+    fade_out_seconds: 1.0,
+    easing: "smoothstep",
+    particles: { ...OVERLAY_PARTICLE_DEFAULTS }
+  });
+  selection = { type: "overlay", index: state.overlays.length - 1 };
+  renderAll();
+}
+
+function removeOverlay(i) {
+  state.overlays.splice(i, 1);
+  if (selection.type === "overlay") {
+    if (state.overlays.length === 0) selection = { type: "camera", index: null };
+    else selection.index = clamp(selection.index, 0, state.overlays.length - 1);
+  }
+  renderAll();
+}
+
+document.getElementById("btnAddOverlay").addEventListener("click", () => addOverlay());
 
 function selectElement(type, index) {
   selection = { type, index };
@@ -969,7 +1057,7 @@ function renderStage() {
   }
 
   // nettoie les overlays précédents (les aperçus de décors gèrent leur propre nettoyage)
-  document.querySelectorAll(".cam-rect,.sprite-drag,.sprite-ghost").forEach(n => n.remove());
+  document.querySelectorAll(".cam-rect,.sprite-drag,.sprite-ghost,.veil-preview").forEach(n => n.remove());
 
   // aperçu permanent de tous les décors / statics déjà placés
   // (non-interactif, sauf l'élément sélectionné)
@@ -980,6 +1068,18 @@ function renderStage() {
   else if (selection.type === "character") renderCharacterOverlay();
   else if (selection.type === "decor") renderDecorOverlay();
   else if (selection.type === "static") renderStaticOverlay();
+  else if (selection.type === "overlay") renderVeilPreview();
+}
+
+// Aperçu du voile (opacité max, sans fondu ni particules) sur tout le stage.
+function renderVeilPreview() {
+  const o = state.overlays[selection.index];
+  if (!o) return;
+  const [r, g, b] = o.color;
+  const veil = el("div", { class: "veil-preview" });
+  veil.style.background = `rgba(${r},${g},${b},${o.opacity})`;
+  veil.appendChild(el("div", { class: "tag" }, `voile · ${o.id} · opacité max ${o.opacity}`));
+  document.getElementById("stage").appendChild(veil);
 }
 
 function px(v) { return (v * scaleFactor) + "px"; }
@@ -1429,6 +1529,7 @@ function renderInspector() {
   else if (selection.type === "character") root.appendChild(buildCharacterInspector());
   else if (selection.type === "decor") root.appendChild(buildDecorInspector());
   else if (selection.type === "static") root.appendChild(buildStaticInspector());
+  else if (selection.type === "overlay") root.appendChild(buildOverlayInspector());
   else root.appendChild(el("div", { class: "placeholder" }, "Sélectionne un élément."));
 }
 
@@ -1676,6 +1777,51 @@ function buildMovementWaypointEditor(d) {
   ]));
 
   return box;
+}
+
+/* ---- Overlay (voile grisé + particules) ---- */
+function buildOverlayInspector() {
+  const o = state.overlays[selection.index];
+  const wrap = document.createElement("div");
+  const p = o.particles;
+
+  wrap.appendChild(el("h3", {}, "Voile grisé"));
+  wrap.appendChild(el("div", { class: "hint" },
+    "Voile semi-transparent superposé à toute la vidéo (après la caméra), avec fondu d'entrée/sortie " +
+    "et particules circulaires grises en dérive lente. L'aperçu du canvas montre l'opacité maximale."));
+  wrap.appendChild(labeled("id (identifiant unique)", textField(o.id, v => { o.id = v; renderElementList(); })));
+
+  wrap.appendChild(buildActiveWindowEditor(o, "voile"));
+
+  wrap.appendChild(el("h3", {}, "Voile"));
+  wrap.appendChild(labeled("color", colorField([...o.color, 255], v => { o.color = v.slice(0, 3); renderStage(); })));
+  wrap.appendChild(numberField("opacity max (0–1)", o.opacity, v => { o.opacity = clamp(v, 0, 1); renderStage(); }, 0.05));
+  const rowFade = el("div", { class: "row2" });
+  rowFade.appendChild(numberField("fade_in (s)", o.fade_in_seconds, v => o.fade_in_seconds = Math.max(0, v), 0.1));
+  rowFade.appendChild(numberField("fade_out (s)", o.fade_out_seconds, v => o.fade_out_seconds = Math.max(0, v), 0.1));
+  wrap.appendChild(rowFade);
+  wrap.appendChild(labeled("easing", selectField(["linear", "smoothstep", "ease_out_cubic", "ease_in_cubic"], o.easing, v => o.easing = v)));
+
+  wrap.appendChild(el("h3", {}, "Particules"));
+  wrap.appendChild(numberField("count (0 = aucune)", p.count, v => p.count = Math.max(0, Math.round(v)), 1));
+  const rowR = el("div", { class: "row2" });
+  rowR.appendChild(numberField("rayon min (px)", p.min_radius, v => p.min_radius = v, 1));
+  rowR.appendChild(numberField("rayon max (px)", p.max_radius, v => p.max_radius = v, 1));
+  wrap.appendChild(rowR);
+  const rowG = el("div", { class: "row2" });
+  rowG.appendChild(numberField("gris min (0–255)", p.min_gray, v => p.min_gray = clamp(Math.round(v), 0, 255), 1));
+  rowG.appendChild(numberField("gris max (0–255)", p.max_gray, v => p.max_gray = clamp(Math.round(v), 0, 255), 1));
+  wrap.appendChild(rowG);
+  const rowO = el("div", { class: "row3" });
+  rowO.appendChild(numberField("opacité", p.opacity, v => p.opacity = clamp(v, 0, 1), 0.05));
+  rowO.appendChild(numberField("vitesse (px/s)", p.speed, v => p.speed = v, 1));
+  rowO.appendChild(numberField("seed", p.seed, v => p.seed = Math.round(v), 1));
+  wrap.appendChild(rowO);
+  wrap.appendChild(el("div", { class: "hint" },
+    "Tailles et vitesses exprimées dans la résolution de sortie d'origine (mises à l'échelle en --preview). " +
+    "Change le seed pour une autre disposition des particules."));
+
+  return wrap;
 }
 
 /* ---- Static ---- */
@@ -2617,6 +2763,15 @@ function cleanExportStatics(rawStatics) {
   });
 }
 
+function cleanExportOverlays(rawOverlays) {
+  return rawOverlays.map(o => {
+    const out = { ...o };
+    if (!out.active_window) delete out.active_window;
+    if (!out.particles || !(out.particles.count > 0)) delete out.particles;
+    return out;
+  });
+}
+
 function buildExportPayload() {
   // clone profond + nettoyage des clés internes/optionnelles utilisées par l'UI
   const out = JSON.parse(JSON.stringify(state));
@@ -2624,6 +2779,8 @@ function buildExportPayload() {
   out.characters = cleanExportCharacters(out.characters, out.output.fps);
   out.decors = cleanExportDecors(out.decors);
   out.statics = cleanExportStatics(out.statics || []);
+  out.overlays = cleanExportOverlays(out.overlays || []);
+  if (out.overlays.length === 0) delete out.overlays;
   return out;
 }
 

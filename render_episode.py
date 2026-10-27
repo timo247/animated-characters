@@ -134,6 +134,13 @@ Statics (personnages statiques, bulles d'emotion, icones, props...) :
         deduit du nombre de frames pour que le cycle dure exactement ce
         temps-la.
 
+Overlays (voile grisé + particules) :
+    Le champ optionnel "overlays" de l'episode (liste) superpose a la video
+    un voile de couleur semi-transparent (blanc par defaut) avec fondu
+    d'entree et de sortie, pendant une fenetre definie, plus des particules
+    circulaires grises qui derivent lentement. Applique APRES la camera, par-
+    dessus tout. Voir build_overlays() pour le format.
+
 Visemes :
     Le champ optionnel "visemes" de l'episode permet de fournir le fichier
     de timeline de visemes sans passer par --visemes en ligne de commande.
@@ -371,7 +378,184 @@ def _ease(t, easing):
         return 1 - (1 - t) ** 3
     if easing == "ease_in_cubic":
         return t ** 3
+    if easing == "smoothstep":
+        return t * t * (3 - 2 * t)
     return t  # "linear" / valeur inconnue
+
+
+# ---------------------------------------------------------------------------
+# Overlays (voile grisé + particules)
+# ---------------------------------------------------------------------------
+
+def build_overlay_fade_sequence(overlay_cfg, frame_start, frame_end, fps):
+    """
+    Facteur de fondu (0.0 -> 1.0) pour chaque frame ACTIVE de l'overlay
+    (index relatif a frame_start). Rampe d'entree "fade_in_seconds" (defaut
+    1.0), plateau, rampe de sortie "fade_out_seconds" (defaut 1.0).
+
+    Si fade_in + fade_out depassent la duree de la fenetre, les deux sont
+    reduits proportionnellement. "easing" : meme valeurs que les effets de
+    décor ("linear" defaut, "ease_out_cubic", "ease_in_cubic",
+    "smoothstep").
+    """
+    n = max(0, frame_end - frame_start)
+    if n == 0:
+        return []
+
+    easing = overlay_cfg.get("easing", "linear")
+    fade_in  = max(0.0, float(overlay_cfg.get("fade_in_seconds", 1.0))) * fps
+    fade_out = max(0.0, float(overlay_cfg.get("fade_out_seconds", 1.0))) * fps
+    if fade_in + fade_out > n:
+        ratio = n / (fade_in + fade_out)
+        fade_in  *= ratio
+        fade_out *= ratio
+
+    seq = []
+    for i in range(n):
+        k = 1.0
+        if fade_in > 0 and i < fade_in:
+            k = min(k, _ease(i / fade_in, easing))
+        if fade_out > 0 and i >= n - fade_out:
+            k = min(k, _ease((n - i) / fade_out, easing))
+        seq.append(max(0.0, min(1.0, k)))
+    return seq
+
+
+def build_overlay_particles(particles_cfg, out_w, out_h, px_scale):
+    """
+    Genere (de maniere deterministe, via "seed") les particules circulaires
+    d'un overlay. Toutes les tailles / vitesses du JSON sont exprimees dans
+    la resolution de sortie d'origine (ex: 1920 de large) et multipliees par
+    px_scale (= largeur de sortie reelle / largeur d'origine, donc 0.5 en
+    --preview) pour rester proportionnelles.
+
+    "particles" :
+        count       defaut 40
+        min_radius  defaut 8    max_radius  defaut 60     (px)
+        min_gray    defaut 140  max_gray    defaut 225    (0-255, nuance du gris)
+        opacity     defaut 0.6  (opacite max d'une particule, 0-1 ; chaque
+                                 particule tire un facteur entre 0.5 et 1.0)
+        speed       defaut 25   (px/s, vitesse moyenne de derive)
+        seed        defaut 1
+    """
+    if not particles_cfg:
+        return []
+    count = int(particles_cfg.get("count", 40))
+    if count <= 0:
+        return []
+
+    rng      = random.Random(int(particles_cfg.get("seed", 1)))  # RNG local : ne perturbe pas random global (clignements)
+    r_min    = float(particles_cfg.get("min_radius", 8))
+    r_max    = max(r_min, float(particles_cfg.get("max_radius", 60)))
+    g_min    = int(particles_cfg.get("min_gray", 140))
+    g_max    = max(g_min, int(particles_cfg.get("max_gray", 225)))
+    opacity  = max(0.0, min(1.0, float(particles_cfg.get("opacity", 0.6))))
+    speed    = float(particles_cfg.get("speed", 25))
+
+    import math
+    particles = []
+    for _ in range(count):
+        radius = rng.uniform(r_min, r_max) * px_scale
+        angle  = rng.uniform(0, 2 * math.pi)
+        spd    = speed * rng.uniform(0.5, 1.5) * px_scale
+        particles.append({
+            "x0":      rng.uniform(0, out_w),
+            "y0":      rng.uniform(0, out_h),
+            "vx":      math.cos(angle) * spd,
+            "vy":      math.sin(angle) * spd,
+            "d":       max(2, int(round(radius * 2))),
+            "gray":    rng.randint(g_min, g_max),
+            "opacity": opacity * rng.uniform(0.5, 1.0),
+            # leger balancement sinusoidal pour un mouvement organique
+            "amp":     rng.uniform(5, 25) * px_scale,
+            "freq":    rng.uniform(0.05, 0.2),
+            "phase":   rng.uniform(0, 2 * math.pi),
+        })
+    return particles
+
+
+@lru_cache(maxsize=512)
+def _particle_mask(diameter, alpha_q):
+    """
+    Masque "L" anti-aliase d'un disque (supersampling x4), alpha_q = opacite
+    quantifiee sur 0..64. Mis en cache : ne jamais modifier en place.
+    """
+    ss   = 4
+    disc = Image.new("L", (diameter * ss, diameter * ss), 0)
+    ImageDraw.Draw(disc).ellipse((0, 0, diameter * ss - 1, diameter * ss - 1), fill=255)
+    disc = disc.resize((diameter, diameter), Image.LANCZOS)
+    return disc.point(lambda p: p * alpha_q // 64)
+
+
+def build_overlays(overlays_cfg, total_frames, fps, out_w, out_h, ref_w):
+    """
+    Precalcule les overlays de episode["overlays"] (liste, appliques dans
+    l'ordre, par-dessus tout — y compris apres la camera).
+
+    Format d'un overlay :
+        {
+          "id": "narration",
+          "active_window": { "start_second": 12, "duration_seconds": 6 },  # absent = tout l'episode
+          "color": [255, 255, 255],     # defaut blanc
+          "opacity": 0.55,              # opacite max du voile (0-1), defaut 0.5
+          "fade_in_seconds": 1.0,       # defaut 1.0
+          "fade_out_seconds": 1.0,      # defaut 1.0
+          "easing": "linear",           # cf. build_overlay_fade_sequence()
+          "particles": { ... }          # optionnel, cf. build_overlay_particles()
+        }
+    """
+    result = []
+    px_scale = out_w / ref_w if ref_w else 1.0
+    for cfg in overlays_cfg or []:
+        f_start, f_end = resolve_decor_window(cfg, total_frames, fps)
+        color = tuple(int(c) for c in cfg.get("color", [255, 255, 255])[:3])
+        result.append({
+            "cfg":         cfg,
+            "frame_start": f_start,
+            "frame_end":   f_end,
+            "fade_seq":    build_overlay_fade_sequence(cfg, f_start, f_end, fps),
+            "opacity":     max(0.0, min(1.0, float(cfg.get("opacity", 0.5)))),
+            "solid":       Image.new("RGB", (out_w, out_h), color),
+            "particles":   build_overlay_particles(cfg.get("particles"), out_w, out_h, px_scale),
+        })
+    return result
+
+
+def apply_overlay(frame, ov, f, fps):
+    """
+    Applique l'overlay `ov` (cf. build_overlays()) a la frame f. Renvoie la
+    frame (nouvelle image si le voile est applique, sinon la meme).
+    Travaille a la resolution de sortie, apres la camera : le voile et les
+    particules ne zooment donc pas avec elle.
+    """
+    f_start, f_end = ov["frame_start"], ov["frame_end"]
+    if not (f_start <= f < f_end):
+        return frame
+    k = ov["fade_seq"][f - f_start]
+    if k <= 0.0:
+        return frame
+
+    veil = ov["opacity"] * k
+    if veil > 0.0:
+        frame = Image.blend(frame, ov["solid"], veil)
+
+    if ov["particles"]:
+        import math
+        t = (f - f_start) / fps
+        w, h = frame.size
+        for p in ov["particles"]:
+            q = round(p["opacity"] * k * 64)
+            if q <= 0:
+                continue
+            d = p["d"]
+            # derive lineaire + balancement, avec rebouclage aux bords
+            x = p["x0"] + p["vx"] * t + p["amp"] * math.sin(2 * math.pi * p["freq"] * t + p["phase"])
+            y = p["y0"] + p["vy"] * t + p["amp"] * math.cos(2 * math.pi * p["freq"] * t + p["phase"])
+            x = int(round(x % (w + d))) - d
+            y = int(round(y % (h + d))) - d
+            g = p["gray"]
+            frame.paste((g, g, g), (x, y, x + d, y + d), _particle_mask(d, q))
+    return frame
 
 
 def build_decor_effect_sequence(effects_cfg, frame_start, frame_end, fps):
@@ -2040,6 +2224,13 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
         print(f"  [INFO] Personnages statiques : "
               f"{[d['static_id'] for d in static_data]}")
 
+    # Overlays (voile grisé + particules), appliques apres la camera.
+    overlay_data = build_overlays(episode.get("overlays"), total_frames, fps,
+                                  width, height, full_w)
+    if overlay_data:
+        print(f"  [INFO] Overlays : "
+              f"{[(o['cfg'].get('id', '?'), o['frame_start']/fps, o['frame_end']/fps) for o in overlay_data]}")
+
     # Ordre de composition : tri stable par layer DECROISSANT (arrière-plan ->
     # premier plan) — layer bas = devant, layer haut = derriere. A layer
     # egal, l'ordre d'apparition dans char_data/decor_data est conserve (les
@@ -2174,6 +2365,10 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
         zoom, cx, cy = camera_seq[f]
         if zoom != 1.0 or cx != world_w / 2 or cy != world_h / 2 or (world_w, world_h) != (width, height):
             frame = apply_camera(frame, zoom, cx, cy, world_w, world_h, width, height)
+
+        # --- Overlays (voile grisé + particules) : par-dessus tout, apres la camera ---
+        for ov in overlay_data:
+            frame = apply_overlay(frame, ov, f, fps)
 
         frame_sink(f, frame)
 
@@ -2359,6 +2554,9 @@ def main():
     if episode.get("statics"):
         print(f"  Statiques   : "
               f"{[s.get('static', '?') for s in episode['statics']]}")
+    if episode.get("overlays"):
+        print(f"  Overlays    : "
+              f"{[o.get('id', '?') for o in episode['overlays']]}")
     if episode.get("decors"):
         print(f"  Décors      : "
               f"{[d.get('decor', d.get('id', '?')) for d in episode['decors']]}")

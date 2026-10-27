@@ -138,5 +138,33 @@
         }
       ]
     }
+  ],
+  "overlays": [
+    {
+      "id": "voile",
+      "active_window": {
+        "start_second": 2,
+        "duration_seconds": 6
+      },
+      "color": [
+        255,
+        255,
+        255
+      ],
+      "opacity": 0.5,
+      "fade_in_seconds": 1,
+      "fade_out_seconds": 1,
+      "easing": "smoothstep",
+      "particles": {
+        "count": 60,
+        "min_radius": 1,
+        "max_radius": 5,
+        "min_gray": 140,
+        "max_gray": 200,
+        "opacity": 0.6,
+        "speed": 25,
+        "seed": 1
+      }
+    }
   ]
 }
