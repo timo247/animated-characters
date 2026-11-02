@@ -1,3 +1,4 @@
+```json
 {
   "decor_id": "Emotion buble",
   "label": "Emotion-buble",
@@ -12,9 +13,7 @@
       },
       "colors": {
         "voie-de-la-savane": {
-          "frames": [
-            "1.png"
-          ]
+          "frames": ["1.png"]
         }
       }
     },
@@ -28,9 +27,7 @@
       },
       "colors": {
         "voie-de-la-savane": {
-          "frames": [
-            "1.png"
-          ]
+          "frames": ["1.png"]
         }
       }
     },
@@ -44,11 +41,290 @@
       },
       "colors": {
         "voie-de-la-savane": {
-          "frames": [
-            "1.png"
-          ]
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "chicken": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "three-dots": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "leopard": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "books": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "handshake": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "bowing-man": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "mirror": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "tools": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "bulb": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "turtle": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "cash": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "alarm-clock": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "question-marks-expressed": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "mountain": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "biceps": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "alarm": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "wine": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "ruler": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "lotus": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "open-book": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
         }
       }
     }
   }
 }
+```
