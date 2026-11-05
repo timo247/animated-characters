@@ -10,7 +10,7 @@
     ]
   },
   "background": {
-    "image": "autumn-kung-fu-background.png"
+    "image": "background-kung-fu-europe-autumn.png"
   },
   "audio": "",
   "visemes": "",
@@ -39,7 +39,7 @@
       "scale": 0.4,
       "flip_x": false,
       "layer": 0,
-      "decor": "asian-grass-1",
+      "decor": "grass-sharp",
       "color": "AUTUMN"
     },
     {
@@ -52,7 +52,7 @@
       "scale": 0.4,
       "flip_x": false,
       "layer": 0,
-      "decor": "asian-grass-1",
+      "decor": "grass-sharp",
       "color": "AUTUMN"
     },
     {
@@ -65,20 +65,7 @@
       "scale": 0.45,
       "flip_x": true,
       "layer": 0,
-      "decor": "asian-grass-1",
-      "color": "AUTUMN"
-    },
-    {
-      "id": "asian-flowers-1-4",
-      "type": "image",
-      "screen_position": {
-        "x": 732,
-        "y": 686
-      },
-      "scale": 0.45,
-      "flip_x": false,
-      "layer": 0,
-      "decor": "asian-leafs-1",
+      "decor": "grass-sharp",
       "color": "AUTUMN"
     },
     {
@@ -91,7 +78,7 @@
       "scale": 0.3,
       "flip_x": false,
       "layer": 0,
-      "decor": "asian-grass-1",
+      "decor": "grass-sharp",
       "color": "AUTUMN"
     },
     {
@@ -104,20 +91,7 @@
       "scale": 0.35,
       "flip_x": true,
       "layer": 0,
-      "decor": "asian-grass-1",
-      "color": "AUTUMN"
-    },
-    {
-      "id": "asian-flowers-1-7",
-      "type": "image",
-      "screen_position": {
-        "x": 170,
-        "y": 832
-      },
-      "scale": 0.55,
-      "flip_x": false,
-      "layer": 0,
-      "decor": "asian-grass-2",
+      "decor": "grass-sharp",
       "color": "AUTUMN"
     },
     {
@@ -130,7 +104,7 @@
       "scale": 1,
       "flip_x": false,
       "layer": 0,
-      "decor": "asian-grass-3",
+      "decor": "grass-sharp",
       "color": "AUTUMN"
     },
     {
@@ -143,177 +117,157 @@
       "scale": 0.6,
       "flip_x": true,
       "layer": 0,
-      "decor": "asian-grass-3",
+      "decor": "grass-sharp",
       "color": "AUTUMN"
+    },
+    {
+      "id": "asian-flowers-1-4",
+      "type": "image",
+      "decor": "kung-fu-tree-leafs-left-down",
+      "color": "AUTUMN",
+      "screen_position": {
+        "x": 68,
+        "y": 367
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": 0
     },
     {
       "id": "asian-flowers-1-10",
       "type": "image",
+      "decor": "kung-fu-tree-leafs-left-middle",
+      "color": "AUTUMN",
       "screen_position": {
-        "x": 384,
-        "y": 633
+        "x": -21,
+        "y": -193
       },
-      "scale": 0.4,
-      "flip_x": true,
-      "layer": 0,
-      "decor": "asian-grass-1",
-      "color": "AUTUMN"
+      "scale": 1,
+      "flip_x": false,
+      "layer": 1
     },
     {
       "id": "asian-flowers-1-11",
       "type": "image",
+      "decor": "kung-fu-tree-leafs-left-up",
+      "color": "AUTUMN",
       "screen_position": {
-        "x": 177,
-        "y": 575
+        "x": -98,
+        "y": -105
       },
-      "scale": 0.25,
-      "flip_x": true,
-      "layer": 0,
-      "decor": "asian-leafs-1",
-      "color": "AUTUMN"
+      "scale": 1,
+      "flip_x": false,
+      "layer": 0
     },
     {
       "id": "asian-flowers-1-12",
       "type": "image",
+      "decor": "kung-fu-tree-leafs-right-down",
+      "color": "AUTUMN",
       "screen_position": {
-        "x": 468,
-        "y": 598
+        "x": 705,
+        "y": 446
       },
-      "scale": 0.3,
-      "flip_x": true,
-      "layer": 0,
-      "decor": "asian-grass-1",
-      "color": "AUTUMN"
+      "scale": 1,
+      "flip_x": false,
+      "layer": 0
     },
     {
       "id": "asian-flowers-1-13",
       "type": "image",
+      "decor": "kung-fu-tree-leafs-right-middle",
+      "color": "AUTUMN",
       "screen_position": {
-        "x": 20,
-        "y": -182
+        "x": 635,
+        "y": 207
       },
-      "scale": 0.55,
+      "scale": 1,
       "flip_x": false,
-      "layer": 0,
-      "decor": "asian-leafs-2",
-      "color": "AUTUMN"
+      "layer": 0
     },
     {
       "id": "asian-flowers-1-14",
       "type": "image",
+      "decor": "kung-fu-tree-leafs-right-up",
+      "color": "AUTUMN",
       "screen_position": {
-        "x": 77,
-        "y": 105
+        "x": 605,
+        "y": -55
       },
-      "scale": 0.5,
+      "scale": 1,
       "flip_x": false,
-      "layer": 0,
-      "decor": "asian-leafs-2",
-      "color": "AUTUMN"
+      "layer": 0
     },
     {
       "id": "asian-flowers-1-15",
       "type": "image",
+      "decor": "kung-fu-lake",
+      "color": "AUTUMN",
       "screen_position": {
-        "x": -393,
-        "y": -232
+        "x": -256,
+        "y": 529
       },
-      "scale": 0.65,
-      "flip_x": true,
-      "layer": 0,
-      "decor": "asian-leafs-2",
-      "color": "AUTUMN"
+      "scale": 1,
+      "flip_x": false,
+      "layer": 31
+    },
+    {
+      "id": "asian-flowers-1-7",
+      "type": "image",
+      "decor": "grass-sharp",
+      "color": "AUTUMN",
+      "screen_position": {
+        "x": 13,
+        "y": 645
+      },
+      "scale": 0.7,
+      "flip_x": false,
+      "layer": 0
     },
     {
       "id": "asian-flowers-1-16",
       "type": "image",
+      "decor": "grass-sharp",
+      "color": "AUTUMN",
       "screen_position": {
-        "x": 29,
-        "y": 107
+        "x": 915,
+        "y": 707
       },
-      "scale": 0.4,
+      "scale": 0.8,
       "flip_x": false,
-      "layer": 0,
-      "decor": "asian-leafs-2",
-      "color": "AUTUMN"
+      "layer": 0
     },
     {
       "id": "asian-flowers-1-17",
       "type": "image",
+      "decor": "grass-sharp",
+      "color": "AUTUMN",
       "screen_position": {
-        "x": 613,
-        "y": -85
+        "x": 752,
+        "y": 910
       },
-      "scale": 0.5,
+      "scale": 0.85,
       "flip_x": false,
+      "layer": 0
+    }
+  ],
+  "statics": [
+    {
+      "id": "kung-fu-man-3",
+      "static": "kung-fu-man",
+      "color": "BLACK",
       "layer": 0,
-      "decor": "asian-flowers-1",
-      "color": "AUTUMN"
-    },
-    {
-      "id": "asian-flowers-1-18",
-      "type": "image",
-      "decor": "asian-grass-2",
-      "color": "AUTUMN",
+      "idle": "rotating-body",
       "screen_position": {
-        "x": 902,
-        "y": 619
+        "x": 110,
+        "y": -161
       },
-      "scale": 0.3,
+      "scale": 1,
       "flip_x": false,
-      "layer": 0
-    },
-    {
-      "id": "asian-flowers-1-19",
-      "type": "image",
-      "decor": "asian-grass-2",
-      "color": "AUTUMN",
-      "screen_position": {
-        "x": 893,
-        "y": 712
-      },
-      "scale": 0.25,
-      "flip_x": true,
-      "layer": 0
-    },
-    {
-      "id": "asian-flowers-1-20",
-      "type": "image",
-      "decor": "asian-grass-3",
-      "color": "AUTUMN",
-      "screen_position": {
-        "x": 92,
-        "y": 633
-      },
-      "scale": 0.3,
-      "flip_x": false,
-      "layer": 0
-    },
-    {
-      "id": "asian-flowers-1-21",
-      "type": "image",
-      "decor": "asian-grass-1",
-      "color": "AUTUMN",
-      "screen_position": {
-        "x": 877,
-        "y": 624
-      },
-      "scale": 0.25,
-      "flip_x": false,
-      "layer": 0
-    },
-    {
-      "id": "asian-flowers-1-22",
-      "type": "image",
-      "decor": "asian-grass-1",
-      "color": "AUTUMN",
-      "screen_position": {
-        "x": 481,
-        "y": 615
-      },
-      "scale": 0.25,
-      "flip_x": false,
-      "layer": 0
+      "active_window": {
+        "start_second": 0,
+        "duration_seconds": 10
+      }
     }
   ]
 }
