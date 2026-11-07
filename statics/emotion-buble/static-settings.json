@@ -1,4 +1,3 @@
-```json
 {
   "decor_id": "Emotion buble",
   "label": "Emotion-buble",
@@ -324,7 +323,104 @@
           "frames": ["1.png"]
         }
       }
+    },
+    "hearths": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "exclamation-mark": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "question-marks-thoughts": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "hand-clock": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "magnifying-glass": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "scale": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "disguised-face": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
     }
   }
 }
-```
