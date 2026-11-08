@@ -398,6 +398,7 @@ function normalizeEmotionKeyframe(ek) {
 }
 
 function normalizeCharacter(c) {
+  const gaze = { x: Number(c.gaze?.x ?? 0), y: Number(c.gaze?.y ?? 0) };
   return {
     id: c.id || (c.character || "char"),
     character: c.character || "",
@@ -410,10 +411,16 @@ function normalizeCharacter(c) {
     emotions: { eyes: c.emotions?.eyes || "HAPPY", mouth: c.emotions?.mouth || "HAPPY" },
     emotion_timeline: (c.emotion_timeline || []).map(normalizeEmotionKeyframe),
     speaker: c.speaker || "",
-    gaze: { x: Number(c.gaze?.x ?? 0), y: Number(c.gaze?.y ?? 0) },
-    gaze_timeline: (c.gaze_timeline || []).map(kf => ({
-      at_second: Number(kf.at_second ?? 0), x: Number(kf.x ?? 0), y: Number(kf.y ?? 0)
-    })),
+    gaze,
+    // Les keyframes "palier" générées par un export précédent (cf.
+    // buildSteppedGazeTimeline) sont éliminées ici : sinon elles seraient
+    // ré-importées comme de vraies keyframes et re-dédoublées à chaque export.
+    gaze_timeline: collapseGazeKeyframes(
+      (c.gaze_timeline || []).map(kf => ({
+        at_second: Number(kf.at_second ?? 0), x: Number(kf.x ?? 0), y: Number(kf.y ?? 0)
+      })),
+      gaze
+    ),
     moves: (c.moves || []).map(mv => ({
       at_second: Number(mv.at_second ?? 0),
       transition_fps: Number(mv.transition_fps ?? 8),
@@ -2715,6 +2722,24 @@ function checkField(labelText, checked, onChange) {
 
 function round4(v) { return Math.round(v * 10000) / 10000; }
 
+// Ne garde que les keyframes de regard qui CHANGENT réellement la valeur
+// (par rapport à la précédente, ou au regard statique pour la première).
+// Rend l'export idempotent : les keyframes "palier" ajoutées par
+// buildSteppedGazeTimeline() lors d'un export précédent (même valeur que la
+// keyframe d'avant) sont éliminées, au lieu d'être ré-importées comme de
+// vraies keyframes puis re-dédoublées à chaque cycle import -> export.
+function collapseGazeKeyframes(keyframes, staticGaze) {
+  const sorted = keyframes.slice().sort((a, b) => a.at_second - b.at_second);
+  const out = [];
+  let prev = { x: staticGaze?.x ?? 0, y: staticGaze?.y ?? 0 };
+  for (const kf of sorted) {
+    if (kf.x === prev.x && kf.y === prev.y) continue;
+    out.push(kf);
+    prev = { x: kf.x, y: kf.y };
+  }
+  return out;
+}
+
 // Transforme les keyframes "gaze_timeline" éditées dans l'UI (bascules nettes,
 // une par instant) en la forme attendue par le gaze_timeline interpolé de
 // render_episode.py : pour chaque changement, on insère une keyframe-palier
@@ -2724,7 +2749,7 @@ function round4(v) { return Math.round(v * 10000) / 10000; }
 // des keyframes classiques, interpolées comme d'habitude).
 function buildSteppedGazeTimeline(rawKeyframes, staticGaze, fps) {
   const eps = 1 / (fps || 24);
-  const sorted = rawKeyframes.slice().sort((a, b) => a.at_second - b.at_second);
+  const sorted = collapseGazeKeyframes(rawKeyframes, staticGaze);
   const result = [];
   let lastEmittedT = -1; // sentinelle : aucune keyframe-palier avant t=0
   let prevValue = { x: staticGaze?.x ?? 0, y: staticGaze?.y ?? 0 };
