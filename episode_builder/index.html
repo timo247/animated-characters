@@ -72,8 +72,8 @@
   #stageBg.empty{display:flex;align-items:center;justify-content:center;color:var(--text-dim);}
 
   .cam-rect{position:absolute;border:2px solid var(--cam);background:rgba(90,169,230,.08);
-    cursor:move;}
-  .cam-rect::after{content:'';position:absolute;right:-5px;bottom:-5px;width:12px;height:12px;
+    cursor:move;z-index:4000;box-shadow:0 0 0 9999px rgba(0,0,0,.45);}
+  .cam-rect::after{content:'';position:absolute;right:0;bottom:0;width:14px;height:14px;
     background:var(--cam);border-radius:2px;cursor:nwse-resize;}
 
   .sprite-drag{position:absolute;cursor:move;border:2px solid var(--accent);
@@ -258,7 +258,7 @@ let draftGaze = null;                                // keyframe de gaze_timelin
 let draftMovement = null;                            // waypoint de movement_timeline (décor en déplacement) en cours d'édition
 let draftStaticSegment = null;                      // pose (segment) de static en cours d'édition
 
-const STATIC_DEFAULT_LAYER = 50;                    // doit matcher DEFAULT_STATIC_LAYER cote render_episode.py
+const STATIC_DEFAULT_LAYER = 1;                    // doit matcher DEFAULT_STATIC_LAYER cote render_episode.py
 
 /* ============================== UTILS ============================== */
 
@@ -455,6 +455,7 @@ function normalizeDecor(d) {
     scale: Number(d.scale ?? 1.0),
     flip_x: !!d.flip_x,
     layer: Number(d.layer ?? 0),
+    camera_fixed: !!d.camera_fixed,
     active_window: (d.active_window && d.active_window.duration_seconds != null) ? {
       start_second: Number(d.active_window.start_second ?? 0),
       duration_seconds: Number(d.active_window.duration_seconds)
@@ -569,10 +570,15 @@ async function importEpisodeSettings(json) {
   state.visemes = json.visemes || "";
 
   const camSrc = json.camera || {};
-  let timeline = Array.isArray(camSrc.timeline) ? camSrc.timeline.map(kf => ({
-    at_second: Number(kf.at_second ?? 0), zoom: Number(kf.zoom ?? 1),
-    x: Number(kf.x ?? RES[0] / 2), y: Number(kf.y ?? RES[1] / 2)
-  })) : [];
+  let timeline = Array.isArray(camSrc.timeline) ? camSrc.timeline.map(kf => {
+    const out = {
+      at_second: Number(kf.at_second ?? 0), zoom: Number(kf.zoom ?? 1),
+      x: Number(kf.x ?? RES[0] / 2), y: Number(kf.y ?? RES[1] / 2)
+    };
+    // start_second est optionnel : présent = transition progressive, absent = cut
+    if (kf.start_second != null) out.start_second = Number(kf.start_second);
+    return out;
+  }) : [];
   if (timeline.length === 0) {
     timeline = [{ at_second: 0, zoom: Number(camSrc.zoom ?? 1), x: Number(camSrc.x ?? RES[0] / 2), y: Number(camSrc.y ?? RES[1] / 2) }];
   }
@@ -1079,7 +1085,12 @@ function renderStage() {
   renderAllDecors();
   renderAllStatics();
 
-  if (selection.type === "camera") renderCameraOverlay();
+  if (selection.type === "camera") {
+    // aperçu des personnages à l'instant (at_second) de la keyframe éditée
+    const ckf = state.camera.timeline[cameraKeyIndex];
+    if (ckf) renderCharacterGhosts(ckf.at_second);
+    renderCameraOverlay();
+  }
   else if (selection.type === "character") renderCharacterOverlay();
   else if (selection.type === "decor") renderDecorOverlay();
   else if (selection.type === "static") { renderCharacterGhosts(); renderStaticOverlay(); }
@@ -1090,8 +1101,46 @@ function renderStage() {
 // chaque personnage à sa position initiale (opacité .5) et à la fin de chacun de ses
 // déplacements (segments "to", opacité .25).
 let charGhostsRenderId = 0;
-async function renderCharacterGhosts() {
+// Pose approximative d'un personnage à l'instant t (secondes), d'après ses moves :
+// position initiale avant le 1er move, interpolation linéaire pendant un segment
+// (from -> to sur duration_seconds), puis position finale du dernier segment.
+// Les frames de transition_out/in (dont la durée dépend des assets) ne sont pas
+// comptées : à ±quelques dixièmes de seconde près.
+function characterPoseAtTime(c, t) {
+  let pose = { position: c.position, x: c.screen_position.x, y: c.screen_position.y, flip: !!c.flip_x };
+  const moves = (c.moves || []).slice().sort((a, b) => a.at_second - b.at_second);
+  for (const mv of moves) {
+    if (t < mv.at_second || !mv.segments.length) continue;
+    let start = mv.at_second;
+    let finished = true;
+    for (const seg of mv.segments) {
+      const dur = Math.max(Number(seg.duration_seconds) || 0, 0.001);
+      if (t < start + dur) {
+        const k = clamp((t - start) / dur, 0, 1);
+        pose = {
+          position: seg.position,
+          x: seg.from.x + (seg.to.x - seg.from.x) * k,
+          y: seg.from.y + (seg.to.y - seg.from.y) * k,
+          flip: !!seg.flip_x
+        };
+        finished = false;
+        break;
+      }
+      start += dur;
+    }
+    if (finished) {
+      const last = mv.segments[mv.segments.length - 1];
+      pose = { position: last.position, x: last.to.x, y: last.to.y, flip: !!last.flip_x };
+    }
+  }
+  return pose;
+}
+
+// atTime = null  : mode "static" (position initiale + fin de chaque déplacement)
+// atTime = nombre : mode "caméra" (pose de chaque personnage à cet instant)
+async function renderCharacterGhosts(atTime = null) {
   const myId = ++charGhostsRenderId;
+  const mode = selection.type;
   const stage = document.getElementById("stage");
 
   for (const c of state.characters) {
@@ -1099,17 +1148,23 @@ async function renderCharacterGhosts() {
     let data;
     try { data = await getCharacterData(c.character); } catch (e) { continue; }
 
-    const spots = [{ pos: c.position, at: c.screen_position, flip: c.flip_x, dest: false, tag: "initial" }];
-    (c.moves || []).forEach((mv, mi) => mv.segments.forEach((seg, si) => {
-      spots.push({ pos: seg.position, at: seg.to, flip: seg.flip_x, dest: true, tag: `fin move ${mi + 1}.${si + 1}` });
-    }));
+    let spots;
+    if (atTime != null) {
+      const pose = characterPoseAtTime(c, atTime);
+      spots = [{ pos: pose.position, at: { x: pose.x, y: pose.y }, flip: pose.flip, dest: false, tag: `t=${atTime}s` }];
+    } else {
+      spots = [{ pos: c.position, at: c.screen_position, flip: c.flip_x, dest: false, tag: "initial" }];
+      (c.moves || []).forEach((mv, mi) => mv.segments.forEach((seg, si) => {
+        spots.push({ pos: seg.position, at: seg.to, flip: seg.flip_x, dest: true, tag: `fin move ${mi + 1}.${si + 1}` });
+      }));
+    }
 
     for (const sp of spots) {
       const url = data.positions[sp.pos]?.idle?.preview_url;
       const dims = url ? await loadImageNaturalSize(url) : { w: 160, h: 240 };
 
       // sélection changée / nouveau rendu lancé pendant l'attente
-      if (myId !== charGhostsRenderId || selection.type !== "static") return;
+      if (myId !== charGhostsRenderId || selection.type !== mode) return;
 
       const w = dims.w * (c.scale || 1), h = dims.h * (c.scale || 1);
       const box = el("div", { class: "char-preview" + (sp.dest ? " dest" : "") });
@@ -1162,7 +1217,10 @@ function renderCameraOverlay() {
     },
     onResize: (dxPx, dyPx) => {
       const curW = RES[0] / kf.zoom;
-      const newW = clamp(curW + dxPx / scaleFactor, 40, RES[0] * 2);
+      // x2 : le rectangle reste centré sur (x, y), donc son coin bouge de
+      // dx/2 pour une variation de largeur de dx. On compense pour que le
+      // coin suive le curseur.
+      const newW = clamp(curW + 2 * dxPx / scaleFactor, 40, RES[0] * 2);
       kf.zoom = clamp(RES[0] / newW, 0.2, 6);
       const w = RES[0] / kf.zoom, h = RES[1] / kf.zoom;
       rect.style.left = px(kf.x - w / 2); rect.style.top = px(kf.y - h / 2);
@@ -1598,7 +1656,7 @@ function buildCameraInspector() {
   state.camera.timeline.forEach((kf, i) => {
     const row = el("div", { class: "seg-row" + (i === cameraKeyIndex ? " active" : "") });
     row.appendChild(el("div", { class: "lbl" },
-      `t=${kf.at_second}s · zoom ${kf.zoom.toFixed(2)} · (${Math.round(kf.x)},${Math.round(kf.y)})`));
+      `${kf.start_second != null ? kf.start_second + "→" : ""}t=${kf.at_second}s · zoom ${kf.zoom.toFixed(2)} · (${Math.round(kf.x)},${Math.round(kf.y)})`));
     row.appendChild(el("button", { onclick: () => { cameraKeyIndex = i; renderStage(); refreshInspector(); } }, "éditer"));
     if (state.camera.timeline.length > 1) {
       row.appendChild(el("button", {
@@ -1625,10 +1683,32 @@ function buildCameraInspector() {
   const kf = state.camera.timeline[cameraKeyIndex];
   if (kf) {
     wrap.appendChild(el("h3", {}, "Keyframe sélectionnée"));
-    wrap.appendChild(numberField("at_second (s)", kf.at_second, v => { kf.at_second = v; }, 0.1));
-    wrap.appendChild(el("div", { class: "coord-readout" },
-      `zoom ${kf.zoom.toFixed(3)}  ·  x ${Math.round(kf.x)}  ·  y ${Math.round(kf.y)}`));
-    wrap.appendChild(el("div", { class: "hint" }, "zoom/x/y se règlent en manipulant le rectangle sur le canvas."));
+    wrap.appendChild(numberField("at_second (s) — instant où ce cadrage est atteint", kf.at_second, v => { kf.at_second = v; renderStage(); }, 0.1));
+    wrap.appendChild(el("div", { class: "check-row" }, [
+      checkField("transition progressive (définir start_second)", kf.start_second != null, v => {
+        if (v) kf.start_second = Math.max(0, kf.at_second - 1);
+        else delete kf.start_second;
+        renderAll();
+      })
+    ]));
+    if (kf.start_second != null) {
+      wrap.appendChild(numberField("start_second (s) — début de la transition", kf.start_second, v => { kf.start_second = v; }, 0.1));
+      wrap.appendChild(el("div", { class: "hint" },
+        "La caméra reste sur le cadrage précédent jusqu'à start_second, puis glisse vers celui-ci " +
+        "et l'atteint à at_second."));
+    } else {
+      wrap.appendChild(el("div", { class: "hint" },
+        "Sans start_second : le cadrage précédent est tenu, puis la caméra change d'un coup (cut) à at_second. " +
+        "(Ignoré pour la toute première keyframe, tenue dès le début.)"));
+    }
+    wrap.appendChild(numberField("zoom (1 = cadre complet, >1 = zoom avant)", Number(kf.zoom.toFixed(3)),
+      v => { kf.zoom = clamp(v, 0.2, 6); renderStage(); }, 0.1));
+    const rowXY = el("div", { class: "row2" });
+    rowXY.appendChild(numberField("x (centre)", Math.round(kf.x), v => { kf.x = v; renderStage(); }, 10));
+    rowXY.appendChild(numberField("y (centre)", Math.round(kf.y), v => { kf.y = v; renderStage(); }, 10));
+    wrap.appendChild(rowXY);
+    wrap.appendChild(el("div", { class: "hint" },
+      "Tu peux aussi glisser le rectangle (position) ou tirer son coin bas-droit (zoom) sur le canvas."));
   }
 
   return wrap;
@@ -1722,7 +1802,8 @@ function buildDecorInspector() {
   wrap.appendChild(row);
 
   wrap.appendChild(el("div", { class: "check-row" }, [
-    checkField("flip_x", d.flip_x, v => { d.flip_x = v; renderStage(); })
+    checkField("flip_x", d.flip_x, v => { d.flip_x = v; renderStage(); }),
+    checkField("fixe à l'écran (indépendant de la caméra)", !!d.camera_fixed, v => { d.camera_fixed = v; })
   ]));
 
   wrap.appendChild(buildActiveWindowEditor(d));
@@ -2783,6 +2864,7 @@ function cleanExportCharacters(rawCharacters, fps) {
 function cleanExportDecors(rawDecors) {
   return rawDecors.map(d => {
     const out = { ...d };
+    if (!out.camera_fixed) delete out.camera_fixed;
     if (!out.active_window) delete out.active_window;
     if (Array.isArray(out.effects)) {
       if (out.effects.length === 0) delete out.effects;

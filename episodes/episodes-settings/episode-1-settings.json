@@ -24,6 +24,62 @@
         "zoom": 1,
         "x": 960,
         "y": 540
+      },
+      {
+        "at_second": 71,
+        "zoom": 1.8,
+        "x": 1256.5333333333406,
+        "y": 561.3333333333333,
+        "start_second": 70
+      },
+      {
+        "at_second": 75,
+        "zoom": 1,
+        "x": 960,
+        "y": 540,
+        "start_second": 74
+      },
+      {
+        "at_second": 169,
+        "zoom": 2,
+        "x": 861.8666666666671,
+        "y": 665.8666666666662,
+        "start_second": 168
+      },
+      {
+        "at_second": 172,
+        "zoom": 1,
+        "x": 960,
+        "y": 540,
+        "start_second": 171
+      },
+      {
+        "at_second": 199,
+        "zoom": 1.8,
+        "x": 846.9333333333335,
+        "y": 702.133333333333,
+        "start_second": 198
+      },
+      {
+        "at_second": 205,
+        "zoom": 1,
+        "x": 960,
+        "y": 540,
+        "start_second": 204
+      },
+      {
+        "at_second": 276,
+        "zoom": 1.8,
+        "x": 1164.7999999999993,
+        "y": 520.8000000000001,
+        "start_second": 275
+      },
+      {
+        "at_second": 281,
+        "zoom": 1,
+        "x": 960,
+        "y": 540,
+        "start_second": 280
       }
     ]
   },
@@ -1327,6 +1383,7 @@
       "scale": 1,
       "flip_x": false,
       "layer": -10,
+      "camera_fixed": true,
       "text": "La voie de la savane",
       "font": {
         "file": "PoetsenOne-Regular.ttf",

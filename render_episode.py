@@ -56,7 +56,20 @@ Audio :
 Camera (zoom / pan) :
     Le champ optionnel "camera" de l'episode permet d'animer un zoom et/ou
     un deplacement du cadre au-dessus de la composition (fond + personnages).
-    Voir build_camera_sequence() / apply_camera() pour le format.
+    Chaque keyframe de "timeline" est un CUT a "at_second", sauf si elle
+    definit "start_second" : la transition est alors progressive, de
+    start_second a at_second. Voir build_camera_sequence() / apply_camera()
+    pour le format.
+
+    Elements fixes a l'ecran (independants de la camera) :
+        Un element de "decors" (texte ou image) accepte "camera_fixed": true.
+        Il est alors colle APRES la camera (et apres les overlays) : il ne
+        zoome ni ne bouge avec elle (logo, titre fixe, filigrane...).
+        "screen_position" est alors exprimee dans le repere de la video de
+        sortie (resolution "output", pas le monde) ; "align": "center" centre
+        sur la largeur de sortie. "effects", "active_window" et
+        "movement_timeline" fonctionnent comme d'habitude. Voir
+        _paste_decor_fixed().
 
 Emotion timeline :
     Le champ optionnel "emotion_timeline" d'un personnage (dans episode
@@ -1138,15 +1151,20 @@ def build_camera_sequence(camera_cfg, total_frames, fps, world_w, world_h):
 
     Format episode["camera"] :
         {
-          "zoom": 1.0,                 # optionnel, defaut statique
-          "x": <world_w/2>,            # optionnel, centre statique (coord. monde)
-          "y": <world_h/2>,
+          "zoom": 1.0, "x": <world_w/2>, "y": <world_h/2>,   # valeurs statiques
           "timeline": [
-            { "at_second": 0.0, "zoom": 1.0, "x": 960, "y": 540 },
-            { "at_second": 3.0, "zoom": 1.8, "x": 700, "y": 400 },
-            ...
+            { "at_second": 0,  "zoom": 1.0, "x": 960, "y": 540 },
+            { "at_second": 90, "start_second": 88, "zoom": 1.8, "x": 700, "y": 400 },
+            { "at_second": 95, "zoom": 1.0, "x": 960, "y": 540 },
           ]
         }
+
+    Chaque keyframe (sauf la premiere, tenue des la frame 0) :
+      - sans "start_second" : le cadrage precedent est tenu, puis CUT
+        instantane vers ce cadrage a "at_second" ;
+      - avec "start_second" (< at_second) : le cadrage precedent est tenu
+        jusqu'a "start_second", puis transition lineaire qui atteint ce
+        cadrage a "at_second", tenu ensuite jusqu'a la keyframe suivante.
 
     - zoom=1.0 -> cadre normal (tout le canvas "monde" visible si world == output).
     - zoom>1.0 -> zoom avant (cadre plus etroit, recadre + agrandi).
@@ -1155,8 +1173,6 @@ def build_camera_sequence(camera_cfg, total_frames, fps, world_w, world_h):
     - (x, y) = centre du cadre camera, en coordonnees "monde" (mêmes coordonnees
       que screen_position / moves des personnages).
     - "timeline" absente -> valeurs statiques (zoom/x/y) tenues sur toute la duree.
-    - Avant la premiere keyframe -> tenu a la valeur de la premiere keyframe.
-    - Apres la derniere keyframe -> tenu a la valeur de la derniere keyframe.
     """
     default_zoom = float(camera_cfg.get("zoom", 1.0)) if camera_cfg else 1.0
     default_x    = float(camera_cfg.get("x", world_w / 2)) if camera_cfg else world_w / 2
@@ -1166,38 +1182,37 @@ def build_camera_sequence(camera_cfg, total_frames, fps, world_w, world_h):
     if not timeline:
         return [(default_zoom, default_x, default_y)] * total_frames
 
-    seq = [(default_zoom, default_x, default_y)] * total_frames
-    kf  = sorted(timeline, key=lambda k: k["at_second"])
+    def vals(k):
+        return (float(k.get("zoom", default_zoom)),
+                float(k.get("x",    default_x)),
+                float(k.get("y",    default_y)))
 
-    first   = kf[0]
-    f_first = int(first["at_second"] * fps)
-    z0 = float(first.get("zoom", default_zoom))
-    x0 = float(first.get("x",    default_x))
-    y0 = float(first.get("y",    default_y))
-    for f in range(0, min(f_first, total_frames)):
-        seq[f] = (z0, x0, y0)
+    kf   = sorted(timeline, key=lambda k: k["at_second"])
+    prev = vals(kf[0])
+    seq  = [prev] * total_frames          # 1ere keyframe tenue des le debut
 
-    for i, k in enumerate(kf):
-        f_start = int(k["at_second"] * fps)
-        z0 = float(k.get("zoom", default_zoom))
-        x0 = float(k.get("x",    default_x))
-        y0 = float(k.get("y",    default_y))
-        if i + 1 < len(kf):
-            nxt   = kf[i + 1]
-            f_end = int(nxt["at_second"] * fps)
-            z1 = float(nxt.get("zoom", default_zoom))
-            x1 = float(nxt.get("x",    default_x))
-            y1 = float(nxt.get("y",    default_y))
-            for f in range(f_start, min(f_end, total_frames)):
+    prev_f_end = 0
+    for k in kf[1:]:
+        cur   = vals(k)
+        f_end = max(0, min(int(k["at_second"] * fps), total_frames))
+
+        # Cut de base : ce cadrage est tenu a partir de at_second
+        for f in range(f_end, total_frames):
+            seq[f] = cur
+
+        # Transition progressive uniquement si start_second est defini
+        start_s = k.get("start_second")
+        if start_s is not None and float(start_s) < k["at_second"]:
+            f_start = max(int(float(start_s) * fps), prev_f_end)
+            for f in range(f_start, f_end):
                 t = (f - f_start) / max(f_end - f_start - 1, 1)
                 seq[f] = (
-                    z0 + (z1 - z0) * t,
-                    x0 + (x1 - x0) * t,
-                    y0 + (y1 - y0) * t,
+                    prev[0] + (cur[0] - prev[0]) * t,
+                    prev[1] + (cur[1] - prev[1]) * t,
+                    prev[2] + (cur[2] - prev[2]) * t,
                 )
-        else:
-            for f in range(f_start, total_frames):
-                seq[f] = (z0, x0, y0)
+
+        prev, prev_f_end = cur, f_end
 
     return seq
 
@@ -1942,6 +1957,45 @@ def _paste_decor(frame, entry, f, world_w, world_h):
         frame.paste(sprite, (px, py), sprite)
 
 
+def _paste_decor_fixed(frame, entry, f, px_scale):
+    """
+    Colle un décor "camera_fixed" sur `frame` (frame DE SORTIE, apres camera
+    et overlays) pour la frame f. Les coordonnees / tailles du JSON sont
+    exprimees dans la resolution de sortie d'origine ("output"."resolution",
+    ex: 1920 de large) et multipliees par px_scale (largeur de sortie reelle /
+    largeur d'origine, donc 0.5 en --preview), comme pour les overlays.
+    """
+    f_start, f_end = entry["frame_start"], entry["frame_end"]
+    if not (f_start <= f < f_end):
+        return  # hors de sa fenetre active ("active_window")
+
+    decor_cfg = entry["cfg"]
+    scale_mult, opacity, dx, dy = entry["effect_seq"][f - f_start]
+    if opacity <= 0.0:
+        return  # entierement transparent : rien a dessiner
+
+    if entry["decor_type"] == "text":
+        sprite_base = entry["static_sprite_px"]
+    else:
+        sprite_base = composite_decor(
+            decor_id    = decor_cfg["decor"],
+            color       = decor_cfg["color"],
+            sprite_file = entry["sprite_seq"][f],
+            scale       = float(decor_cfg.get("scale", 1.0)) * px_scale,
+            flip_x      = bool(decor_cfg.get("flip_x", False)),
+            rotation    = float(decor_cfg.get("rotation", 0.0)),
+        )
+
+    x, y = entry["pos_seq"][f]
+    sprite, px, py = apply_decor_effects(
+        sprite_base,
+        x * px_scale, y * px_scale,
+        scale_mult, opacity, dx * px_scale, dy * px_scale,
+    )
+    if not _offscreen(px, py, sprite.width, sprite.height, frame.width, frame.height):
+        frame.paste(sprite, (px, py), sprite)
+
+
 def render_frames(episode, frame_sink, visemes_data=None, preview=False):
     """
     Compose chaque frame de l'episode et la transmet a frame_sink(f, frame),
@@ -1962,6 +2016,10 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
     # l'encodage sont reduits (positions des episodes inchangees).
     full_w, full_h   = episode["output"]["resolution"]
     world_w, world_h = episode["output"].get("world_resolution", [full_w, full_h])
+
+    # Facteur resolution de sortie reelle / d'origine (0.5 en --preview) :
+    # sert aux elements dessines apres la camera ("camera_fixed").
+    px_scale = width / full_w if full_w else 1.0
 
     bg_path = EPISODES_IMAGES_DIR / episode["background"]["image"]
     if not bg_path.exists():
@@ -2060,20 +2118,23 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
     # composition, cf. DEFAULT_CHARACTER_LAYER / DEFAULT_DECOR_LAYER.
     decor_data = []
     for decor_cfg in episode.get("decors", []):
-        decor_type = decor_cfg.get("type", "image")
+        decor_type   = decor_cfg.get("type", "image")
+        # "camera_fixed": true -> dessine APRES la camera (cf. en-tete du fichier)
+        camera_fixed = bool(decor_cfg.get("camera_fixed", False))
 
         f_start, f_end = resolve_decor_window(decor_cfg, total_frames, fps)
         effect_seq = build_decor_effect_sequence(decor_cfg.get("effects"), f_start, f_end, fps)
 
         default_layer = DEFAULT_TEXT_DECOR_LAYER if decor_type == "text" else DEFAULT_DECOR_LAYER
         entry = {
-            "kind":        "decor",
-            "decor_type":  decor_type,
-            "layer":       float(decor_cfg.get("layer", default_layer)),
-            "cfg":         decor_cfg,
-            "frame_start": f_start,
-            "frame_end":   f_end,
-            "effect_seq":  effect_seq,
+            "kind":         "decor",
+            "decor_type":   decor_type,
+            "camera_fixed": camera_fixed,
+            "layer":        float(decor_cfg.get("layer", default_layer)),
+            "cfg":          decor_cfg,
+            "frame_start":  f_start,
+            "frame_end":    f_end,
+            "effect_seq":   effect_seq,
         }
 
         # Position par frame : fixe (screen_position) ou animee via
@@ -2105,9 +2166,25 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
             # hors effets) est constante, donc le centrage reste valable sur
             # toute la fenetre active. Seul le x est remplace : le y anime
             # par "movement_timeline" (le cas echeant) reste actif.
+            # Un décor "camera_fixed" se centre sur la largeur de SORTIE, pas
+            # sur celle du monde.
             if decor_cfg.get("align") == "center":
-                resolved_x = (world_w - static_sprite.width) / 2
+                center_w = full_w if camera_fixed else world_w
+                resolved_x = (center_w - static_sprite.width) / 2
                 pos_seq = [(resolved_x, y) for (_, y) in pos_seq]
+
+            # Variante a l'echelle de la resolution de sortie reelle (preview)
+            # pour les décors "camera_fixed".
+            if camera_fixed:
+                if px_scale == 1.0:
+                    entry["static_sprite_px"] = static_sprite
+                else:
+                    entry["static_sprite_px"] = transform_img(
+                        entry["base_sprite"],
+                        float(decor_cfg.get("scale", 1.0)) * px_scale,
+                        bool(decor_cfg.get("flip_x", False)),
+                        float(decor_cfg.get("rotation", 0.0)),
+                    )
         else:
             decor_id       = decor_cfg["decor"]
             decor_settings = load_decor_settings(decor_id)
@@ -2137,6 +2214,16 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
         if timed:
             print(f"  [INFO] Décors temporises : "
                   f"{[(d['cfg'].get('id', '?'), d['frame_start']/fps, d['frame_end']/fps) for d in timed]}")
+
+    # Décors "camera_fixed" : retires de la composition "monde" (donc non
+    # affectes par la camera) et dessines apres la camera + les overlays.
+    # Tri stable par layer DECROISSANT, comme pour render_order.
+    fixed_decors = sorted([d for d in decor_data if d["camera_fixed"]],
+                          key=lambda e: e["layer"], reverse=True)
+    decor_data   = [d for d in decor_data if not d["camera_fixed"]]
+    if fixed_decors:
+        print(f"  [INFO] Décors fixes a l'ecran (hors camera) : "
+              f"{[d['cfg'].get('id', '?') for d in fixed_decors]}")
 
     # Personnages statiques : comme un décor (pas de yeux/bouche, pas de
     # moves/transitions, boucle idle toujours simple/reguliere), mais avec
@@ -2369,6 +2456,12 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
         # --- Overlays (voile grisé + particules) : par-dessus tout, apres la camera ---
         for ov in overlay_data:
             frame = apply_overlay(frame, ov, f, fps)
+
+        # --- Décors "camera_fixed" (logo, titre fixe...) : apres la camera ET
+        # les overlays, donc au-dessus du voile. Pour les mettre SOUS le voile,
+        # deplacer cette boucle avant celle des overlays. ---
+        for entry in fixed_decors:
+            _paste_decor_fixed(frame, entry, f, px_scale)
 
         frame_sink(f, frame)
 
