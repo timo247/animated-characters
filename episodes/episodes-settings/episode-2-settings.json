@@ -32,10 +32,10 @@
       "id": "antilope",
       "character": "antilope",
       "position": "2",
-      "layer": 0,
+      "layer": 5,
       "screen_position": {
-        "x": 762,
-        "y": 443
+        "x": 732,
+        "y": 491
       },
       "scale": 0.55,
       "overlay_scale": 1,
@@ -57,10 +57,10 @@
       "id": "antilope-2",
       "character": "spider",
       "position": "1",
-      "layer": 0,
+      "layer": 6,
       "screen_position": {
-        "x": 1196,
-        "y": 300
+        "x": 1212,
+        "y": 332
       },
       "scale": 0.4,
       "overlay_scale": 1,
@@ -83,93 +83,221 @@
     {
       "id": "asian-flowers-1",
       "type": "image",
-      "decor": "bush",
-      "color": "DRY",
       "screen_position": {
         "x": -190,
         "y": 750
       },
       "scale": 0.85,
       "flip_x": false,
-      "layer": 2
+      "layer": 2,
+      "decor": "bush",
+      "color": "DRY"
     },
     {
       "id": "asian-flowers-1-2",
       "type": "image",
-      "decor": "bush",
-      "color": "DRY",
       "screen_position": {
         "x": 510,
         "y": 931
       },
       "scale": 0.65,
       "flip_x": false,
-      "layer": 4
+      "layer": 4,
+      "decor": "bush",
+      "color": "DRY"
     },
     {
       "id": "asian-flowers-1-3",
       "type": "image",
-      "decor": "bush",
-      "color": "DRY",
       "screen_position": {
         "x": 820,
         "y": 851
       },
       "scale": 1.3,
       "flip_x": false,
-      "layer": 3
+      "layer": 3,
+      "decor": "bush",
+      "color": "DRY"
     },
     {
       "id": "asian-flowers-1-4",
       "type": "image",
-      "decor": "bush",
-      "color": "DRY",
       "screen_position": {
         "x": 1630,
         "y": 716
       },
       "scale": 1,
       "flip_x": false,
-      "layer": 1
+      "layer": 1,
+      "decor": "bush",
+      "color": "DRY"
     },
     {
       "id": "asian-flowers-1-5",
       "type": "image",
-      "decor": "grass-1",
-      "color": "DRY",
       "screen_position": {
         "x": -132,
         "y": 646
       },
       "scale": 0.45,
       "flip_x": false,
-      "layer": 9
+      "layer": 9,
+      "decor": "grass-1",
+      "color": "DRY"
     },
     {
       "id": "asian-flowers-1-6",
       "type": "image",
-      "decor": "steps",
-      "color": "DRY",
       "screen_position": {
         "x": 139,
         "y": 589
       },
       "scale": 0.35,
       "flip_x": false,
-      "layer": 8
+      "layer": 8,
+      "decor": "steps",
+      "color": "DRY"
     },
     {
       "id": "asian-flowers-1-7",
       "type": "image",
-      "decor": "tree-2",
-      "color": "DRY",
       "screen_position": {
-        "x": 640,
-        "y": -455
+        "x": 758,
+        "y": -470
       },
-      "scale": 0.55,
+      "scale": 1.4,
       "flip_x": true,
-      "layer": 7
+      "layer": 7,
+      "decor": "tree-2",
+      "color": "DRY"
+    },
+    {
+      "id": "asian-flowers-1-8",
+      "type": "image",
+      "screen_position": {
+        "x": -288,
+        "y": 576
+      },
+      "scale": 0.35,
+      "flip_x": false,
+      "layer": 29,
+      "decor": "grass-2",
+      "color": "DRY"
+    },
+    {
+      "id": "asian-flowers-1-9",
+      "type": "image",
+      "screen_position": {
+        "x": -63,
+        "y": 486
+      },
+      "scale": 0.45,
+      "flip_x": false,
+      "layer": 39,
+      "decor": "grass-3",
+      "color": "DRY"
+    },
+    {
+      "id": "asian-flowers-1-11",
+      "type": "image",
+      "screen_position": {
+        "x": 374,
+        "y": 484
+      },
+      "scale": 0.65,
+      "flip_x": true,
+      "layer": 31,
+      "decor": "bush",
+      "color": "DRY"
+    },
+    {
+      "id": "asian-flowers-1-12",
+      "type": "image",
+      "screen_position": {
+        "x": 1379,
+        "y": 602
+      },
+      "scale": 0.35,
+      "flip_x": false,
+      "layer": 32,
+      "decor": "bush",
+      "color": "DRY"
+    },
+    {
+      "id": "asian-flowers-1-13",
+      "type": "image",
+      "screen_position": {
+        "x": -231,
+        "y": 431
+      },
+      "scale": 0.3,
+      "flip_x": false,
+      "layer": 49,
+      "decor": "grass-4",
+      "color": "DRY"
+    },
+    {
+      "id": "asian-flowers-1-14",
+      "type": "image",
+      "screen_position": {
+        "x": -31,
+        "y": 570
+      },
+      "scale": 0.3,
+      "flip_x": true,
+      "layer": 41,
+      "decor": "bush",
+      "color": "DRY"
+    },
+    {
+      "id": "asian-flowers-1-15",
+      "type": "image",
+      "screen_position": {
+        "x": 257,
+        "y": 363
+      },
+      "scale": 0.8,
+      "flip_x": false,
+      "layer": 42,
+      "decor": "big-tree",
+      "color": "DRY"
+    },
+    {
+      "id": "asian-flowers-1-16",
+      "type": "image",
+      "screen_position": {
+        "x": 685,
+        "y": 446
+      },
+      "scale": 0.4,
+      "flip_x": true,
+      "layer": 43,
+      "decor": "bush",
+      "color": "DRY"
+    },
+    {
+      "id": "texte",
+      "type": "text",
+      "screen_position": {
+        "x": 48,
+        "y": 972
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "camera_fixed": true,
+      "text": "LA VOIE DE LA SAVANE",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 48,
+        "color": [
+          185,
+          66,
+          116,
+          255
+        ]
+      },
+      "align": "left"
     }
   ],
   "statics": []
