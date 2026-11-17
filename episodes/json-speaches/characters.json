@@ -1,0 +1,18 @@
+{
+  "SPEAKER_01": {
+    "name": "SPEAKER_01",
+    "color": "#5fb3ff"
+  },
+  "SPEAKER_00": {
+    "name": "SPEAKER_00",
+    "color": "#ff8a5c"
+  },
+  "SPEAKER_02": {
+    "name": "SPEAKER_02",
+    "color": "#7ee787"
+  },
+  "SANS_SPEAKER": {
+    "name": "SANS_SPEAKER",
+    "color": "#c792ea"
+  }
+}
