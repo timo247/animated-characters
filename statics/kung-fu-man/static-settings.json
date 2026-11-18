@@ -146,6 +146,62 @@
           ]
         }
       }
+    },
+    "rotating-hips-reverse": {
+      "fps": 3,
+      "loop_mode": "loop",
+      "duration_seconds": 1.5,
+      "pause_seconds": {
+        "min": 1,
+        "max": 1
+      },
+      "colors": {
+        "BLACK": {
+          "frames": [
+            "0.png",
+            "1.png",
+            "2.png",
+            "3.png",
+            "4.png"
+          ]
+        }
+      }
+    },
+    "standing": {
+      "fps": 3,
+      "loop_mode": "loop",
+      "duration_seconds": 1.5,
+      "pause_seconds": {
+        "min": 1,
+        "max": 1
+      },
+      "colors": {
+        "BLACK": {
+          "frames": [
+            "1.png"
+          ]
+        }
+      }
+    },
+    "rotating-knees": {
+      "fps": 3,
+      "loop_mode": "loop",
+      "duration_seconds": 2.0,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "BLACK": {
+          "frames": [
+            "1.png",
+            "2.png",
+            "3.png",
+            "4.png",
+	    "5.png"
+          ]
+        }
+      }
     }
   }
 }
