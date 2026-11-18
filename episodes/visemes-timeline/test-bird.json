@@ -1,0 +1,24 @@
+{
+  "SPEAKER_01": [
+    {"start": 0.872, "end": 1.11, "viseme": "A"},
+    {"start": 1.11, "end": 1.212, "viseme": "CLOSED"},
+    {"start": 1.212, "end": 1.313, "viseme": "CLOSED"},
+    {"start": 1.333, "end": 1.493, "viseme": "CLOSED"},
+    {"start": 1.493, "end": 1.621, "viseme": "E"},
+    {"start": 1.653, "end": 1.781, "viseme": "E"},
+    {"start": 1.833, "end": 2.062, "viseme": "A"},
+    {"start": 2.062, "end": 2.16, "viseme": "CLOSED"},
+    {"start": 2.2, "end": 2.401, "viseme": "A"},
+    {"start": 2.401, "end": 2.488, "viseme": "CLOSED"},
+    {"start": 2.488, "end": 2.75, "viseme": "E"},
+    {"start": 2.75, "end": 2.815, "viseme": "CLOSED"},
+    {"start": 2.815, "end": 3.007, "viseme": "E"},
+    {"start": 3.007, "end": 3.055, "viseme": "CLOSED"},
+    {"start": 3.055, "end": 3.247, "viseme": "E"},
+    {"start": 3.247, "end": 3.295, "viseme": "CLOSED"},
+    {"start": 3.275, "end": 3.388, "viseme": "E"},
+    {"start": 3.416, "end": 3.78, "viseme": "O"},
+    {"start": 3.78, "end": 3.976, "viseme": "CLOSED"},
+    {"start": 3.956, "end": 4.052, "viseme": "E"}
+  ]
+}
