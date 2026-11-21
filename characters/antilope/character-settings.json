@@ -151,8 +151,7 @@
             "anchor":   { "x": 522, "y": 338 },
             "scale":    0.37,
             "flip_x":   true,
-            "rotation": 0,
-            "idle_viseme": "CLOSED.png"
+            "rotation": 0
           }
         },
 
@@ -236,7 +235,7 @@
             "frame": "MOVE-3.png",
             "_comment": "Foulée 2 : corps neutre",
             "eye_layers":  { "anchor": { "x": 499, "y": 218 }, "rotation": 14 },
-            "mouth": { "anchor": { "x": 637, "y": 242 }, "rotation": 0 }
+            "mouth": { "anchor": { "x": 637, "y": 335 }, "rotation": 0 }
           },
           {
             "frame": "MOVE-4.png",
