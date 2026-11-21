@@ -2,7 +2,7 @@
   "episode_id": "episode-2",
   "output": {
     "filename": "episode-2.mp4",
-    "duration_seconds": 273,
+    "duration_seconds": 24,
     "fps": 24,
     "resolution": [
       1920,
@@ -34,8 +34,8 @@
       "position": "2",
       "layer": 5,
       "screen_position": {
-        "x": 732,
-        "y": 491
+        "x": -395,
+        "y": 380
       },
       "scale": 0.55,
       "overlay_scale": 1,
@@ -47,10 +47,65 @@
       "emotion_timeline": [],
       "speaker": "",
       "gaze": {
-        "x": 0,
-        "y": 0
+        "x": 15,
+        "y": 2
       },
-      "moves": [],
+      "gaze_timeline": [
+        {
+          "at_second": 17.9583,
+          "x": 15,
+          "y": 2
+        },
+        {
+          "at_second": 18,
+          "x": 15,
+          "y": 3
+        },
+        {
+          "at_second": 18.9583,
+          "x": 15,
+          "y": 3
+        },
+        {
+          "at_second": 19,
+          "x": 15,
+          "y": 0
+        },
+        {
+          "at_second": 20.9583,
+          "x": 15,
+          "y": 0
+        },
+        {
+          "at_second": 21,
+          "x": 15,
+          "y": 3
+        }
+      ],
+      "moves": [
+        {
+          "at_second": 10,
+          "transition_fps": 8,
+          "move_fps": 10,
+          "segments": [
+            {
+              "position": "2",
+              "from": {
+                "x": -395,
+                "y": 380
+              },
+              "to": {
+                "x": 752,
+                "y": 398
+              },
+              "duration_seconds": 3,
+              "skip_transition": false,
+              "reverse": false,
+              "flip_x": false
+            }
+          ]
+        }
+      ],
       "dialogue": null
     },
     {
@@ -66,15 +121,37 @@
       "overlay_scale": 1,
       "flip_x": false,
       "emotions": {
-        "eyes": "HAPPY",
+        "eyes": "UNHAPPY",
         "mouth": "HAPPY"
       },
-      "emotion_timeline": [],
+      "emotion_timeline": [
+        {
+          "at_second": 15,
+          "eyes": "HAPPY"
+        }
+      ],
       "speaker": "",
       "gaze": {
-        "x": 0,
+        "x": -10,
         "y": 0
       },
+      "gaze_timeline": [
+        {
+          "at_second": 0,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 12.9583,
+          "x": -10,
+          "y": 5
+        },
+        {
+          "at_second": 13,
+          "x": -10,
+          "y": -5
+        }
+      ],
       "moves": [],
       "dialogue": null
     }
@@ -214,8 +291,8 @@
       "id": "asian-flowers-1-12",
       "type": "image",
       "screen_position": {
-        "x": 1379,
-        "y": 602
+        "x": 1417,
+        "y": 544
       },
       "scale": 0.35,
       "flip_x": false,
@@ -253,8 +330,8 @@
       "id": "asian-flowers-1-15",
       "type": "image",
       "screen_position": {
-        "x": 257,
-        "y": 363
+        "x": 267,
+        "y": 305
       },
       "scale": 0.8,
       "flip_x": false,
@@ -266,8 +343,8 @@
       "id": "asian-flowers-1-16",
       "type": "image",
       "screen_position": {
-        "x": 685,
-        "y": 446
+        "x": 725,
+        "y": 464
       },
       "scale": 0.4,
       "flip_x": true,
@@ -298,7 +375,109 @@
         ]
       },
       "align": "left"
+    },
+    {
+      "id": "texte",
+      "type": "text",
+      "screen_position": {
+        "x": 245,
+        "y": 458
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 0,
+        "duration_seconds": 17
+      },
+      "effects": [
+        {
+          "type": "fade",
+          "start_second": 0,
+          "duration_seconds": 2,
+          "from": 0,
+          "to": 1,
+          "easing": "linear"
+        }
+      ],
+      "text": "Le travail le plus grandiose n'est pas toujours le plus utile. \nSi on renonce aux bonheurs simples pour en poursuivre, \nmieux vaut s'assurer que le projet soit réaliste.",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 38,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
+    },
+    {
+      "id": "texte-2",
+      "type": "text",
+      "screen_position": {
+        "x": 100,
+        "y": 301
+      },
+      "scale": 1,
+      "flip_x": false,
+      "layer": -10,
+      "active_window": {
+        "start_second": 5,
+        "duration_seconds": 12
+      },
+      "effects": [
+        {
+          "type": "scale",
+          "start_second": 0,
+          "duration_seconds": 4,
+          "from": 0.4,
+          "to": 1,
+          "easing": "ease_out_cubic"
+        }
+      ],
+      "text": "Écrire des lois",
+      "font": {
+        "file": "PoetsenOne-Regular.ttf",
+        "size": 90,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "align": "center"
     }
   ],
-  "statics": []
+  "statics": [],
+  "overlays": [
+    {
+      "id": "voile",
+      "active_window": {
+        "start_second": 5,
+        "duration_seconds": 12
+      },
+      "color": [
+        255,
+        255,
+        255
+      ],
+      "opacity": 0.5,
+      "fade_in_seconds": 1,
+      "fade_out_seconds": 1,
+      "easing": "smoothstep",
+      "particles": {
+        "count": 40,
+        "min_radius": 1,
+        "max_radius": 5,
+        "min_gray": 140,
+        "max_gray": 200,
+        "opacity": 0.6,
+        "speed": 20,
+        "seed": 1
+      }
+    }
+  ]
 }
