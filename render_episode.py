@@ -2236,6 +2236,10 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
         idles_cfg      = static_settings.get("idles", {})
         color          = static_cfg["color"]
 
+        # Les cycles d'idle demarrent au DEBUT de la fenetre d'apparition du static
+        # (et non a t=0 de l'episode) : un static lance a 12 s joue son idle depuis
+        # sa 1ere frame, quel que soit le static precedent.
+        seq_start, _ = resolve_decor_window(static_cfg, total_frames, fps)
         timeline = build_static_timeline(static_cfg, total_frames, fps)
 
         # Ne precalcule que les sequences idle effectivement utilisees
@@ -2277,7 +2281,7 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
             # strictement reguliere.
             pause_cfg = idle_cfg.get("pause_seconds")
             sprite_seq_by_idle[idle_name] = build_decor_idle_sequence(
-                frames, fps_cfg, total_frames, fps,
+                frames, fps_cfg, max(0, total_frames - seq_start), fps,
                 pause_cfg=pause_cfg, loop_mode=DECOR_LOOP_LOOP,
             )
 
@@ -2302,6 +2306,7 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
             "color":              color,
             "timeline":           timeline,
             "sprite_seq_by_idle": sprite_seq_by_idle,
+            "seq_offset":         seq_start,
             "frame_start":        f_start,
             "frame_end":          f_end,
             "effect_seq":         effect_seq,
@@ -2362,7 +2367,7 @@ def render_frames(episode, frame_sink, visemes_data=None, preview=False):
                     continue  # hors de sa fenetre d'apparition ("active_window")
 
                 tl          = entry["timeline"][f]
-                sprite_file = entry["sprite_seq_by_idle"][tl["idle"]][f]
+                sprite_file = entry["sprite_seq_by_idle"][tl["idle"]][f - entry["seq_offset"]]
 
                 scale_mult, opacity, dx, dy = entry["effect_seq"][f - entry["frame_start"]]
                 if opacity <= 0.0:

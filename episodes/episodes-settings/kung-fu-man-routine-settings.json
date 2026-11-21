@@ -1,0 +1,204 @@
+{
+  "episode_id": "kung-fu-man-routine",
+  "output": {
+    "filename": "kung-fu-man-routine.mp4",
+    "duration_seconds": 152,
+    "fps": 24,
+    "resolution": [
+      1024,
+      1024
+    ]
+  },
+  "background": {
+    "image": "autumn-kung-fu-background.png"
+  },
+  "audio": "",
+  "visemes": "",
+  "camera": {
+    "zoom": 1,
+    "x": 512,
+    "y": 512,
+    "timeline": [
+      {
+        "at_second": 0,
+        "zoom": 1,
+        "x": 512,
+        "y": 512
+      }
+    ]
+  },
+  "characters": [],
+  "decors": [],
+  "statics": [
+    {
+      "id": "kung-fu-man-1",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "squatting",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 0,
+        "duration_seconds": 21
+      }
+    },
+    {
+      "id": "kung-fu-man-2",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "rolling-shoulders",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 21,
+        "duration_seconds": 7.5
+      }
+    },
+    {
+      "id": "kung-fu-man-3",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "opening-arms",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 28.5,
+        "duration_seconds": 6
+      }
+    },
+    {
+      "id": "kung-fu-man-4",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "opening-arms-opposite-directions",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 34.5,
+        "duration_seconds": 18
+      }
+    },
+    {
+      "id": "kung-fu-man-5",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "opening-arms-opposite-directions-switch",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 52.5,
+        "duration_seconds": 18
+      }
+    },
+    {
+      "id": "kung-fu-man-6",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "rotating-body",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 70.5,
+        "duration_seconds": 31.5
+      }
+    },
+    {
+      "id": "kung-fu-man-7",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "rotating-hips",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 102,
+        "duration_seconds": 14.75
+      }
+    },
+    {
+      "id": "kung-fu-man-8",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "rotating-hips-reverse",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 116.75,
+        "duration_seconds": 14.75
+      }
+    },
+    {
+      "id": "kung-fu-man-9",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "standing",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 131.5,
+        "duration_seconds": 7.5
+      }
+    },
+    {
+      "id": "kung-fu-man-10",
+      "static": "kung-fu-man",
+      "color": "BLACK",
+      "layer": 0,
+      "idle": "rotating-knees",
+      "screen_position": {
+        "x": 110,
+        "y": -161
+      },
+      "scale": 1,
+      "flip_x": false,
+      "active_window": {
+        "start_second": 139,
+        "duration_seconds": 12.5
+      }
+    }
+  ]
+}
