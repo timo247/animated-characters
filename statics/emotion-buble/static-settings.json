@@ -435,6 +435,202 @@
           "frames": ["1.png"]
         }
       }
+    },
+    "dagger": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "masks": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "cloud-raining": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "crown": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "hand-writing": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "jar": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "planet": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "temple": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "coins": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "statue": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "sage": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "angel": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "pen": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
+    },
+    "clover": {
+      "fps": 1,
+      "loop_mode": "loop",
+      "duration_seconds": 1,
+      "pause_seconds": {
+        "min": 0,
+        "max": 0
+      },
+      "colors": {
+        "voie-de-la-savane": {
+          "frames": ["1.png"]
+        }
+      }
     }
   }
 }
